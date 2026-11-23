@@ -1,55 +1,40 @@
 
-/* --------------------------------------------------
-   Grammar Drive: Open Road Challenge
-   js/teacher.js
-
-   Teacher Login and Authorization
--------------------------------------------------- */
-
 import {
   auth,
   db,
   ref,
   get,
+  set,
+  push,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged
 } from "./firebase.js";
 
-// HTML elements
 const loginSection = document.getElementById("loginSection");
 const dashboardSection = document.getElementById("dashboardSection");
-
 const loginForm = document.getElementById("loginForm");
 const loginButton = document.getElementById("loginButton");
 const logoutButton = document.getElementById("logoutButton");
-
 const message = document.getElementById("message");
 const teacherEmail = document.getElementById("teacherEmail");
 
-// Prevent duplicate verification when login and auth listener
-// detect the same authenticated user.
-const verificationTasks = new Map();
+const createSessionForm = document.getElementById("createSessionForm");
+const createSessionButton = document.getElementById("createSessionButton");
+const sessionMessage = document.getElementById("sessionMessage");
+const sessionResult = document.getElementById("sessionResult");
 
 let loginInProgress = false;
 
-// --------------------------------------------------
-// DISPLAY HELPERS
-// --------------------------------------------------
-
-function showMessage(text, type = "error") {
-  message.textContent = text;
-  message.classList.remove("hidden");
-
-  message.style.background =
-    type === "success" ? "#14532d" : "#7f1d1d";
-
-  message.style.color = "#ffffff";
+function showMessage(element, text, success = false) {
+  element.textContent = text;
+  element.classList.remove("hidden");
+  element.style.background = success ? "#14532d" : "#7f1d1d";
 }
 
-function hideMessage() {
-  message.textContent = "";
-  message.classList.add("hidden");
+function hideMessage(element) {
+  element.textContent = "";
+  element.classList.add("hidden");
 }
 
 function showLogin() {
@@ -60,77 +45,42 @@ function showLogin() {
 function showDashboard(user) {
   loginSection.classList.add("hidden");
   dashboardSection.classList.remove("hidden");
-
   teacherEmail.textContent = "Logged in as: " + user.email;
 }
 
-// --------------------------------------------------
-// VERIFY TEACHER AUTHORIZATION
-// --------------------------------------------------
+async function verifyTeacher(user) {
+  try {
+    const snapshot = await get(ref(db, "teachers/" + user.uid));
 
-function verifyTeacher(user) {
-  if (verificationTasks.has(user.uid)) {
-    return verificationTasks.get(user.uid);
-  }
-
-  const task = (async () => {
-    try {
-      const teacherRef = ref(db, "teachers/" + user.uid);
-      const snapshot = await get(teacherRef);
-
-      if (!snapshot.exists()) {
-        throw new Error("This account is not registered as a teacher.");
-      }
-
-      const teacherData = snapshot.val();
-
-      if (
-        teacherData.role !== "teacher" ||
-        teacherData.active !== true
-      ) {
-        throw new Error("This teacher account is not authorized or is inactive.");
-      }
-
-      showDashboard(user);
-
-      return true;
-
-    } catch (error) {
-      console.error("Teacher verification failed:", error);
-
-      await signOut(auth);
-
-      showLogin();
-
-      if (error.message.includes("permission_denied")) {
-        showMessage(
-          "Database permission denied. Please check Firebase security rules."
-        );
-      } else if (error.message.includes("not registered") ||
-                 error.message.includes("not authorized")) {
-        showMessage(error.message);
-      } else {
-        showMessage(
-          "Unable to verify teacher access. Please try again."
-        );
-      }
-
-      return false;
+    if (!snapshot.exists()) {
+      throw new Error("This account is not registered as a teacher.");
     }
-  })();
 
-  verificationTasks.set(user.uid, task);
+    const teacher = snapshot.val();
 
-  task.finally(() => {
-    verificationTasks.delete(user.uid);
-  });
+    if (teacher.role !== "teacher" || teacher.active !== true) {
+      throw new Error("This teacher account is inactive or unauthorized.");
+    }
 
-  return task;
+    showDashboard(user);
+    return true;
+
+  } catch (error) {
+    console.error("Teacher verification failed:", error);
+    await signOut(auth);
+    showLogin();
+
+    showMessage(
+      message,
+      error.message.includes("registered") ||
+      error.message.includes("inactive")
+        ? error.message
+        : "Unable to verify teacher access. Check your Firebase Database Rules."
+    );
+
+    return false;
+  }
 }
-
-// --------------------------------------------------
-// TEACHER LOGIN
-// --------------------------------------------------
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -140,45 +90,32 @@ loginForm.addEventListener("submit", async (event) => {
   loginInProgress = true;
   loginButton.disabled = true;
   loginButton.textContent = "Verifying...";
-  hideMessage();
+  hideMessage(message);
 
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
 
   try {
-    const result = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-
-    const authorized = await verifyTeacher(result.user);
-
-    if (authorized) {
-      console.log("Teacher login successful.");
-    }
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    await verifyTeacher(result.user);
 
   } catch (error) {
     console.error("Login error:", error);
 
-    let errorMessage = "Login failed. Please try again.";
+    let text = "Login failed. Please try again.";
 
-    if (
-      error.code === "auth/invalid-credential" ||
-      error.code === "auth/wrong-password" ||
-      error.code === "auth/user-not-found"
-    ) {
-      errorMessage = "Incorrect email or password.";
+    if (error.code === "auth/invalid-credential") {
+      text = "Incorrect email or password.";
     } else if (error.code === "auth/invalid-email") {
-      errorMessage = "Please enter a valid email address.";
+      text = "Please enter a valid email address.";
     } else if (error.code === "auth/too-many-requests") {
-      errorMessage = "Too many attempts. Please wait before trying again.";
+      text = "Too many attempts. Please wait before trying again.";
     } else if (error.code === "auth/network-request-failed") {
-      errorMessage = "Network error. Please check your internet connection.";
+      text = "Network error. Check your internet connection.";
     }
 
     showLogin();
-    showMessage(errorMessage);
+    showMessage(message, text);
 
   } finally {
     loginInProgress = false;
@@ -186,10 +123,6 @@ loginForm.addEventListener("submit", async (event) => {
     loginButton.textContent = "Teacher Login";
   }
 });
-
-// --------------------------------------------------
-// RESTORE EXISTING LOGIN SESSION
-// --------------------------------------------------
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
@@ -202,24 +135,22 @@ onAuthStateChanged(auth, async (user) => {
   await verifyTeacher(user);
 });
 
-// --------------------------------------------------
-// TEACHER LOGOUT
-// --------------------------------------------------
-
 logoutButton.addEventListener("click", async () => {
   logoutButton.disabled = true;
   logoutButton.textContent = "Logging out...";
 
   try {
     await signOut(auth);
-
-    showLogin();
     loginForm.reset();
-    hideMessage();
+    createSessionForm.reset();
+    sessionResult.classList.add("hidden");
+    hideMessage(message);
+    hideMessage(sessionMessage);
+    showLogin();
 
   } catch (error) {
-    console.error("Logout error:", error);
-    showMessage("Unable to log out. Please try again.");
+    console.error("Logout failed:", error);
+    showMessage(message, "Unable to log out. Please try again.");
 
   } finally {
     logoutButton.disabled = false;
@@ -227,4 +158,80 @@ logoutButton.addEventListener("click", async () => {
   }
 });
 
-console.log("Grammar Drive: Teacher authentication loaded.");
+createSessionForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const user = auth.currentUser;
+
+  if (!user) {
+    showMessage(sessionMessage, "Please log in again before creating a session.");
+    return;
+  }
+
+  const selectedTopics = Array.from(
+    createSessionForm.querySelectorAll('input[name="topics"]:checked')
+  ).map((checkbox) => checkbox.value);
+
+  if (selectedTopics.length === 0) {
+    showMessage(sessionMessage, "Please select at least one grammar topic.");
+    return;
+  }
+
+  createSessionButton.disabled = true;
+  createSessionButton.textContent = "Creating Session...";
+  hideMessage(sessionMessage);
+  sessionResult.classList.add("hidden");
+
+  try {
+    const sessionRef = push(ref(db, "sessions"));
+
+    const sessionCode = Math.random()
+      .toString(36)
+      .substring(2, 8)
+      .toUpperCase();
+
+    const sessionData = {
+      teacherUid: user.uid,
+      teacherEmail: user.email,
+      sessionCode: sessionCode,
+      grade: document.getElementById("grade").value,
+      topics: selectedTopics,
+      durationMinutes: Number(document.getElementById("duration").value),
+      status: "waiting",
+      createdAt: Date.now()
+    };
+
+    await set(sessionRef, sessionData);
+
+    document.getElementById("sessionCode").textContent = sessionCode;
+
+    document.getElementById("sessionDetails").textContent =
+      "Grade " + sessionData.grade +
+      " | " + sessionData.topics.join(", ") +
+      " | " + sessionData.durationMinutes + " minutes";
+
+    sessionResult.classList.remove("hidden");
+
+    showMessage(
+      sessionMessage,
+      "Your game session has been saved successfully.",
+      true
+    );
+
+    console.log("Created session:", sessionRef.key);
+
+  } catch (error) {
+    console.error("Session creation failed:", error);
+
+    showMessage(
+      sessionMessage,
+      "Could not create the session. Check your Firebase Database Rules and try again."
+    );
+
+  } finally {
+    createSessionButton.disabled = false;
+    createSessionButton.textContent = "Create Game Session";
+  }
+});
+
+console.log("Grammar Drive teacher dashboard loaded.");
