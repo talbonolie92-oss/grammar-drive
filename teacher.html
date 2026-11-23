@@ -1,0 +1,179 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Portal | Grammar Drive</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: #101827;
+      color: #f8fafc;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+      padding: 32px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      color: #60a5fa;
+      text-align: center;
+    }
+
+    .subtitle {
+      margin: 0 0 28px;
+      color: #cbd5e1;
+      text-align: center;
+    }
+
+    label {
+      display: block;
+      margin: 16px 0 7px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      background: #0f172a;
+      color: white;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 13px;
+      margin-top: 20px;
+      border: 0;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .secondary {
+      background: #475569;
+    }
+
+    #message {
+      margin-top: 18px;
+      padding: 12px;
+      border-radius: 8px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .dashboard {
+      text-align: center;
+    }
+
+    .status {
+      margin: 20px 0;
+      padding: 16px;
+      border-radius: 10px;
+      background: #0f172a;
+      color: #86efac;
+    }
+
+    .small {
+      color: #94a3b8;
+      font-size: 13px;
+      text-align: center;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+
+    <!-- LOGIN -->
+    <section id="loginSection">
+      <h1>Grammar Drive</h1>
+      <p class="subtitle">Teacher Portal</p>
+
+      <form id="loginForm">
+        <label for="email">Teacher Email</label>
+        <input
+          type="email"
+          id="email"
+          autocomplete="username"
+          required
+        >
+
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          autocomplete="current-password"
+          required
+        >
+
+        <button type="submit" id="loginButton">
+          Teacher Login
+        </button>
+      </form>
+
+      <div id="message" class="hidden" role="alert"></div>
+
+      <p class="small">
+        Authorized teachers only.
+      </p>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section id="dashboardSection" class="dashboard hidden">
+      <h1>Teacher Dashboard</h1>
+      <p class="subtitle">Grammar Drive: Open Road Challenge</p>
+
+      <div class="status">
+        Teacher authentication successful.
+      </div>
+
+      <p id="teacherEmail"></p>
+
+      <p class="small">
+        Your teacher account has been verified.
+        Dashboard features will be added in the next development steps.
+      </p>
+
+      <button id="logoutButton" class="secondary">
+        Log Out
+      </button>
+    </section>
+
+  </main>
+
+  <script type="module" src="./js/teacher.js"></script>
+</body>
+</html>
