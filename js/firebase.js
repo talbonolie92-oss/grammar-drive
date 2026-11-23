@@ -1,19 +1,24 @@
-
 // --------------------------------------------------
 // Grammar Drive: Open Road Challenge
-// js/firebase.js
-// Firebase Initialization
+// js/firebase.js — Firebase setup (the ONLY file that talks to the Firebase CDN)
+//
+// Teachers and students get SEPARATE Firebase instances. Firebase remembers one
+// signed-in user per instance, so a teacher can test the student page in another
+// tab of the same browser without being logged out (and without joining as the
+// teacher).
 // --------------------------------------------------
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 
 import {
   getAuth,
+  initializeAuth,
+  inMemoryPersistence,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signInAnonymously,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  deleteUser
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 import {
@@ -22,14 +27,19 @@ import {
   get,
   set,
   update,
+  remove,
   push,
   onValue,
-  onDisconnect,
-  remove
+  query,
+  orderByChild,
+  equalTo,
+  limitToLast,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
-// 1. Firebase configuration
-const firebaseConfig = {
+// Public web configuration. This is not a secret: access is controlled by
+// Firebase Authentication and the Realtime Database Rules (database.rules.json).
+export const firebaseConfig = {
   apiKey: "AIzaSyDj-qjpoNBhgzGKUDyrccymAD1nvfQwbUA",
   authDomain: "grammar-drive.firebaseapp.com",
   databaseURL: "https://grammar-drive-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -39,39 +49,62 @@ const firebaseConfig = {
   appId: "1:935974649982:web:e7595bc522b8879a46d82f"
 };
 
-// 2. Initialize Firebase
-const app = initializeApp(firebaseConfig);
+function appNamed(name) {
+  return getApps().find((a) => a.name === name) || initializeApp(firebaseConfig, name);
+}
 
-// 3. Initialize Authentication
-const auth = getAuth(app);
+/** Teacher dashboard instance (remembers the teacher's login in this browser). */
+export function teacherFirebase() {
+  const app = appNamed("gd-teacher");
+  return { app, auth: getAuth(app), db: getDatabase(app) };
+}
 
-// 4. Initialize Realtime Database
-const db = getDatabase(app);
+/** Student instance (remembers the student's anonymous identity in this browser, so a refresh resumes). */
+export function studentFirebase() {
+  const app = appNamed("gd-student");
+  return { app, auth: getAuth(app), db: getDatabase(app) };
+}
 
-// 5. Export Firebase services and functions
+/** Throw-away instance for test.html: remembers nothing, so tests never disturb real logins. */
+export function testFirebase(name) {
+  const app = appNamed("gd-test-" + name);
+  let auth;
+  try {
+    auth = initializeAuth(app, { persistence: inMemoryPersistence });
+  } catch (error) {
+    auth = getAuth(app); // already initialised earlier on this page
+  }
+  return { app, auth, db: getDatabase(app) };
+}
+
+/** Resolves once Firebase has restored any remembered login for this instance. */
+export function authReady(auth) {
+  return new Promise((resolve) => {
+    const stop = onAuthStateChanged(auth, (user) => {
+      stop();
+      resolve(user);
+    });
+  });
+}
+
 export {
-  app,
-  auth,
-  db,
-  firebaseConfig,
-
   // Authentication
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signInAnonymously,
   signOut,
   onAuthStateChanged,
-
+  deleteUser,
   // Realtime Database
   ref,
   get,
   set,
   update,
+  remove,
   push,
   onValue,
-  onDisconnect,
-  remove
+  query,
+  orderByChild,
+  equalTo,
+  limitToLast,
+  serverTimestamp
 };
-
-console.log("Grammar Drive: Firebase initialized successfully.");
-
