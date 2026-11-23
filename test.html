@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grammar Drive | System Check</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <main class="container" style="max-width:820px">
+    <h1 class="brand">Grammar Drive</h1>
+    <p class="brand-sub">SYSTEM CHECK</p>
+
+    <section class="panel">
+      <h2>1. Firebase connection</h2>
+      <p class="muted">Signs in anonymously, then deletes that test identity again.</p>
+      <button id="connButton" type="button">Test Firebase Connection</button>
+      <div id="connStatus" class="message hidden"></div>
+    </section>
+
+    <section class="panel">
+      <h2>2. Database rules self-test</h2>
+      <p class="muted">
+        Runs every allowed and refused action against your real Firebase project using your teacher account and
+        two or three temporary anonymous students. It creates its own test sessions and deletes them (and the
+        temporary students) at the end. It does not touch any other data and does not log you out of the dashboard.
+      </p>
+      <p class="muted small">Run it only after publishing <code>database.rules.json</code>. If the new rules are not published, it stops before writing anything.</p>
+      <form id="testForm">
+        <label for="tEmail">Teacher email</label>
+        <input id="tEmail" type="email" required autocomplete="username">
+        <label for="tPassword">Teacher password</label>
+        <input id="tPassword" type="password" required autocomplete="current-password">
+        <label class="check" style="margin-top:14px">
+          <input id="longTest" type="checkbox">
+          Also run the time-limit test (adds about 5½ minutes)
+        </label>
+        <button id="runButton" class="block" type="submit">Run rules self-test</button>
+      </form>
+      <div id="testSummary" class="message hidden"></div>
+      <div id="testResults" style="margin-top:12px"></div>
+      <button id="copyReport" type="button" class="secondary hidden" style="margin-top:12px">Copy report</button>
+    </section>
+
+    <p class="small"><a href="./index.html">← Home</a></p>
+  </main>
+  <script type="module" src="./js/selftest.js"></script>
+</body>
+</html>
