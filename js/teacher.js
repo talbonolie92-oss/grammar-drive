@@ -82,6 +82,53 @@ async function verifyTeacher(user) {
   }
 }
 
+function generateSessionCode() {
+  const characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const randomValues = new Uint32Array(6);
+  crypto.getRandomValues(randomValues);
+
+  return Array.from(
+    randomValues,
+    value => characters[value % characters.length]
+  ).join("");
+}
+
+async function getUniqueSessionCode() {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = generateSessionCode();
+    const snapshot = await get(ref(db, "joinCodes/" + code));
+
+    if (!snapshot.exists()) {
+      return code;
+    }
+  }
+
+  throw new Error("Could not generate a unique session code. Please try again.");
+}
+
+function displayJoinLink(code) {
+  const joinUrl = new URL("./student.html", window.location.href);
+  joinUrl.searchParams.set("code", code);
+
+  let link = document.getElementById("studentJoinLink");
+
+  if (!link) {
+    link = document.createElement("a");
+    link.id = "studentJoinLink";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.style.display = "block";
+    link.style.marginTop = "12px";
+    link.style.color = "#60a5fa";
+    link.style.overflowWrap = "anywhere";
+
+    document.getElementById("sessionResult").appendChild(link);
+  }
+
+  link.href = joinUrl.href;
+  link.textContent = "Open Student Join Page";
+}
+
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -170,7 +217,7 @@ createSessionForm.addEventListener("submit", async (event) => {
 
   const selectedTopics = Array.from(
     createSessionForm.querySelectorAll('input[name="topics"]:checked')
-  ).map((checkbox) => checkbox.value);
+  ).map(checkbox => checkbox.value);
 
   if (selectedTopics.length === 0) {
     showMessage(sessionMessage, "Please select at least one grammar topic.");
@@ -183,17 +230,13 @@ createSessionForm.addEventListener("submit", async (event) => {
   sessionResult.classList.add("hidden");
 
   try {
+    const sessionCode = await getUniqueSessionCode();
     const sessionRef = push(ref(db, "sessions"));
-
-    const sessionCode = Math.random()
-      .toString(36)
-      .substring(2, 8)
-      .toUpperCase();
 
     const sessionData = {
       teacherUid: user.uid,
       teacherEmail: user.email,
-      sessionCode: sessionCode,
+      sessionCode,
       grade: document.getElementById("grade").value,
       topics: selectedTopics,
       durationMinutes: Number(document.getElementById("duration").value),
@@ -203,6 +246,12 @@ createSessionForm.addEventListener("submit", async (event) => {
 
     await set(sessionRef, sessionData);
 
+    await set(ref(db, "joinCodes/" + sessionCode), {
+      sessionId: sessionRef.key,
+      teacherUid: user.uid,
+      status: "waiting"
+    });
+
     document.getElementById("sessionCode").textContent = sessionCode;
 
     document.getElementById("sessionDetails").textContent =
@@ -210,11 +259,12 @@ createSessionForm.addEventListener("submit", async (event) => {
       " | " + sessionData.topics.join(", ") +
       " | " + sessionData.durationMinutes + " minutes";
 
+    displayJoinLink(sessionCode);
     sessionResult.classList.remove("hidden");
 
     showMessage(
       sessionMessage,
-      "Your game session has been saved successfully.",
+      "Your game session and student join link have been created successfully.",
       true
     );
 
@@ -225,7 +275,7 @@ createSessionForm.addEventListener("submit", async (event) => {
 
     showMessage(
       sessionMessage,
-      "Could not create the session. Check your Firebase Database Rules and try again."
+      error.message || "Could not create the session. Check your Firebase Database Rules."
     );
 
   } finally {
