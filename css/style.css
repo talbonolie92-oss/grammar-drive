@@ -1,0 +1,153 @@
+/* Grammar Drive: Open Road Challenge — shared styles for every page */
+:root {
+  --bg: #0f172a;
+  --panel: #1e293b;
+  --panel-2: #0b1224;
+  --line: #334155;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #2563eb;
+  --accent-2: #60a5fa;
+  --good: #16a34a;
+  --warn: #d97706;
+  --bad: #dc2626;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.5;
+}
+
+a { color: var(--accent-2); }
+
+h1, h2, h3 { color: #fff; margin-top: 0; }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+.narrow { max-width: 480px; margin: 0 auto; padding: 24px; }
+.center-page { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.brand { margin-bottom: 4px; }
+.brand-sub { color: var(--accent-2); font-weight: bold; letter-spacing: 1px; margin: 0 0 16px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.hidden { display: none !important; }
+
+label { display: block; font-weight: bold; margin: 14px 0 6px; }
+
+input[type="text"], input[type="email"], input[type="password"], select {
+  width: 100%;
+  padding: 13px;
+  font-size: 16px;
+  color: #fff;
+  background: var(--bg);
+  border: 1px solid #475569;
+  border-radius: 8px;
+}
+
+button, .button {
+  display: inline-block;
+  padding: 12px 18px;
+  font-size: 15px;
+  font-weight: bold;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+}
+button:hover, .button:hover { filter: brightness(1.1); }
+button:disabled { opacity: .55; cursor: not-allowed; }
+button.block, .button.block { width: 100%; margin-top: 18px; }
+button.secondary, .button.secondary { background: #475569; }
+button.good { background: var(--good); }
+button.danger { background: var(--bad); }
+button.small { padding: 7px 11px; font-size: 13px; }
+
+.message { padding: 12px 14px; border-radius: 8px; margin: 14px 0; overflow-wrap: anywhere; }
+.message.error { background: #7f1d1d; }
+.message.success { background: #14532d; }
+.message.info { background: #1e3a8a; }
+.message.warn { background: #78350f; }
+
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.spacer { flex: 1; }
+
+.grid-2 { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+@media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } }
+
+.topic-list { display: grid; gap: 8px; }
+.check {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0; padding: 10px 12px; font-weight: normal;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+}
+.check input { width: 18px; height: 18px; }
+
+.badge { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: .5px; }
+.badge.waiting { background: #1d4ed8; }
+.badge.running { background: var(--good); }
+.badge.ended { background: #475569; }
+.badge.old { background: #78350f; }
+
+.session-list button {
+  display: block; width: 100%; margin: 6px 0; text-align: left;
+  background: var(--panel-2); border: 1px solid var(--line); font-weight: normal;
+}
+.session-list button.selected { border-color: var(--accent-2); }
+
+.code-big { font-size: 34px; font-weight: bold; letter-spacing: 6px; color: var(--accent-2); }
+.qr-box { background: #fff; border-radius: 12px; padding: 12px; display: inline-block; }
+.qr-box canvas { display: block; width: 220px; height: 220px; image-rendering: pixelated; }
+.link-box { font-size: 13px; color: var(--muted); background: var(--panel-2); padding: 8px 10px; border-radius: 8px; overflow-wrap: anywhere; margin: 10px 0; }
+
+.timer { font-size: 30px; font-weight: bold; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; color: var(--muted); font-size: 12px; text-transform: uppercase; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+td { padding: 8px 6px; border-bottom: 1px solid rgba(255, 255, 255, .06); }
+tr.duplicate td { background: rgba(217, 119, 6, .15); }
+
+.tag { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 99px; background: var(--warn); margin-left: 6px; }
+
+/* full-screen QR for the classroom projector */
+.projector {
+  position: fixed; inset: 0; z-index: 50; background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px; text-align: center;
+}
+.projector canvas { width: min(70vh, 80vw); height: min(70vh, 80vw); image-rendering: pixelated; background: #fff; padding: 14px; border-radius: 16px; }
+.projector .close { position: absolute; top: 16px; right: 16px; }
+
+/* simple modal dialog */
+.modal-backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, .6); display: grid; place-items: center; padding: 16px; }
+.modal { width: min(440px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+
+/* self-test results */
+.test-row { display: grid; grid-template-columns: 70px 1fr; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, .06); font-size: 14px; }
+.test-row .result { font-weight: bold; }
+.test-row.pass .result { color: #4ade80; }
+.test-row.fail .result { color: #f87171; }
+.test-row.skip .result { color: var(--muted); }
+.test-row .detail { color: var(--muted); font-size: 12px; }
+
+/* student status screens */
+.status-card { text-align: center; padding: 10px 0; }
+.status-card .big { font-size: 26px; font-weight: bold; color: #fff; margin: 8px 0; }
+.pulse { animation: pulse 1.6s infinite; }
+@keyframes pulse { 50% { opacity: .5; } }
