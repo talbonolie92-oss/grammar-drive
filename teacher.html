@@ -4,174 +4,179 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Teacher Portal | Grammar Drive</title>
-
+  <title>Grammar Drive | Teacher Dashboard</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; }
     body {
       margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 20px;
-      background: #101827;
-      color: #f8fafc;
+      padding: 24px;
       font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
     }
-
-    .container {
-      width: 100%;
-      max-width: 440px;
-      padding: 32px;
+    .container { max-width: 850px; margin: 35px auto; }
+    .panel {
       background: #1e293b;
+      padding: 28px;
+      border-radius: 14px;
+      margin-bottom: 20px;
       border: 1px solid #334155;
-      border-radius: 16px;
     }
-
-    h1 {
-      margin: 0 0 8px;
-      color: #60a5fa;
-      text-align: center;
-    }
-
-    .subtitle {
-      margin: 0 0 28px;
-      color: #cbd5e1;
-      text-align: center;
-    }
-
-    label {
-      display: block;
-      margin: 16px 0 7px;
-      font-weight: bold;
-    }
-
-    input {
+    h1, h2 { color: #fff; }
+    h1 { margin-top: 0; }
+    input, select, button {
       width: 100%;
       padding: 13px;
-      border: 1px solid #475569;
+      margin: 8px 0 16px;
       border-radius: 8px;
+      border: 1px solid #475569;
+      font-size: 15px;
+    }
+    input, select {
       background: #0f172a;
       color: white;
-      font-size: 16px;
     }
-
     button {
-      width: 100%;
-      padding: 13px;
-      margin-top: 20px;
-      border: 0;
-      border-radius: 8px;
       background: #2563eb;
       color: white;
-      font-size: 16px;
-      font-weight: bold;
+      border: 0;
       cursor: pointer;
+      font-weight: bold;
     }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+    button:hover { background: #1d4ed8; }
+    button:disabled { opacity: .6; cursor: wait; }
+    .logout { background: #475569; }
+    .topic-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+      margin: 12px 0 20px;
     }
-
-    .secondary {
-      background: #475569;
+    .topic {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
     }
-
-    #message {
-      margin-top: 18px;
+    .topic input { width: auto; margin: 0; }
+    .muted { color: #94a3b8; line-height: 1.5; }
+    .hidden { display: none !important; }
+    .message {
       padding: 12px;
       border-radius: 8px;
-      line-height: 1.5;
+      margin: 12px 0;
+      background: #7f1d1d;
+      color: white;
       overflow-wrap: anywhere;
     }
-
-    .hidden {
-      display: none;
-    }
-
-    .dashboard {
-      text-align: center;
-    }
-
-    .status {
-      margin: 20px 0;
-      padding: 16px;
+    .session-result {
+      padding: 18px;
       border-radius: 10px;
       background: #0f172a;
-      color: #86efac;
+      border: 1px solid #2563eb;
+      margin-top: 20px;
+      overflow-wrap: anywhere;
     }
-
-    .small {
-      color: #94a3b8;
-      font-size: 13px;
-      text-align: center;
-      line-height: 1.5;
+    .session-code {
+      font-size: 28px;
+      letter-spacing: 4px;
+      font-weight: bold;
+      color: #60a5fa;
     }
+    label { display: block; font-weight: bold; margin-top: 8px; }
   </style>
 </head>
-
 <body>
   <main class="container">
-
-    <!-- LOGIN -->
-    <section id="loginSection">
+    <section id="loginSection" class="panel">
       <h1>Grammar Drive</h1>
-      <p class="subtitle">Teacher Portal</p>
+      <p class="muted">Teacher Dashboard Login</p>
 
       <form id="loginForm">
-        <label for="email">Teacher Email</label>
-        <input
-          type="email"
-          id="email"
-          autocomplete="username"
-          required
-        >
+        <label for="email">Email</label>
+        <input id="email" type="email" required autocomplete="username">
 
         <label for="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          autocomplete="current-password"
-          required
-        >
+        <input id="password" type="password" required autocomplete="current-password">
 
-        <button type="submit" id="loginButton">
-          Teacher Login
-        </button>
+        <button id="loginButton" type="submit">Teacher Login</button>
       </form>
-
-      <div id="message" class="hidden" role="alert"></div>
-
-      <p class="small">
-        Authorized teachers only.
-      </p>
     </section>
 
-    <!-- DASHBOARD -->
-    <section id="dashboardSection" class="dashboard hidden">
-      <h1>Teacher Dashboard</h1>
-      <p class="subtitle">Grammar Drive: Open Road Challenge</p>
-
-      <div class="status">
-        Teacher authentication successful.
+    <section id="dashboardSection" class="hidden">
+      <div class="panel">
+        <h1>Teacher Dashboard</h1>
+        <p>Grammar Drive: Open Road Challenge</p>
+        <p id="teacherEmail" class="muted"></p>
+        <button id="logoutButton" class="logout" type="button">Log Out</button>
       </div>
 
-      <p id="teacherEmail"></p>
+      <div class="panel">
+        <h2>Create Game Session</h2>
+        <p class="muted">
+          Set up a classroom session. Students will be able to join when
+          we complete the student access feature.
+        </p>
 
-      <p class="small">
-        Your teacher account has been verified.
-        Dashboard features will be added in the next development steps.
-      </p>
+        <form id="createSessionForm">
+          <label for="grade">Grade Level</label>
+          <select id="grade" required>
+            <option value="10">Grade 10</option>
+            <option value="11">Grade 11</option>
+            <option value="12">Grade 12</option>
+          </select>
 
-      <button id="logoutButton" class="secondary">
-        Log Out
-      </button>
+          <label>Grammar Topics</label>
+          <div class="topic-list">
+            <label class="topic">
+              <input type="checkbox" name="topics" value="Question Forms">
+              Question Forms
+            </label>
+            <label class="topic">
+              <input type="checkbox" name="topics" value="Yes/No Questions">
+              Yes/No Questions
+            </label>
+            <label class="topic">
+              <input type="checkbox" name="topics" value="Wh-Questions">
+              Wh-Questions
+            </label>
+            <label class="topic">
+              <input type="checkbox" name="topics" value="Tag Questions">
+              Tag Questions
+            </label>
+          </div>
+
+          <label for="duration">Session Duration</label>
+          <select id="duration" required>
+            <option value="10">10 minutes</option>
+            <option value="15">15 minutes</option>
+            <option value="20">20 minutes</option>
+            <option value="30">30 minutes</option>
+          </select>
+
+          <button id="createSessionButton" type="submit">
+            Create Game Session
+          </button>
+        </form>
+
+        <div id="sessionMessage" class="message hidden"></div>
+        <div id="sessionResult" class="session-result hidden">
+          <h2>Session Created!</h2>
+          <p class="muted">Session Code</p>
+          <div id="sessionCode" class="session-code"></div>
+          <p id="sessionDetails" class="muted"></p>
+          <p class="muted">
+            The session is saved in Firebase with status:
+            <strong>Waiting</strong>.
+          </p>
+        </div>
+      </div>
     </section>
 
+    <div id="message" class="message hidden"></div>
   </main>
 
   <script type="module" src="./js/teacher.js"></script>
