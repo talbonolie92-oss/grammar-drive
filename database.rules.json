@@ -159,7 +159,7 @@
             ".validate": "newData.isNumber() && newData.val() >= -1500 && newData.val() <= 1500 && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't']) && newData.parent().child('t').val() == now"
           },
           "m": {
-            ".validate": "newData.isString() && (newData.val() == 'compact' || newData.val() == 'sport' || newData.val() == 'suv') && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't', 'm']) && newData.parent().child('t').val() == now"
+            ".validate": "newData.isString() && (newData.val() == 'compact' || newData.val() == 'sport' || newData.val() == 'suv' || newData.val() == 'truck' || newData.val() == 'motorcycle' || newData.val() == 'bicycle' || newData.val() == 'jeep' || newData.val() == 'police') && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't', 'm']) && newData.parent().child('t').val() == now"
           },
           "c": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9 && newData.val() % 1 == 0 && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't']) && newData.parent().child('t').val() == now"
