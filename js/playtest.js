@@ -111,7 +111,8 @@ function resizeCanvas() {
 }
 
 function worldToScreen(x, y) {
-  const scale = Math.min(canvasWidth / WORLD.width, canvasHeight / WORLD.height);
+  // Keep a close driving view instead of shrinking the entire map to fit.
+  const scale = Math.max(0.45, Math.min(1, canvasWidth / 1000, canvasHeight / 700));
   const viewW = canvasWidth / scale;
   const viewH = canvasHeight / scale;
   const camX = Math.max(0, Math.min(WORLD.width - viewW, car.x - viewW / 2));
@@ -126,8 +127,8 @@ function worldToScreen(x, y) {
 function drawCar(x, y, angle, colorIndex, name, isMine = false) {
   const p = worldToScreen(x, y);
   const scale = p.scale;
-  const w = 34 * scale;
-  const h = 19 * scale;
+  const w = Math.max(24, 34 * scale);
+  const h = Math.max(14, 19 * scale);
 
   ctx.save();
   ctx.translate(p.x, p.y);
