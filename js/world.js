@@ -307,10 +307,10 @@ export function drawMap(ctx, project, width, height) {
     roof.addColorStop(0, roofColors[buildingIndex % roofColors.length]);
     roof.addColorStop(1, "#94a3b8");
     ctx.fillStyle = roof;
-    ctx.fillRect(p.x + 5 * scale, p.y + 5 * scale, bw - 10 * scale, bh - 10 * scale);
+    ctx.fillRect(p.x + 5 * scale, p.y + 5 * scale, bw - 10 * scale, bh * .67);
     ctx.strokeStyle = "rgba(15,23,42,.62)";
     ctx.lineWidth = trim;
-    ctx.strokeRect(p.x + 5 * scale, p.y + 5 * scale, bw - 10 * scale, bh - 10 * scale);
+    ctx.strokeRect(p.x + 5 * scale, p.y + 5 * scale, bw - 10 * scale, bh * .67);
 
     // Roof texture: ventilation units, skylights, and access hatches.
     if (scale > 0.13) {
@@ -331,15 +331,20 @@ export function drawMap(ctx, project, width, height) {
 
     // Front facade strip, evenly spaced windows, and warm-lit ground floor.
     ctx.fillStyle = "rgba(15,23,42,.18)";
-    ctx.fillRect(p.x + 7 * scale, p.y + bh * .66, bw - 14 * scale, bh * .31);
+    const facadeY = p.y + bh * .68;
+    const facadeH = bh * .31;
+    const facadeGradient = ctx.createLinearGradient(p.x, facadeY, p.x, p.y + bh);
+    facadeGradient.addColorStop(0, "rgba(15,23,42,.18)");
+    facadeGradient.addColorStop(1, "rgba(15,23,42,.52)");
+    ctx.fillStyle = facadeGradient;
+    ctx.fillRect(p.x + 4 * scale, facadeY, bw - 8 * scale, facadeH);
     if (scale > 0.15) {
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < columns; col++) {
+      for (let col = 0; col < columns; col++) {
           const wx = p.x + (bw / (columns + 1)) * (col + 1) - windowW / 2;
-          const wy = p.y + bh * (.24 + row * .19);
-          ctx.fillStyle = (row + col + buildingIndex) % 4 === 0
-            ? "rgba(255,224,138,.88)"
-            : "rgba(125,211,252,.78)";
+          const wy = p.y + bh * .79;
+          ctx.fillStyle = (col + buildingIndex) % 4 === 0
+            ? "rgba(255,224,138,.92)"
+            : "rgba(125,211,252,.86)";
           ctx.fillRect(wx, wy, windowW, windowH);
           ctx.strokeStyle = "rgba(15,23,42,.48)";
           ctx.lineWidth = Math.max(.7, scale);
@@ -366,17 +371,17 @@ export function drawMap(ctx, project, width, height) {
 
     // Signboard belongs to the building facade instead of floating as a text label.
     if (scale > 0.2) {
-      const signW = Math.min(bw * .76, Math.max(62 * scale, b.name.length * 7 * scale));
-      const signH = Math.max(13, 23 * scale);
+      const signW = Math.min(bw * .62, Math.max(54 * scale, b.name.length * 6 * scale));
+      const signH = Math.max(10, 15 * scale);
       const signX = p.x + (bw - signW) / 2;
-      const signY = p.y + bh * .49;
+      const signY = p.y + bh * .69;
       ctx.fillStyle = "rgba(15,23,42,.82)";
       ctx.fillRect(signX, signY, signW, signH);
       ctx.strokeStyle = "rgba(255,255,255,.45)";
       ctx.lineWidth = Math.max(1, scale);
       ctx.strokeRect(signX, signY, signW, signH);
       ctx.fillStyle = "#fff";
-      ctx.font = "900 " + Math.max(7, 11 * scale) + "px system-ui";
+      ctx.font = "900 " + Math.max(6, 8 * scale) + "px system-ui";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(b.name, p.x + bw / 2, signY + signH / 2, signW - 6 * scale);
