@@ -21,7 +21,9 @@ Run this only after the 3.0 code is approved, GitHub Pages is intentionally publ
 - [ ] Return to City Dispatch and rebuild the message.
 - [ ] Visit grammar checkpoints and answer both correctly and incorrectly.
 - [ ] Visit the Shopping District car shop and confirm the existing vehicle shop still works.
-- [ ] Visit the Race Club and complete all six checkpoints.
+- [ ] Visit the Race Club; confirm a grammar gate is required before the time trial starts.
+- [ ] Answer incorrectly and retry; confirm the race remains locked until a correct answer.
+- [ ] Complete all six race checkpoints and return to the Race Club.
 - [ ] Confirm the XP rewards and vehicle growth HUD update.
 - [ ] Confirm the local vehicle grows smoothly and other players see the same size.
 - [ ] Confirm vehicle collision and steering physics do not grow with the visual model.
