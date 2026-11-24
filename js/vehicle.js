@@ -29,7 +29,7 @@ export function updateVehicle(car, keys, dt, world) {
 
   const handling = HANDLING[car.model] || HANDLING.compact;
   const onRoadBefore = world.isOnRoad(car.x, car.y);
-  const steer = (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
+  const steer = Number.isFinite(keys.steer) && keys.steer !== 0\n    ? clamp(keys.steer, -1, 1)\n    : (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
 
   const conditionFactor = car.condition < 35
     ? 0.55 + (car.condition / 35) * 0.25
