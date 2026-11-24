@@ -27,7 +27,7 @@ const BUILDINGS = [
   { x: 2780, y: 790, w: 330, h: 280, name: "HOTEL", color: "#7c3aed" },
   { x: 470, y: 1510, w: 330, h: 280, name: "CAR WASH", color: "#0284c7" },
   { x: 1040, y: 1510, w: 390, h: 280, name: "SERVICE BAY", color: "#b45309" },
-  { x: 2040, y: 1510, w: 390, h: 280, name: "FUEL STOP", color: "#15803d" },
+  { x: 2040, y: 1510, w: 390, h: 280, name: "REST STOP", color: "#15803d" },
   { x: 2780, y: 1510, w: 330, h: 280, name: "CITY DISPATCH", color: "#be123c" },
   { x: 470, y: 1870, w: 330, h: 220, name: "WAREHOUSE", color: "#57534e" },
   { x: 1040, y: 1870, w: 390, h: 220, name: "PARKING", color: "#475569" },
@@ -39,7 +39,6 @@ const BUILDINGS = [
 const LOCATIONS = [
   { x: 960, y: 1300, name: "GARAGE", type: "repair", color: "#38bdf8", symbol: "G" },
   { x: 1940, y: 1140, name: "CITY CENTER", color: "#facc15", symbol: "C" },
-  { x: 2640, y: 1420, name: "FUEL STOP", type: "fuel", color: "#4ade80", symbol: "F" },
   { x: 970, y: 1420, name: "CAR WASH", color: "#7dd3fc", symbol: "W" },
   { x: 1940, y: 1420, name: "CITY DISPATCH", color: "#fb7185", symbol: "D" },
   { x: 2670, y: 1140, name: "DEALERSHIP", color: "#c4b5fd", symbol: "D" }
