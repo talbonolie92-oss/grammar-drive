@@ -740,36 +740,28 @@ function bindTouch(buttonId, keyName) {
 function bindSteeringJoystick() {
   const base = $("steeringJoystick");
   const knob = $("steeringKnob");
-  if (!base || !knob) return;
+  const track = base && base.querySelector(".analog-track");
+  if (!base || !knob || !track) return;
 
   let pointerId = null;
-  const getMaxRadius = () => Math.max(20, base.clientWidth / 2 - knob.offsetWidth / 2 - 7);
+  const getMaxTravel = () => Math.max(18, track.clientWidth / 2 - knob.offsetWidth / 2 - 2);
 
   const moveKnob = (event) => {
-    const rect = base.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    let dx = event.clientX - cx;
-    let dy = event.clientY - cy;
-    const maxRadius = getMaxRadius();
-    const distance = Math.hypot(dx, dy);
+    const rect = track.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const maxTravel = getMaxTravel();
+    const dx = Math.max(-maxTravel, Math.min(maxTravel, event.clientX - centerX));
 
-    if (distance > maxRadius) {
-      dx = (dx / distance) * maxRadius;
-      dy = (dy / distance) * maxRadius;
-    }
-
-    // The blue thumb physically follows the finger/mouse in every direction.
-    knob.style.transform = "translate(-50%, -50%) translate(" + dx + "px, " + dy + "px)";
-    // Add a soft center dead zone and a gentle response curve so
-    // small thumb movements do not make the car suddenly turn.
-    const rawX = Math.max(-1, Math.min(1, dx / maxRadius));
-    const deadZone = 0.14;
+    // The steering control is deliberately one-axis: the thumb moves only left/right.
+    knob.style.transform = "translate(-50%, -50%) translate(" + dx + "px, 0px)";
+    const rawX = Math.max(-1, Math.min(1, dx / maxTravel));
+    const deadZone = 0.12;
     const magnitude = Math.abs(rawX);
-    const adjusted = magnitude <= deadZone
+    const curved = magnitude <= deadZone
       ? 0
-      : Math.pow((magnitude - deadZone) / (1 - deadZone), 1.55);
-    keys.steer = Math.sign(rawX) * adjusted;
+      : Math.pow((magnitude - deadZone) / (1 - deadZone), 1.35);
+    // A little less than full input keeps steering gradual and predictable.
+    keys.steer = Math.sign(rawX) * curved * 0.82;
     keys.left = keys.steer < -0.02;
     keys.right = keys.steer > 0.02;
   };
