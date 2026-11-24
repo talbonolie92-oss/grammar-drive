@@ -39,9 +39,9 @@ const BUILDINGS = [
 ];
 
 const LOCATIONS = [
-  { x: 970, y: 1140, name: "GARAGE", color: "#38bdf8", symbol: "G" },
+  { x: 970, y: 1140, name: "GARAGE", type: "repair", color: "#38bdf8", symbol: "G" },
   { x: 1940, y: 1140, name: "CITY CENTER", color: "#facc15", symbol: "C" },
-  { x: 2670, y: 1420, name: "FUEL STOP", color: "#4ade80", symbol: "F" },
+  { x: 2670, y: 1420, name: "FUEL STOP", type: "fuel", color: "#4ade80", symbol: "F" },
   { x: 970, y: 1420, name: "CAR WASH", color: "#7dd3fc", symbol: "W" },
   { x: 1940, y: 1420, name: "CHALLENGE HUB", color: "#fb7185", symbol: "?" },
   { x: 2670, y: 1140, name: "DEALERSHIP", color: "#c4b5fd", symbol: "D" }
@@ -189,4 +189,14 @@ export function drawMap(ctx, project, width, height) {
   ctx.strokeStyle = "#bbf7d0";
   ctx.lineWidth = 5;
   ctx.strokeRect(topLeft.x, topLeft.y, WORLD.width * scale, WORLD.height * scale);
+}
+
+export function nearbyService(x, y, radius = 105) {
+  for (const location of LOCATIONS) {
+    if (!location.type) continue;
+    const dx = x - location.x;
+    const dy = y - location.y;
+    if (dx * dx + dy * dy <= radius * radius) return location;
+  }
+  return null;
 }
