@@ -41,6 +41,7 @@ const surfaceEl = $("surface");
 const speedEl = $("speed");
 const fuelEl = $("fuel");
 const conditionEl = $("condition");
+const missionHudEl = $("missionHud");
 const serviceHintEl = $("serviceHint");
 const serviceButton = $("serviceButton");
 const challengeButton = $("challengeButton");
@@ -329,6 +330,13 @@ function updateCar(dt) {
   }
   const missionOpen = challengePanel.classList.contains("hidden") === false;
   const canInteract = !!crate || !!challenge;
+  const missionActive = mission && ["collecting", "return"].includes(mission.status);
+  missionHudEl.classList.toggle("hidden", !missionActive);
+  if (missionActive) {
+    missionHudEl.textContent = mission.status === "return"
+      ? "Cargo complete · Return to Dispatch"
+      : "Cargo: " + mission.collected.length + " / " + mission.fragments.length;
+  }
   challengeButton.classList.toggle("hidden", !canInteract || missionOpen || !running);
   challengeHintEl.classList.toggle("hidden", !canInteract || missionOpen || !running);
   if (crate) {
