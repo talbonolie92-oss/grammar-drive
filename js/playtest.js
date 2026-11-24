@@ -708,14 +708,17 @@ async function submitGrammarChallenge() {
     grammarExplanationEl.textContent = challenge.explanation;
     playSfx(correct ? "correct" : "wrong");
     grammarCheckButton.classList.add("hidden");
-    if (grammarBridgeMode && !correct) {
-      grammarNextButton.textContent = "Try Another Question";
-      grammarNextButton.classList.remove("hidden");
-    } else if (grammarAutoReturn) {
+    if (grammarAutoReturn) {
+      // Roadside encounters are one-question stops: return to driving
+      // after either a correct or incorrect answer.
       grammarNextButton.classList.add("hidden");
       window.setTimeout(() => {
         if (grammarAutoReturn) closeGrammarPanel();
       }, 1100);
+    } else if (grammarBridgeMode && !correct) {
+      // Bridge repair remains a retry-until-correct mission.
+      grammarNextButton.textContent = "Try Another Question";
+      grammarNextButton.classList.remove("hidden");
     } else {
       grammarNextButton.classList.remove("hidden");
     }
