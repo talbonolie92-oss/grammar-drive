@@ -24,7 +24,8 @@ import {
 
 import { createLiveCars, CAR_COLORS, colorFor } from "./multiplayer.js";
 import { WORLD, drawMap, isOnRoad, collidesWithWorld } from "./world.js";
-import { createVehicle, updateVehicle } from "./vehicle.js";
+import { createVehicle, updateVehicle, refuelVehicle, repairVehicle } from "./vehicle.js";
+import { nearbyService } from "./world.js";
 
 const { auth, db } = studentFirebase();
 const serverNow = serverClock(db);
@@ -35,6 +36,11 @@ const light = $("light");
 const connText = $("connText");
 const onlineEl = $("online");
 const surfaceEl = $("surface");
+const speedEl = $("speed");
+const fuelEl = $("fuel");
+const conditionEl = $("condition");
+const serviceHintEl = $("serviceHint");
+const serviceButton = $("serviceButton");
 const timerEl = $("timer");
 const rosterEl = $("roster");
 const debugEl = $("debug");
@@ -193,6 +199,30 @@ function updateCar(dt) {
   updateVehicle(car, keys, dt, { isOnRoad, collidesWithWorld });
   surfaceEl.textContent = car.onRoad ? "ROAD" : "OFF-ROAD";
   surfaceEl.style.borderColor = car.onRoad ? "#22c55e" : "#f59e0b";
+  speedEl.textContent = Math.round(Math.abs(car.s) * 0.32) + " km/h";
+  fuelEl.textContent = "Fuel: " + Math.round(car.fuel) + "%";
+  conditionEl.textContent = "Condition: " + Math.round(car.condition) + "%";
+  fuelEl.style.borderColor = car.fuel < 20 ? "#ef4444" : "#334155";
+  conditionEl.style.borderColor = car.condition < 35 ? "#ef4444" : "#334155";
+
+  const service = nearbyService(car.x, car.y);
+  serviceButton.classList.toggle("hidden", !service);
+  serviceHintEl.classList.toggle("hidden", !service);
+  if (service) {
+    const action = service.type === "fuel" ? "Refuel" : "Repair";
+    serviceHintEl.textContent = service.name + " · Press E or tap " + action;
+    serviceButton.textContent = action;
+    serviceButton.dataset.service = service.type;
+  }
+}
+
+function useNearbyService() {
+  if (!running) return;
+  const service = nearbyService(car.x, car.y);
+  if (!service) return;
+  if (service.type === "fuel") refuelVehicle(car);
+  if (service.type === "repair") repairVehicle(car);
+  updateCar(0.001);
 }
 
 function frame(timestamp) {
@@ -296,6 +326,7 @@ function onKeyDown(event) {
   if (key === "arrowright" || key === "d") keys.right = true;
   if (key === "arrowup" || key === "w") keys.gas = true;
   if (key === "arrowdown" || key === "s" || key === " ") keys.brake = true;
+  if (key === "e") useNearbyService();
 }
 
 function onKeyUp(event) {
@@ -337,6 +368,7 @@ async function start() {
   bindTouch("btnRight", "right");
   bindTouch("btnGas", "gas");
   bindTouch("btnBrake", "brake");
+  serviceButton.addEventListener("click", useNearbyService);
 
   $("leaveButton").addEventListener("click", async () => {
     await finish("You left the track", "You can return using your teacher's QR code.");
