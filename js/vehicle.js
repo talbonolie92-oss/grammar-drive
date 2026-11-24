@@ -11,7 +11,9 @@ export function createVehicle(x, y, angle = 0) {
     fuel: 100,
     condition: 100,
     collided: false,
-    onRoad: true
+    onRoad: true,
+    safeX: x,
+    safeY: y
   };
 }
 
@@ -56,9 +58,7 @@ export function updateVehicle(car, keys, dt, world) {
 
   const nextX = car.x + Math.cos(car.a) * car.s * dt;
   const nextY = car.y + Math.sin(car.a) * car.s * dt;
-  const hitX = world.collidesWithWorld(nextX, car.y, 19);
-  const hitY = world.collidesWithWorld(car.x, nextY, 19);
-  const hit = hitX || hitY;
+  const hit = world.collidesWithWorld(nextX, nextY, 19);
 
   if (hit) {
     if (!car.collided && Math.abs(car.s) > 20) {
@@ -66,14 +66,17 @@ export function updateVehicle(car, keys, dt, world) {
       car.condition = clamp(car.condition - impactDamage, 0, 100);
       car.lastEvent = "collision";
     }
+    // Restore the last safe position so the car cannot become embedded.
+    car.x = Number.isFinite(car.safeX) ? car.safeX : car.x;
+    car.y = Number.isFinite(car.safeY) ? car.safeY : car.y;
     car.collided = true;
-    car.s *= -0.18;
-    if (hitX && !hitY) car.y = nextY;
-    else if (hitY && !hitX) car.x = nextX;
+    car.s = -Math.sign(car.s || 1) * Math.min(55, Math.abs(car.s) * 0.25);
   } else {
     car.collided = false;
     car.x = nextX;
     car.y = nextY;
+    car.safeX = car.x;
+    car.safeY = car.y;
   }
 
   car.onRoad = world.isOnRoad(car.x, car.y);
