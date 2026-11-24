@@ -37,7 +37,7 @@ const BANK = {
     ],
     "Tag Questions": [
       { mode:"choose", prompt:"They weren't at school, ___?", instruction:"Choose the correct tag.", options:["were they","weren't they","did they"], answer:"were they", explanation:"A negative statement normally takes a positive tag with the same auxiliary." },
-      { mode:"order", prompt:"Build the tag question: “You have met her, haven't you?”", instruction:"Tap the words in the correct order.", words:["you?","You","haven't","met her,"], answer:["You","have","met her,","haven't","you?"], explanation:"A positive statement with have takes a negative tag: haven't you?" }
+      { mode:"order", prompt:"Build the tag question: “You have met her, haven't you?”", instruction:"Tap the words in the correct order.", words:["you?","You","haven't","met her,","have"], answer:["You","have","met her,","haven't","you?"], explanation:"A positive statement with have takes a negative tag: haven't you?" }
     ]
   },
   "12": {
