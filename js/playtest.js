@@ -253,6 +253,23 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
     ctx.stroke();
   }
 
+  // Clear front marker: a bright nose chevron points in the direction the car drives.
+  ctx.fillStyle = "#f8fafc";
+  ctx.beginPath();
+  ctx.moveTo(w * .48, 0);
+  ctx.lineTo(w * .66, 0);
+  ctx.lineTo(w * .51, -h * .28);
+  ctx.lineTo(w * .43, -h * .22);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(w * .48, 0);
+  ctx.lineTo(w * .66, 0);
+  ctx.lineTo(w * .51, h * .28);
+  ctx.lineTo(w * .43, h * .22);
+  ctx.closePath();
+  ctx.fill();
+
   // Front lights, rear lights and bumpers make orientation readable.
   ctx.fillStyle = "#fef3c7";
   ctx.fillRect(w * .42, -h * .32, w * .07, h * .2);
