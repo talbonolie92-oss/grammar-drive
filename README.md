@@ -87,3 +87,13 @@ Nothing is deleted. Sessions made with the earlier version:
 - their old links tell students to ask for a new session.
 
 You can delete old test data by hand in the console whenever you like.
+
+
+## Phase 4C repair — shared vehicle appearance and safe collision recovery
+
+- Live-car records include the selected model (`compact`, `sport`, or `suv`) so every connected device can render the same model and model color.
+- Compact, Sport, and SUV have distinct body/cabin silhouettes.
+- Collision handling restores the last safe position instead of leaving a car embedded in a building. Invalid saved positions are rejected on reload.
+- Vehicle profile and position are saved on page exit as well as during play.
+- **Firebase Rules update required:** the checked-in `database.rules.json` now requires and validates the `m` model field on live-car records. These rules have NOT been published. Until the updated rules are manually published, model synchronization writes may be rejected by Firebase.
+- Fuel, condition, and position persistence remain per anonymous Firebase UID and browser storage. Different student gadgets have different anonymous UIDs, so private fuel/condition values do not mirror between different students; each student's own values should persist on refresh on the same gadget/browser.
