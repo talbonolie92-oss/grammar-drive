@@ -174,18 +174,55 @@ function resizeCanvas() {
   ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 }
 
-function worldToScreen(x, y) {
+function getCamera() {
   // Keep a close driving view instead of shrinking the entire map to fit.
   const scale = Math.max(0.45, Math.min(1, canvasWidth / 1000, canvasHeight / 700));
   const viewW = canvasWidth / scale;
   const viewH = canvasHeight / scale;
   const camX = Math.max(0, Math.min(WORLD.width - viewW, car.x - viewW / 2));
   const camY = Math.max(0, Math.min(WORLD.height - viewH, car.y - viewH / 2));
+  return { scale, viewW, viewH, camX, camY };
+}
+
+function worldToScreen(x, y) {
+  const camera = getCamera();
   return {
-    x: (x - camX) * scale,
-    y: (y - camY) * scale,
-    scale
+    x: (x - camera.camX) * camera.scale,
+    y: (y - camera.camY) * camera.scale,
+    scale: camera.scale
   };
+}
+
+// The city itself is static. Render it once to a compact offscreen canvas,
+// then only copy the visible camera window each animation frame.
+let mapCache = null;
+let mapCacheScale = 0.5;
+
+function createMapCache() {
+  try {
+    const lowMemoryDevice =
+      (Number(navigator.deviceMemory) > 0 && Number(navigator.deviceMemory) <= 4) ||
+      (Number(navigator.hardwareConcurrency) > 0 && Number(navigator.hardwareConcurrency) <= 4) ||
+      Math.min(window.innerWidth, window.innerHeight) < 700;
+    mapCacheScale = lowMemoryDevice ? 0.5 : 0.75;
+
+    const cache = document.createElement("canvas");
+    cache.width = Math.ceil(WORLD.width * mapCacheScale);
+    cache.height = Math.ceil(WORLD.height * mapCacheScale);
+    const cacheCtx = cache.getContext("2d", { alpha: false });
+    if (!cacheCtx) return;
+
+    drawMap(
+      cacheCtx,
+      (x, y) => ({ x: x * mapCacheScale, y: y * mapCacheScale, scale: mapCacheScale }),
+      cache.width,
+      cache.height
+    );
+    mapCache = cache;
+  } catch (error) {
+    // Retain the original renderer if offscreen canvas is unavailable.
+    mapCache = null;
+  }
 }
 
 function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "compact") {
@@ -335,7 +372,23 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
   ctx.fillText(name || "Driver", p.x, p.y - h / 2 - 5);
 }
 function drawWorld() {
-  drawMap(ctx, worldToScreen, canvasWidth, canvasHeight);
+  if (mapCache) {
+    const camera = getCamera();
+    ctx.drawImage(
+      mapCache,
+      camera.camX * mapCacheScale,
+      camera.camY * mapCacheScale,
+      camera.viewW * mapCacheScale,
+      camera.viewH * mapCacheScale,
+      0,
+      0,
+      canvasWidth,
+      canvasHeight
+    );
+  } else {
+    drawMap(ctx, worldToScreen, canvasWidth, canvasHeight);
+  }
+
   drawMissionMarkers(ctx, worldToScreen, mission);
 
   for (const [id, item] of others) {
@@ -1055,6 +1108,7 @@ function bindSteeringJoystick() {
 }
 async function start() {
   resizeCanvas();
+  createMapCache();
   const soundButton = $("soundToggle");
   const soundVolume = $("soundVolume");
   const refreshSoundButton = () => {
