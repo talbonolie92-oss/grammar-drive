@@ -951,6 +951,11 @@ $("testForm").addEventListener("submit", async (event) => {
     );
 
     await allow(
+      "student B creates own live car",
+      () => set(ref(B.db, livePath + "/" + ub), makeCar("Test Student B"))
+    );
+
+    await allow(
       "teacher reads live cars for own session",
       () => get(ref(T.db, livePath))
     );
