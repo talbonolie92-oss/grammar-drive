@@ -592,7 +592,10 @@ function openGrammarPanel(autoReturn = false, eventId = null, bridgeMode = false
 
 function closeGrammarPanel() {
   if (grammarBusy) return;
-  if (activeRoadsideEventId) clearedRoadsideEvents.add(activeRoadsideEventId);
+  if (activeRoadsideEventId) {
+    clearedRoadsideEvents.add(activeRoadsideEventId);
+    saveRoadsideState();
+  }
   if (grammarBridgeMode && bridge && !bridge.repaired) bridgeRetryAfter = performance.now() + 1400;
   activeRoadsideEventId = null;
   grammarAutoReturn = false;
@@ -736,6 +739,13 @@ function nextGrammarChallenge() {
   if (!running) return;
   grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
   renderGrammarChallenge();
+}
+
+function saveRoadsideState() {
+  if (!uid || !sessionId) return;
+  try {
+    localStorage.setItem("gd_roadside_" + sessionId + "_" + uid, JSON.stringify([...clearedRoadsideEvents]));
+  } catch (error) {}
 }
 
 function saveLootState() {
@@ -1387,6 +1397,13 @@ async function start() {
     clearedRoadsideEvents.clear();
     collectedRoadLoot.clear();
     try {
+      const savedRoadside = JSON.parse(localStorage.getItem("gd_roadside_" + sessionId + "_" + uid) || "[]");
+      if (Array.isArray(savedRoadside)) {
+        const validEventIds = new Set(roadsideEvents.map((event) => event.id));
+        savedRoadside.forEach((id) => {
+          if (validEventIds.has(id)) clearedRoadsideEvents.add(id);
+        });
+      }
       const savedLoot = JSON.parse(localStorage.getItem("gd_loot_" + sessionId + "_" + uid) || "[]");
       if (Array.isArray(savedLoot)) savedLoot.forEach((id) => collectedRoadLoot.add(id));
       const savedBridge = JSON.parse(localStorage.getItem("gd_bridge_" + sessionId + "_" + uid) || "null");
