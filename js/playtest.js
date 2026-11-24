@@ -150,17 +150,34 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
   ctx.rotate(angle);
   ctx.fillStyle = "rgba(0,0,0,.3)";
   ctx.fillRect(-w / 2 + 2, -h / 2 + 3, w, h);
-  ctx.fillStyle = isMine ? model.color : (CAR_COLORS[colorIndex] || "#3b82f6");
+  ctx.fillStyle = model.color;
   ctx.strokeStyle = isMine ? "#ffffff" : "#0f172a";
   ctx.lineWidth = Math.max(1.5, 2 * scale);
   ctx.beginPath();
-  ctx.roundRect(-w / 2, -h / 2, w, h, Math.max(3, 5 * scale));
+  if (modelKey === "sport") {
+    ctx.moveTo(-w * .5, -h * .34);
+    ctx.lineTo(-w * .28, -h * .5);
+    ctx.lineTo(w * .28, -h * .5);
+    ctx.lineTo(w * .5, -h * .25);
+    ctx.lineTo(w * .5, h * .34);
+    ctx.lineTo(-w * .5, h * .34);
+    ctx.closePath();
+  } else {
+    ctx.roundRect(-w / 2, -h / 2, w, h, modelKey === "suv" ? Math.max(2, 3 * scale) : Math.max(3, 6 * scale));
+  }
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = "rgba(255,255,255,.8)";
-  ctx.fillRect(-w * .08, -h * .34, w * .42, h * .68);
+  ctx.fillStyle = modelKey === "suv" ? "#cbd5e1" : "rgba(255,255,255,.82)";
+  const cabinW = modelKey === "sport" ? w * .42 : modelKey === "suv" ? w * .48 : w * .40;
+  const cabinH = modelKey === "sport" ? h * .48 : modelKey === "suv" ? h * .68 : h * .58;
+  ctx.fillRect(-w * .12, -cabinH / 2, cabinW, cabinH);
+  if (modelKey === "suv") {
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = Math.max(1, scale * 1.5);
+    ctx.strokeRect(-w * .16, -h * .43, w * .55, h * .86);
+  }
   ctx.fillStyle = "#111827";
-  ctx.fillRect(w * .27, -h * .34, w * .13, h * .68);
+  ctx.fillRect(w * .31, -h * .34, w * .12, h * .68);
   ctx.restore();
 
   ctx.font = "bold 12px system-ui, sans-serif";
@@ -178,7 +195,7 @@ function drawWorld() {
 
   for (const [id, item] of others) {
     const pose = live ? live.pose(id) : item;
-    if (pose) drawCar(pose.x, pose.y, pose.a, pose.c, pose.n, false);
+    if (pose) drawCar(pose.x, pose.y, pose.a, pose.c, pose.n, false, pose.m || "compact");
   }
 
   drawCar(car.x, car.y, car.a, colorFor(uid), me ? me.name : "You", true, car.model);
@@ -266,7 +283,7 @@ function frame(timestamp) {
 
   if (running) {
     updateCar(dt);
-    if (live) live.publish({ x: car.x, y: car.y, a: car.a, s: car.s });
+    if (live) live.publish({ x: car.x, y: car.y, a: car.a, s: car.s, m: car.model });
     if (timestamp - lastSave > 1000) {
       lastSave = timestamp;
       try {
@@ -408,6 +425,7 @@ async function start() {
     if (!CAR_MODELS[carSelect.value]) return;
     car.model = carSelect.value;
     saveVehicleProfile();
+    if (live) live.publishNow();
   });
 
   $("leaveButton").addEventListener("click", async () => {
@@ -441,9 +459,13 @@ async function start() {
     try {
       const saved = JSON.parse(localStorage.getItem("gd_track_" + code + "_" + uid) || "null");
       if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
-        car.x = Math.max(30, Math.min(WORLD.width - 30, saved.x));
-        car.y = Math.max(30, Math.min(WORLD.height - 30, saved.y));
-        car.a = Number(saved.a) || 0;
+        const sx = Math.max(30, Math.min(WORLD.width - 30, saved.x));
+        const sy = Math.max(30, Math.min(WORLD.height - 30, saved.y));
+        if (!collidesWithWorld(sx, sy, 19)) {
+          car.x = sx; car.y = sy; car.a = Number(saved.a) || 0;
+        } else {
+          car.x = 1800; car.y = 1300; car.a = 0;
+        }
       } else {
         car.x = 1800 + (Math.random() - .5) * 110;
         car.y = 1300 + (Math.random() - .5) * 90;
@@ -467,7 +489,7 @@ async function start() {
       }
     });
 
-    live.publish({ x: car.x, y: car.y, a: car.a, s: 0 });
+    live.publish({ x: car.x, y: car.y, a: car.a, s: 0, m: car.model });
     live.start();
     live.setEnabled(codeInfo.status === "running");
 
@@ -512,6 +534,10 @@ async function start() {
 }
 
 window.addEventListener("pagehide", () => {
+  saveVehicleProfile();
+  if (uid && code) {
+    try { localStorage.setItem("gd_track_" + code + "_" + uid, JSON.stringify({ x: car.x, y: car.y, a: car.a })); } catch (error) {}
+  }
   cleanupListeners();
   if (live) {
     void live.stop(true);
