@@ -9,6 +9,7 @@ import {
   signInAnonymously,
   ref,
   get,
+  update,
   onValue
 } from "./firebase.js";
 
@@ -19,13 +20,16 @@ import {
   serverClock,
   endsAt,
   formatClock,
-  friendlyError
+  friendlyError,
+  paths,
+  buildProgress
 } from "./common.js";
 
 import { createLiveCars, CAR_COLORS, colorFor } from "./multiplayer.js";
 import { WORLD, drawMap, isOnRoad, collidesWithWorld } from "./world.js";
 import { createVehicle, updateVehicle, refuelVehicle, repairVehicle } from "./vehicle.js";
-import { nearbyService } from "./world.js";
+import { nearbyService, nearbyChallenge } from "./world.js";
+import { nextQuestion } from "./questions.js";
 
 const { auth, db } = studentFirebase();
 const serverNow = serverClock(db);
@@ -41,6 +45,16 @@ const fuelEl = $("fuel");
 const conditionEl = $("condition");
 const serviceHintEl = $("serviceHint");
 const serviceButton = $("serviceButton");
+const challengeButton = $("challengeButton");
+const challengeHintEl = $("challengeHint");
+const challengePanel = $("challengePanel");
+const challengeTopicEl = $("challengeTopic");
+const challengeQuestionEl = $("challengeQuestion");
+const challengeChoicesEl = $("challengeChoices");
+const challengeFeedbackEl = $("challengeFeedback");
+const challengeExplanationEl = $("challengeExplanation");
+const challengeScoreEl = $("challengeScore");
+const challengeNextButton = $("challengeNext");
 const carSelect = $("carSelect");
 const carSelectWrap = $("carSelectWrap");
 const timerEl = $("timer");
@@ -78,6 +92,9 @@ let stopMe = null;
 let canvasWidth = 0;
 let canvasHeight = 0;
 let pixelRatio = 1;
+let activeQuestion = null;
+let challengeAnswered = false;
+let answerBusy = false;
 
 function showOverlay(title, message, showBack = false) {
   overlayTitle.textContent = title;
@@ -294,6 +311,7 @@ function updateCar(dt) {
   conditionEl.style.borderColor = car.condition < 35 ? "#ef4444" : "#334155";
 
   const service = nearbyService(car.x, car.y);
+  const challenge = nearbyChallenge(car.x, car.y);
   carSelectWrap.classList.toggle("hidden", !(service && service.type === "repair"));
   if (carSelect.value !== car.model) carSelect.value = car.model;
   serviceButton.classList.toggle("hidden", !service);
@@ -304,6 +322,8 @@ function updateCar(dt) {
     serviceButton.textContent = action;
     serviceButton.dataset.service = service.type;
   }
+  challengeButton.classList.toggle("hidden", !challenge || challengePanel.classList.contains("hidden") === false);
+  challengeHintEl.classList.toggle("hidden", !challenge || challengePanel.classList.contains("hidden") === false);
 }
 
 function useNearbyService() {
@@ -314,6 +334,92 @@ function useNearbyService() {
   if (service.type === "repair") repairVehicle(car);
   saveVehicleProfile();
   updateCar(0.001);
+}
+
+function openChallenge() {
+  if (!running || !nearbyChallenge(car.x, car.y) || challengePanel.classList.contains("hidden") === false) return;
+  if (!Array.isArray(codeInfo.topics) || !codeInfo.topics.length || !codeInfo.grade) {
+    showOverlay("Challenge unavailable", "This session was created before the Grammar Challenge update. Ask your teacher to create a new session.", true);
+    return;
+  }
+  challengePanel.classList.remove("hidden");
+  clearControls();
+  loadNextQuestion();
+}
+
+function closeChallenge() {
+  challengePanel.classList.add("hidden");
+  activeQuestion = null;
+  challengeAnswered = false;
+  answerBusy = false;
+}
+
+function loadNextQuestion() {
+  activeQuestion = nextQuestion({
+    grade: codeInfo.grade,
+    topics: codeInfo.topics,
+    uid,
+    sessionId
+  });
+  challengeAnswered = false;
+  answerBusy = false;
+  challengeFeedbackEl.className = "message hidden";
+  challengeFeedbackEl.textContent = "";
+  challengeExplanationEl.textContent = "";
+  challengeNextButton.classList.add("hidden");
+  challengeChoicesEl.textContent = "";
+  if (!activeQuestion) {
+    challengeQuestionEl.textContent = "No questions are available for this session's topics.";
+    return;
+  }
+  challengeTopicEl.textContent = "Grade " + codeInfo.grade + " · " + activeQuestion.topic;
+  challengeQuestionEl.textContent = activeQuestion.q;
+  activeQuestion.options.forEach((option, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    button.textContent = String.fromCharCode(65 + index) + ". " + option.text;
+    button.addEventListener("click", () => void submitChallengeAnswer(index, button));
+    challengeChoicesEl.appendChild(button);
+  });
+  const progress = me && me.progress ? me.progress : { score: 0, correct: 0, answered: 0 };
+  challengeScoreEl.textContent = "Score: " + (progress.score || 0) + " · Correct: " + (progress.correct || 0) + "/" + (progress.answered || 0);
+}
+
+async function submitChallengeAnswer(index, selectedButton) {
+  if (!activeQuestion || challengeAnswered || answerBusy || !running) return;
+  answerBusy = true;
+  challengeChoicesEl.querySelectorAll("button").forEach((button) => { button.disabled = true; });
+  const selected = activeQuestion.options[index];
+  const isCorrect = !!(selected && selected.correct);
+  const progress = me && me.progress ? me.progress : { score: 0, correct: 0, answered: 0, updatedAt: 0 };
+  const now = serverNow();
+  const waitMs = Math.max(0, 2050 - (now - (Number(progress.updatedAt) || 0)));
+  if (waitMs > 0) {
+    challengeFeedbackEl.className = "message warn";
+    challengeFeedbackEl.textContent = "Please wait a moment before answering the next question.";
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  }
+  const nextScore = (Number(progress.score) || 0) + (isCorrect ? 10 : 0);
+  const nextCorrect = (Number(progress.correct) || 0) + (isCorrect ? 1 : 0);
+  const nextAnswered = (Number(progress.answered) || 0) + 1;
+  try {
+    await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
+    challengeAnswered = true;
+    challengeFeedbackEl.className = "message " + (isCorrect ? "success" : "info");
+    challengeFeedbackEl.textContent = isCorrect ? "Correct! +10 points." : "Not quite. No points lost—keep learning!";
+    challengeExplanationEl.textContent = activeQuestion.why;
+    challengeNextButton.classList.remove("hidden");
+    challengeScoreEl.textContent = "Score: " + nextScore + " · Correct: " + nextCorrect + "/" + nextAnswered;
+    selectedButton.classList.remove("secondary");
+    selectedButton.classList.add(isCorrect ? "good" : "danger");
+  } catch (error) {
+    challengeFeedbackEl.className = "message error";
+    challengeFeedbackEl.textContent = "Could not save your answer: " + friendlyError(error) + " Please try again.";
+    challengeChoicesEl.querySelectorAll("button").forEach((button) => { button.disabled = false; });
+  } finally {
+    answerBusy = false;
+  }
 }
 
 function profileStorageKey() { return "gd_vehicle_profile_" + uid; }
@@ -440,7 +546,10 @@ function onKeyDown(event) {
   if (key === "arrowright" || key === "d") keys.right = true;
   if (key === "arrowup" || key === "w") keys.gas = true;
   if (key === "arrowdown" || key === "s" || key === " ") keys.brake = true;
-  if (key === "e") useNearbyService();
+  if (key === "e") {
+    if (nearbyService(car.x, car.y)) useNearbyService();
+    else openChallenge();
+  }
 }
 
 function onKeyUp(event) {
@@ -483,6 +592,9 @@ async function start() {
   bindTouch("btnGas", "gas");
   bindTouch("btnBrake", "brake");
   serviceButton.addEventListener("click", useNearbyService);
+  challengeButton.addEventListener("click", openChallenge);
+  $("challengeClose").addEventListener("click", closeChallenge);
+  challengeNextButton.addEventListener("click", loadNextQuestion);
   carSelect.addEventListener("change", () => {
     if (!CAR_MODELS[carSelect.value]) return;
     car.model = carSelect.value;
