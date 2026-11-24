@@ -36,6 +36,8 @@
     .analog-stick-knob { position: absolute; left: 50%; top: 50%; width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 33% 24%, #bfdbfe 0%, #60a5fa 24%, #2563eb 62%, #172554 100%); border: 2px solid #93c5fd; box-shadow: 0 4px 8px rgba(0,0,0,.7), inset 0 3px 5px rgba(255,255,255,.4), inset 0 -4px 7px rgba(0,0,0,.35); transform: translate(-50%,-50%); pointer-events: none; will-change: transform; }
     @media (max-width: 430px) { .pad button { width: 82px; height: 60px; font-size: 15px; } .pad-right { right: 10px; bottom: 14px; gap: 8px; } .steering-wheel-control { width: 128px; height: 128px; left: 10px; bottom: 12px; } .analog-track { left: 24px; right: 24px; } }
     #overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(15, 23, 42, .82); text-align: center; padding: 20px; }
+    #miniMap { position:fixed; z-index:5; right:12px; bottom:104px; width:180px; height:132px; border:2px solid rgba(226,232,240,.72); border-radius:12px; background:rgba(15,23,42,.9); box-shadow:0 5px 16px rgba(0,0,0,.4); }
+    @media(max-width:430px){#miniMap{width:148px;height:108px;right:8px;bottom:92px;}}
     #debug { position: fixed; z-index: 5; left: 8px; bottom: 100px; font-size: 12px; color: #cbd5e1; background: rgba(15, 23, 42, .7); padding: 6px 8px; border-radius: 8px; }
     .final-results { margin:14px 0; padding:12px; border-radius:12px; background:rgba(2,6,23,.55); border:1px solid #475569; color:#e2e8f0; text-align:left; white-space:pre-line; line-height:1.7; max-height:42vh; overflow:auto; font-size:14px; }
 
@@ -79,6 +81,7 @@
     <button id="leaveButton" class="small secondary" type="button">Leave</button>
   </div>
   <div id="roster" class="hidden"></div>
+  <canvas id="miniMap" width="180" height="132" aria-label="City map"></canvas>
   <div id="debug" class="hidden"></div>
 
   <div id="serviceHint" class="pill hidden" style="position:fixed;z-index:6;left:50%;bottom:100px;transform:translateX(-50%);text-align:center">Press E to use service</div>
