@@ -63,5 +63,22 @@ For P13–P18, the test session must be **running**, and at least one student mu
 
 The Playground tests above check permission boundaries, not successful movement payloads. A valid live-car write also requires a joined student's own UID, the current name from their player record, bounded numeric coordinates/speed, and a Firebase server timestamp. The actual `onDisconnect` behavior must be checked with a real browser connection; the Rules Playground cannot simulate a dropped network connection.
 
+## Phase 3: real-device multiplayer checks
+
+These checks cannot be completed in Rules Playground. Use the Phase 3 rules in Firebase and the matching GitHub Pages files only after the release is approved.
+
+1. Open the teacher dashboard on a laptop, create a session, and show its QR code.
+2. Join from at least two real student devices using the QR code and each student's name/class. Start the session.
+3. Confirm both cars appear on both devices. Drive in different directions and confirm the cars move smoothly and the online count updates.
+4. Refresh one student's browser. Their car should reconnect under the same student identity without creating a duplicate player.
+5. Rename a student from the teacher dashboard while the session is running. Confirm the car name tag updates and position updates continue without a permission error.
+6. Press **Leave** on one device. Its car should disappear from the other device.
+7. Close a student's tab or temporarily disconnect its internet. After Firebase detects the disconnect, that car should disappear. Allow up to about a minute for server-side disconnect detection.
+8. If late joining is enabled, join from another device after the session starts. Confirm it enters the same live track.
+9. End the session from the teacher dashboard. All devices should stop driving and show Game Over; no live cars should remain.
+10. Test keyboard controls on a desktop and the on-screen steering/accelerator/brake controls on a phone or tablet.
+
+**Capacity note:** 30 simultaneous students is the design target, not a verified production limit. A simulated 30-browser test had one run where not all car updates were visible. Do not treat the 30-student target as proven until it is measured on the actual Firebase project and representative student devices.
+
 ## If a result is different
 Don't use the new version in class. Copy the test number and the result, and send them together with the `test.html` report.
