@@ -812,10 +812,14 @@ async function deliverMission() {
     await new Promise((resolve) => setTimeout(resolve, waitMs));
   }
 
-  const nextScore = (Number(progress.score) || 0) + 30;
-  const nextCorrect = (Number(progress.correct) || 0) + 1;
-  const nextAnswered = (Number(progress.answered) || 0) + 1;
   try {
+    // The session may end while the delivery cooldown is running.
+    // Re-check state before sending a progress write to Firebase.
+    if (!running || finished || !mission || mission.status !== "return") return;
+
+    const nextScore = (Number(progress.score) || 0) + 30;
+    const nextCorrect = (Number(progress.correct) || 0) + 1;
+    const nextAnswered = (Number(progress.answered) || 0) + 1;
     await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
     me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
     mission.status = "complete";
