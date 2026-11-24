@@ -507,6 +507,14 @@ export function nearbyChallenge(x, y, radius = 175) {
     : null;
 }
 
+export function nearbyDispatch(x, y, radius = 175) {
+  const dx = x - 4100;
+  const dy = y - 2325;
+  return dx * dx + dy * dy <= radius * radius
+    ? { x: 4100, y: 2325, name: "CITY DISPATCH", type: "dispatch" }
+    : null;
+}
+
 export function nearbyService(x, y, radius = 165) {
   for (const location of LOCATIONS) {
     if (!location.type) continue;
