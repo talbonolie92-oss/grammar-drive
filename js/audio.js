@@ -11,6 +11,7 @@ let ambienceGain = null;
 let muted = false;
 let volumeLevel = 0.75;
 let lastEngineUpdate = 0;
+let audioSuspended = false;
 
 try {
   muted = localStorage.getItem("gd_sound_muted") === "true";
@@ -65,7 +66,7 @@ function ensureAudio() {
     engineOscillator.start();
   }
 
-  if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+  if (audioContext.state === "suspended" && !audioSuspended) audioContext.resume().catch(() => {});
   return audioContext;
 }
 
@@ -159,6 +160,7 @@ export function stopEngineSound() {
 // Suspend the Web Audio graph while the game is backgrounded or finished.
 // This stops the looping ambience from consuming power when no gameplay is visible.
 export function suspendAudio() {
+  audioSuspended = true;
   if (audioContext && audioContext.state === "running") {
     audioContext.suspend().catch(() => {});
   }
@@ -166,6 +168,7 @@ export function suspendAudio() {
 
 // Resume only an existing context; do not create audio before a user gesture.
 export function resumeAudio() {
+  audioSuspended = false;
   if (audioContext && audioContext.state === "suspended") {
     audioContext.resume().catch(() => {});
   }
