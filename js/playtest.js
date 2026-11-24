@@ -325,7 +325,23 @@ function updateCar(dt) {
   speedEl.textContent = Math.round(Math.abs(car.s) * 0.32) + " km/h";
   fuelEl.textContent = "Fuel: " + Math.round(car.fuel) + "%";
   conditionEl.textContent = "Condition: " + Math.round(car.condition) + "%";
-  fuelEl.style.borderColor = car.fuel < 20 ? "#ef4444" : "#334155";
+  fuelEl.style.borderColor = car.fuel <= 20 ? "#ef4444" : "#334155";
+  const fuelWarning = $("fuelWarning");
+  if (fuelWarning) {
+    if (car.fuel <= 0) {
+      fuelWarning.textContent = "OUT OF FUEL · Use BACKWARD + steering to reach the green FUEL STOP marker, then tap REFUEL.";
+      fuelWarning.className = "fuel-warning critical";
+    } else if (car.fuel <= 10) {
+      fuelWarning.textContent = "VERY LOW FUEL · " + Math.ceil(car.fuel) + "% remaining. Head to the green FUEL STOP now.";
+      fuelWarning.className = "fuel-warning critical";
+    } else if (car.fuel <= 25) {
+      fuelWarning.textContent = "LOW FUEL · " + Math.ceil(car.fuel) + "% remaining. Find the green FUEL STOP and refuel.";
+      fuelWarning.className = "fuel-warning low";
+    } else {
+      fuelWarning.textContent = "";
+      fuelWarning.className = "fuel-warning hidden";
+    }
+  }
   conditionEl.style.borderColor = car.condition < 35 ? "#ef4444" : "#334155";
 
   const service = nearbyService(car.x, car.y);
@@ -336,8 +352,10 @@ function updateCar(dt) {
   serviceButton.classList.toggle("hidden", !service);
   serviceHintEl.classList.toggle("hidden", !service);
   if (service) {
-    const action = service.type === "fuel" ? "Refuel" : "Repair";
-    serviceHintEl.textContent = service.name + " · Press E or tap " + action;
+    const action = service.type === "fuel" ? "REFUEL" : "REPAIR";
+    serviceHintEl.textContent = service.type === "fuel"
+      ? "FUEL STOP · Stop here, then tap REFUEL to fill your tank."
+      : service.name + " · Press E or tap " + action;
     serviceButton.textContent = action;
     serviceButton.dataset.service = service.type;
   }
@@ -588,18 +606,7 @@ function loadVehicleProfile() {
   try {
     const saved = JSON.parse(localStorage.getItem(profileStorageKey()) || "null");
     if (!saved || typeof saved !== "object") return;
-    if (Number.isFinite(saved.fuel)) {
-      car.fuel = Math.max(0, Math.min(100, saved.fuel));
-      // Emergency reserve prevents a student from being permanently stranded at 0%.
-      if (car.fuel <= 0) {
-        car.fuel = 20;
-        localStorage.setItem(profileStorageKey(), JSON.stringify({
-          fuel: car.fuel,
-          condition: car.condition,
-          model: car.model
-        }));
-      }
-    }
+    if (Number.isFinite(saved.fuel)) car.fuel = Math.max(0, Math.min(100, saved.fuel));
     if (Number.isFinite(saved.condition)) car.condition = Math.max(0, Math.min(100, saved.condition));
     if (CAR_MODELS[saved.model]) car.model = saved.model;
   } catch (error) {}
@@ -755,50 +762,57 @@ function bindTouch(buttonId, keyName) {
 
 function bindSteeringWheel() {
   const wheel = $("steeringWheel");
-  const knob = wheel ? wheel.querySelector(".wheel-center") : null;
-  if (!wheel || !knob) return;
+  if (!wheel) return;
 
   let pointerId = null;
-  const maxTravel = 34;
-
-  const applySteering = (event) => {
+  let previousAngle = 0;
+  let wheelRotation = 0;
+  const normalizeDelta = (delta) => {
+    while (delta > 180) delta -= 360;
+    while (delta < -180) delta += 360;
+    return delta;
+  };
+  const pointerAngle = (event) => {
     const rect = wheel.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const raw = (event.clientX - centerX) / maxTravel;
-    const offset = Math.max(-1, Math.min(1, raw));
-    const deadZone = 0.10;
-    const steer = Math.abs(offset) < deadZone
-      ? 0
-      : Math.sign(offset) * ((Math.abs(offset) - deadZone) / (1 - deadZone));
-
-    keys.steer = steer;
-    keys.left = steer < -0.08;
-    keys.right = steer > 0.08;
-    knob.style.transform = "translate(calc(-50% + " + (offset * maxTravel) + "px), -50%)";
-    wheel.classList.toggle("active", Math.abs(steer) > 0.08);
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    return Math.atan2(event.clientY - cy, event.clientX - cx) * 180 / Math.PI;
   };
 
   wheel.addEventListener("pointerdown", (event) => {
     if (!running || pointerId !== null) return;
     event.preventDefault();
     pointerId = event.pointerId;
+    previousAngle = pointerAngle(event);
+    wheel.style.transition = "none";
+    wheel.classList.add("active");
     try { wheel.setPointerCapture(pointerId); } catch (error) {}
-    applySteering(event);
   });
 
   wheel.addEventListener("pointermove", (event) => {
     if (pointerId !== event.pointerId) return;
     event.preventDefault();
-    applySteering(event);
+    const nextAngle = pointerAngle(event);
+    wheelRotation += normalizeDelta(nextAngle - previousAngle);
+    previousAngle = nextAngle;
+
+    // 360-degree steering range: 180° left lock to 180° right lock.
+    const limitedRotation = Math.max(-180, Math.min(180, wheelRotation));
+    keys.steer = limitedRotation / 180;
+    keys.left = keys.steer < -0.02;
+    keys.right = keys.steer > 0.02;
+    wheel.style.transform = "rotate(" + limitedRotation + "deg)";
   });
 
   const release = (event) => {
     if (pointerId === null || (event && event.pointerId !== undefined && pointerId !== event.pointerId)) return;
     pointerId = null;
+    wheelRotation = 0;
     keys.steer = 0;
     keys.left = false;
     keys.right = false;
-    knob.style.transform = "translate(-50%, -50%)";
+    wheel.style.transition = "transform .22s ease-out";
+    wheel.style.transform = "rotate(0deg)";
     wheel.classList.remove("active");
   };
 
@@ -806,7 +820,6 @@ function bindSteeringWheel() {
   wheel.addEventListener("pointercancel", release);
   wheel.addEventListener("lostpointercapture", release);
 }
-
 async function start() {
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
