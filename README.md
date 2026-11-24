@@ -20,10 +20,11 @@ A browser-based multiplayer educational driving game for Grades 10–12. Built w
 - Start, manually end, or cancel a session.
 - Automatic session ending when the timer expires.
 - Final leaderboard, Top 3 podium, class awards, class performance summary, and CSV export.
+- Delete controls for a teacher's own waiting or ended sessions. Running sessions must be ended first; deleting permanently removes the session, join link, student results, and live-car data.
 - Scores are provisional and calculated on student devices.
 
 ### Open-world driving
-- Shared city map with roads, buildings, trees, streetlights, parks, service locations, and City Dispatch.
+- Shared city map with detailed raised buildings, rooftops, windows, entrances, street-facing signs, improved roads, trees, streetlights, parks, service locations, grammar checkpoints, and City Dispatch.
 - Desktop keyboard and mobile/tablet on-screen controls.
 - Horizontal analog steering joystick plus forward and backward controls.
 - Multiplayer cars with live position updates.
@@ -31,6 +32,7 @@ A browser-based multiplayer educational driving game for Grades 10–12. Built w
 - Ten selectable paint colors.
 - Vehicle-specific handling profiles and visual differences.
 - Car Shop with vehicle prices, ownership indicators, and a wallet.
+- Playful synthesized engine audio and sound effects, with a persistent in-game mute toggle.
 - Starting balance: 500 coins. Successful City Dispatch delivery: +30 game points and +30 coins.
 - Vehicle ownership, coins, paint choice, and mission progress are stored locally in the student's browser.
 
@@ -42,6 +44,12 @@ A browser-based multiplayer educational driving game for Grades 10–12. Built w
 5. A successful delivery adds 30 points and 30 coins.
 
 The initial mission bank covers Question Forms, Yes/No Questions, Wh-Questions, and Tag Questions, with grade-specific content for Grades 10–12.
+
+### Roadside grammar challenges
+- Four marked roadside checkpoints offer short grammar activities while students explore the city.
+- Activity formats include multiple choice, sentence repair, error spotting, and word-order challenges.
+- Content is grade-specific for Grades 10–12 and draws from the session's selected grammar topics.
+- Correct answers earn 15 points; explanations are shown after each attempt.
 
 ## Important limitations
 
@@ -62,7 +70,7 @@ The teacher record must exist under teachers/{teacherUid} with role: "teacher" a
 
 ### Important: publish the latest database rules
 
-The repository's database.rules.json includes validation for all eight vehicle models and paint colors. The Phase 6A vehicle expansion changed the allowed model values. Before testing the expanded vehicle collection in multiplayer, manually publish the current file:
+The repository's database.rules.json includes validation for all eight vehicle models and paint colors. It also permits teachers to delete their own waiting or ended sessions (running sessions must be ended first). This is a security-sensitive Rules update. Before using session deletion, manually publish the latest file from the approved release:
 
 1. Open database.rules.json in the repository.
 2. Copy the entire file.
@@ -88,7 +96,10 @@ Use a fresh teacher session and at least two student devices.
 11. Refresh/rejoin and check the intended local persistence.
 12. Teacher timer, manual End Game, and automatic time limit.
 13. Final leaderboard, Top 3 podium, awards, accuracy, and CSV export.
-14. Confirm students cannot continue scoring or driving after the session ends.
+14. Visit all four roadside grammar checkpoints and try each activity style.
+15. Check sound toggle, engine sound, collection, answer, reward, and purchase sound effects; confirm mute persists after refresh.
+16. Delete a waiting test session and an ended test session; confirm the running-session delete option is unavailable.
+17. Confirm students cannot continue scoring or driving after the session ends.
 
 ## Project structure
 
@@ -103,7 +114,9 @@ Use a fresh teacher session and at least two student devices.
     js/common.js                Shared constants, paths, and data builders
     js/teacher.js               Teacher dashboard, timer, and results
     js/student.js               Student join and session status
-    js/playtest.js              Driving, missions, shop, and local economy
+    js/playtest.js              Driving, missions, grammar checkpoints, shop, audio, and local economy
+    js/audio.js                 Synthesized engine audio and sound effects
+    js/grammar-challenges.js    Grade/topic roadside grammar challenge bank
     js/missions.js              Grade/topic mission content and crate logic
     js/multiplayer.js            Live vehicle synchronization
     js/vehicle.js               Vehicle physics and handling
