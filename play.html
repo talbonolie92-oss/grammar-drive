@@ -42,7 +42,7 @@
     .car-shop-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0}
     .vehicle-card{min-width:0;padding:12px 8px;border:1px solid #475569;border-radius:14px;background:linear-gradient(155deg,#334155,#172033);color:#e2e8f0;text-align:center;cursor:pointer;transition:transform .15s,border-color .15s,background .15s}
     .vehicle-card:hover{transform:translateY(-2px);border-color:#93c5fd}.vehicle-card.selected{border:2px solid #60a5fa;background:linear-gradient(155deg,#1e40af,#172554);box-shadow:0 0 0 2px rgba(96,165,250,.18)}
-    .vehicle-card .vehicle-icon{display:block;font-size:30px;margin-bottom:4px}.vehicle-card strong{display:block;font-size:13px}.vehicle-card small{color:#cbd5e1;font-size:11px}
+    .vehicle-card .vehicle-icon{display:block;font-size:30px;margin-bottom:4px}.vehicle-card strong{display:block;font-size:13px}.vehicle-card small{display:block;color:#cbd5e1;font-size:11px}.vehicle-card em{display:block;margin-top:7px;font-size:11px;font-style:normal;font-weight:800;color:#86efac}.vehicle-card.locked em{color:#fcd34d}.vehicle-card.locked{border-style:dashed}.vehicle-card.owned{border-color:#166534}
     .car-shop-colors{padding:12px;margin:8px 0 14px;border-radius:12px;background:rgba(2,6,23,.5);border:1px solid #334155}
     .color-swatches{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}.color-swatch{width:30px;height:30px;padding:0;border-radius:50%;border:3px solid rgba(255,255,255,.35);box-shadow:0 2px 6px rgba(0,0,0,.35)}
     .color-swatch.selected{outline:3px solid #fff;outline-offset:2px}
@@ -60,6 +60,7 @@
     <div class="pill" id="surface">ROAD</div>
     <div class="pill" id="speed">0 km/h</div>
         <div class="pill" id="condition">Condition: 100%</div>
+    <div class="pill" id="coinsHud">🪙 500</div>
     <div class="pill hidden" id="missionHud">Cargo: 0 / 4</div>
     <label id="carSelectWrap" class="pill hidden" style="margin:0;padding:4px 8px">Garage car
       <select id="carSelect" aria-label="Select vehicle" style="width:auto;padding:4px 6px;font-size:13px">
@@ -109,7 +110,7 @@
     </section>
   </div>
   <div id="carShopPanel" class="hidden" style="position:fixed;inset:0;z-index:25;background:rgba(2,6,23,.88);display:grid;place-items:center;padding:14px"><section class="car-shop">
-  <div class="row"><div><span class="badge running">CITY MOTOR SHOP</span><h2 style="margin:8px 0 2px">Choose your ride</h2><p class="muted small" style="margin:0">Pick a vehicle and paint color. Your choice appears to other drivers.</p></div><span class="spacer"></span><button id="carShopClose" class="small secondary" type="button">Close</button></div>
+  <div class="row"><div><span class="badge running">CITY MOTOR SHOP</span><h2 style="margin:8px 0 2px">Choose your ride</h2><p class="muted small" style="margin:0">Earn coins from missions and unlock more vehicles.</p><strong id="carShopWallet" class="small" style="color:#fcd34d">Wallet · 500 coins</strong></div><span class="spacer"></span><button id="carShopClose" class="small secondary" type="button">Close</button></div>
   <div id="carShopCards" class="car-shop-grid"></div><div class="car-shop-colors"><strong>Paint color</strong><div id="carShopColors" class="color-swatches"></div></div>
   <div class="row"><span id="carShopSelection" class="muted small">Selected ride</span><span class="spacer"></span><button id="carShopApply" class="good" type="button">Use this vehicle</button></div>
   </section></div>
