@@ -491,7 +491,8 @@ function updateCar(dt) {
   if(service){const action=service.type==="shop"?"OPEN CAR SHOP":"REPAIR";serviceHintEl.textContent=service.name+" · Press E or tap "+action;serviceButton.textContent=action;serviceButton.dataset.service=service.type;}
   const missionOpen = challengePanel.classList.contains("hidden") === false;
   const grammarOpen = grammarPanel && !grammarPanel.classList.contains("hidden");
-  const canInteract = !!crate || !!challenge || !!grammarStop || (!!dispatch && mission && mission.status === "return");
+  const needsDispatch = mission && mission.status === "return";
+  const canInteract = !!crate || !!grammarStop || (needsDispatch ? !!dispatch : !!challenge);
   const missionActive = mission && ["collecting", "return"].includes(mission.status);
   missionHudEl.classList.toggle("hidden", !missionActive);
   if (missionActive) {
@@ -686,7 +687,10 @@ function nextGrammarChallenge() {
 }
 
 function openMissionPanel() {
-  if (!running || (!nearbyChallenge(car.x, car.y) && !nearbyDispatch(car.x, car.y)) || challengePanel.classList.contains("hidden") === false) return;
+  const atMissionBoard = nearbyChallenge(car.x, car.y);
+  const atDispatch = nearbyDispatch(car.x, car.y);
+  const validLocation = mission && mission.status === "return" ? atDispatch : atMissionBoard;
+  if (!running || !validLocation || challengePanel.classList.contains("hidden") === false) return;
   if (!mission) loadMissionState();
   challengePanel.classList.remove("hidden");
   playSfx("click");
@@ -858,8 +862,8 @@ function interactMission() {
     openGrammarPanel();
     return;
   }
-  if (mission && mission.status === "return" && nearbyDispatch(car.x, car.y)) {
-    openMissionPanel();
+  if (mission && mission.status === "return") {
+    if (nearbyDispatch(car.x, car.y)) openMissionPanel();
     return;
   }
   if (nearbyChallenge(car.x, car.y)) openMissionPanel();
