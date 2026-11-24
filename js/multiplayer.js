@@ -107,7 +107,8 @@ export function createLiveCars(options) {
     const y = clamp(Number(state.y) || 0, 0, MP.WORLD_MAX);
     const a = wrapAngle(Number(state.a) || 0);
     const s = clamp(Number(state.s) || 0, -1500, 1500);
-    const model = ["compact", "sport", "suv", "truck", "motorcycle", "bicycle", "jeep", "police"].includes(state.m) ? state.m : "compact";
+    const modelKey = state.m || state.model;
+    const model = ["compact", "sport", "suv", "truck", "motorcycle", "bicycle", "jeep", "police"].includes(modelKey) ? modelKey : "compact";
     return { x, y, a, s, m: model };
   }
 
@@ -320,9 +321,10 @@ export function createLiveCars(options) {
 
   function publish(state) {
     if (stopped || !state) return;
-    latest = normalizedState(state);
-    // The 250ms sync timer handles regular uploads. Avoid invoking tick()
-    // from every animation frame; publish only refreshes the latest pose.
+    // Keep the live vehicle object by reference. It is updated by the game
+    // loop, and is normalized only when the throttled upload actually runs.
+    // This avoids allocating a second pose object on every animation frame.
+    latest = state;
   }
 
   function publishNow() {
