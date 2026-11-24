@@ -345,7 +345,9 @@ function updateCar(dt) {
       const distance = Math.round(Math.hypot(dx, dy));
       missionHudEl.textContent = mission.status === "return"
         ? "Cargo complete · Dispatch " + direction + " · " + distance + "m"
-        : "Cargo " + mission.collected.length + "/" + mission.fragments.length + " · Next crate " + direction + " · " + distance + "m";
+        : "Cargo " + mission.collected.length + "/" + mission.fragments.length +
+          (mission.lastRecovered ? " · Found: " + mission.lastRecovered : "") +
+          " · Next " + direction + " · " + distance + "m";
     }
   }
   challengeButton.classList.toggle("hidden", !canInteract || missionOpen || !running);
@@ -492,6 +494,7 @@ function collectMissionCrate(crate) {
   if (mission.collected.includes(crate.index)) return;
   mission.collected.push(crate.index);
   const recovered = mission.fragments[crate.index];
+  mission.lastRecovered = recovered.text;
   if (mission.collected.length >= mission.fragments.length) mission.status = "return";
   saveMissionState();
   challengeHintEl.textContent = "Recovered: " + recovered.text + " · " + mission.collected.length + "/" + mission.fragments.length;
