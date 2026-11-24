@@ -2,7 +2,7 @@
 
 A multiplayer grammar driving game for Grade 10–12, built with plain HTML, CSS and JavaScript, Firebase Authentication and the Firebase Realtime Database (Spark free plan). It is hosted on GitHub Pages.
 
-**Phase 1 (this version):** a stable join → lobby → start → end foundation. The driving game arrives in Phase 2.
+**Completed:** Phase 1 session foundation and Phase 2 student join/lobby flow. The current Phase 3 implementation adds a temporary multiplayer test track so real devices can verify shared car movement before the full driving world is built in Phase 4.
 
 ## Project structure
 ```
@@ -16,6 +16,9 @@ js/firebase.js             Firebase setup: separate teacher and student sign-ins
 js/common.js               Shared helpers + the ONE definition of the database layout
 js/teacher.js              Dashboard logic
 js/student.js              Student join logic
+js/multiplayer.js          Shared live-car synchronization (Phase 3)
+js/playtest.js             Temporary multiplayer test track (Phase 3)
+play.html                  Temporary multiplayer test-track page
 js/selftest.js             Rules self-test logic (used by test.html)
 js/vendor/qrcode.js        QR code generator (MIT), no npm needed
 docs/RULES-PLAYGROUND-TESTS.md   Manual checks in the Firebase Rules Playground
@@ -37,6 +40,7 @@ sessions/{sessionId}         { teacherUid, code, grade, topics, durationMinutes,
 sessions/{sessionId}/players/{studentUid}
                              { name, classSection, joinedAt, progress: { score, correct, answered, updatedAt } }
 joinCodes/{CODE}             { sessionId, status, durationMinutes, allowLateJoin, startedAt? }  ← students' public copy
+liveCars/{sessionId}/{uid}   { x, y, a, s, c, n, t }                                ← Phase 3 live positions
 ```
 All times are set by the Firebase server clock, never by the device.
 
@@ -48,26 +52,24 @@ All times are set by the Firebase server clock, never by the device.
 - Name and class can't be changed by the student afterwards; the teacher can fix them.
 - Score updates only touch `progress`. Each update must be +1 answer, at most +60 points, at least 2 seconds apart, while the game is running and before the time limit. Nothing can be written after the game ends.
 - Join codes contain no teacher information.
+- Phase 3 students can read the live-car list only after joining the session; each student can write only their own car record while the session is running and within its time limit.
+- Live-car records have bounded coordinates/speed, a server timestamp, a 150 ms minimum update interval, and a name that must match the student's current player record. The owner teacher can read the cars and delete the live-car subtree for their own session.
+- Each connected device registers its own car for automatic removal on disconnect. The client waits for Firebase to acknowledge this registration before its first car upload. A deliberate Leave or Game Over also attempts to remove the car explicitly.
 
-**Limit (accepted for this classroom version):** scores are *provisional*. They are calculated on each student's device, and the rules only limit how fast and how much they can change. Verified scoring would need a server (Cloud Functions, Blaze plan), which this project does not use. Scoring will live in its own file (`js/scoring.js`, Phase 3) so it can be replaced later.
+**Limit (accepted for this classroom version):** scores are *provisional*. They are calculated on each student's device, and the rules only limit how fast and how much they can change. Verified scoring would need a server (Cloud Functions, Blaze plan), which this project does not use. Phase 3 is only a multiplayer movement test; the grammar challenge and scoring system are separate later work.
 
 ## Firebase console checklist (one time)
 1. **Authentication → Sign-in method:** *Email/Password* and *Anonymous* enabled (already done).
 2. **Realtime Database → Data:** your teacher record exists at `teachers/<your UID>` with `role: "teacher"` and `active: true` (already done).
 
-## Deploying Phase 1 (do this outside class time)
-The new pages and the new rules belong together. Old pages don't work with the new rules, and new pages don't work with the old rules.
-1. **Copy your current rules** from the console (Realtime Database → Rules) into a text file, so you can restore them if needed.
-2. Upload the new files to GitHub and delete `js/index.html`. Wait about a minute for GitHub Pages to update.
-3. In the console, replace the rules with the contents of `database.rules.json` and press **Publish**.
-4. Open `test.html`:
-   - press **Test Firebase Connection**;
-   - then log in to **Run rules self-test**;
-   - all checks must pass. Tick the time-limit box once, too.
-5. Do the manual checks in `docs/RULES-PLAYGROUND-TESTS.md`.
-6. Try a real lobby: the dashboard on a laptop and 2–3 phones scanning the QR code.
+## Phase 3 release status
+Phase 1 and Phase 2 have already been deployed and manually tested. Phase 3 files are being added to the repository, but the Phase 3 database rules have **not** been published to Firebase. Do not test the new multiplayer track against the old published rules: the `liveCars` path will be denied.
 
-**To undo:** paste your saved old rules back and publish them, then restore the old files from GitHub history.
+Before using Phase 3 with students, the matching frontend and `database.rules.json` must be released together. First back up the currently published rules. Then publish the Phase 3 rules and verify the updated `test.html` self-test, the manual checks in `docs/RULES-PLAYGROUND-TESTS.md`, and a real teacher laptop plus multiple student phones. The test-track page is `play.html`; it is a temporary multiplayer proof, not the finished driving game.
+
+**Important:** adding files to the GitHub repository does not publish the Firebase Rules. The Firebase Rules update is a separate manual action and has not been performed by this project update.
+
+**To undo a rules release:** restore the saved Firebase Rules backup. To undo a frontend release, restore the previous GitHub Pages commit.
 
 ## Existing data
 Nothing is deleted. Sessions made with the earlier version:
