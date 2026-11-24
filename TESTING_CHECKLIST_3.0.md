@@ -13,7 +13,11 @@ Run this only after the 3.0 code is approved, GitHub Pages is intentionally publ
 
 ## B. Gameplay
 - [ ] Open the City Center mission board.
-- [ ] Start a mission; collect every randomly placed cargo fragment.
+- [ ] Start a mission; attempt to collect a cargo crate and confirm it opens a required grammar gate instead of collecting immediately.
+- [ ] Confirm the grammar gate uses varied formats: choose the correct form, repair a sentence, spot an error, and build/order a sentence.
+- [ ] Answer incorrectly; confirm the cargo stays locked and a new challenge can be attempted.
+- [ ] Answer correctly; confirm the cargo unlocks and mission progress advances.
+- [ ] Collect every randomly placed cargo fragment.
 - [ ] Return to City Dispatch and rebuild the message.
 - [ ] Visit grammar checkpoints and answer both correctly and incorrectly.
 - [ ] Visit the Shopping District car shop and confirm the existing vehicle shop still works.
