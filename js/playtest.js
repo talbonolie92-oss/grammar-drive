@@ -749,11 +749,30 @@ function saveRoadsideState() {
 }
 
 function saveLootState() {
-  try { localStorage.setItem("gd_loot_" + sessionId + "_" + uid, JSON.stringify([...collectedRoadLoot])); } catch (error) {}
+  if (!uid || !sessionId) return;
+  try {
+    localStorage.setItem("gd_loot_" + sessionId + "_" + uid, JSON.stringify([...collectedRoadLoot]));
+  } catch (error) {}
 }
 
 function saveBridgeState() {
-  try { localStorage.setItem("gd_bridge_" + sessionId + "_" + uid, JSON.stringify({ repaired: !!(bridge && bridge.repaired) })); } catch (error) {}
+  if (!uid || !sessionId || !bridge) return;
+  try {
+    localStorage.setItem("gd_bridge_" + sessionId + "_" + uid, JSON.stringify({
+      version: 1,
+      bridgeId: bridge.id,
+      repaired: !!bridge.repaired
+    }));
+  } catch (error) {}
+}
+
+function readLocalState(key, fallback = null) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? fallback : JSON.parse(raw);
+  } catch (error) {
+    return fallback;
+  }
 }
 
 function collectRoadLoot() {
@@ -1396,19 +1415,36 @@ async function start() {
     bridge = createBridge(uid + "|" + sessionId);
     clearedRoadsideEvents.clear();
     collectedRoadLoot.clear();
-    try {
-      const savedRoadside = JSON.parse(localStorage.getItem("gd_roadside_" + sessionId + "_" + uid) || "[]");
-      if (Array.isArray(savedRoadside)) {
-        const validEventIds = new Set(roadsideEvents.map((event) => event.id));
-        savedRoadside.forEach((id) => {
-          if (validEventIds.has(id)) clearedRoadsideEvents.add(id);
-        });
-      }
-      const savedLoot = JSON.parse(localStorage.getItem("gd_loot_" + sessionId + "_" + uid) || "[]");
-      if (Array.isArray(savedLoot)) savedLoot.forEach((id) => collectedRoadLoot.add(id));
-      const savedBridge = JSON.parse(localStorage.getItem("gd_bridge_" + sessionId + "_" + uid) || "null");
-      if (savedBridge && savedBridge.repaired) bridge.repaired = true;
-    } catch (error) {}
+
+    // Restore each part independently. A damaged or outdated value in one
+    // localStorage key must not prevent the other progress from loading.
+    const savedBridge = readLocalState("gd_bridge_" + sessionId + "_" + uid);
+    if (
+      savedBridge &&
+      savedBridge.repaired === true &&
+      (!savedBridge.bridgeId || savedBridge.bridgeId === bridge.id)
+    ) {
+      bridge.repaired = true;
+    }
+
+    const savedRoadside = readLocalState("gd_roadside_" + sessionId + "_" + uid, []);
+    if (Array.isArray(savedRoadside)) {
+      const validEventIds = new Set(roadsideEvents.map((event) => event.id));
+      savedRoadside.forEach((id) => {
+        if (validEventIds.has(id)) clearedRoadsideEvents.add(id);
+      });
+    }
+
+    const savedLoot = readLocalState("gd_loot_" + sessionId + "_" + uid, []);
+    if (Array.isArray(savedLoot)) {
+      const validLootIds = new Set(roadLoot.map((item) => item.id));
+      if (bridge.repaired) validLootIds.add("bridge-chest");
+      savedLoot.forEach((id) => {
+        if (validLootIds.has(id)) collectedRoadLoot.add(id);
+      });
+    }
+
+    // A repaired bridge keeps its reward chest available until collected.
     if (bridge.repaired && !collectedRoadLoot.has("bridge-chest")) {
       roadLoot.push({ id: "bridge-chest", x: bridge.exit.x, y: bridge.exit.y, type: "chest", reward: 120 });
     }
