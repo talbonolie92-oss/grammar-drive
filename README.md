@@ -74,7 +74,11 @@ The first open-road build adds a larger 2D city map, named locations, road/off-r
 
 ## Phase 4B status
 
-The vehicle HUD now displays speed, fuel, and condition. Fuel decreases while accelerating; running out of fuel prevents further acceleration. Collisions can reduce vehicle condition, and a damaged vehicle has reduced performance. Drivers can refuel at the fuel stop and repair at the garage using **E** on desktop or the on-screen service button on mobile. These new vehicle systems still require user testing on real devices.
+The vehicle HUD displays speed, fuel, and condition. Fuel decreases while accelerating; running out of fuel prevents further acceleration. Collisions reduce vehicle condition, and a damaged vehicle has reduced performance. Drivers can refuel at the fuel stop and repair at the garage using **E** on desktop or the on-screen service button on mobile. The user confirmed these systems work on real devices.
+
+## Phase 4C status
+
+Vehicle fuel and condition are saved locally per anonymous student device and restored on return. The car position is saved per session and device. At the Garage, students can select Compact, Sport, or SUV; the selection is saved locally and reflected in their vehicle appearance. This is device-local persistence, not cloud inventory: clearing browser storage or switching devices resets that device profile.
 
 
 ## Existing data
