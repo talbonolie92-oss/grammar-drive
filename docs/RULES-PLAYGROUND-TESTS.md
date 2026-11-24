@@ -6,6 +6,7 @@ These checks use the **Rules Playground** in the Firebase console:
 The automatic self-test (`test.html`) covers almost everything. These manual tests cover what it cannot:
 - a second teacher account (P6)
 - signed-out visitors
+- live-car read permissions and forbidden writes (P13–P18)
 - a few attacks typed by hand
 
 ## Before you start
@@ -46,6 +47,21 @@ Data for P10 and P11:
 ```
 
 When you've finished, you can cancel the test session on the dashboard.
+
+## Phase 3: live multiplayer car permissions
+
+For P13–P18, the test session must be **running**, and at least one student must have joined. Use a second anonymous UID for the non-member tests. If you need to test P18, end the session from the teacher dashboard first.
+
+| # | Type | Location | Signed in as | Data | Expected |
+|---|------|----------|--------------|------|----------|
+| P13 | read | `/liveCars/SESSION_ID` | Anonymous, UID `another-student` (not in this session) | — | **Denied** |
+| P14 | read | `/liveCars` | Password, UID `TEACHER_UID` | — | **Denied** (teacher access is limited to one owned session path) |
+| P15 | read | `/liveCars/SESSION_ID` | Password, UID `TEACHER_UID` | — | **Allowed** |
+| P16 | set | `/liveCars/SESSION_ID/another-student` | Anonymous, UID `playground-student-1` | Any object | **Denied** (a student cannot create or move another student's car) |
+| P17 | set | `/liveCars/SESSION_ID/TEACHER_UID` | Password, UID `TEACHER_UID` | Any object | **Denied** (teacher can read and delete cars, not create or move one) |
+| P18 | set | `/liveCars/SESSION_ID/playground-student-1` | Anonymous, UID `playground-student-1` | Any object | **Denied** after the session has ended |
+
+The Playground tests above check permission boundaries, not successful movement payloads. A valid live-car write also requires a joined student's own UID, the current name from their player record, bounded numeric coordinates/speed, and a Firebase server timestamp. The actual `onDisconnect` behavior must be checked with a real browser connection; the Rules Playground cannot simulate a dropped network connection.
 
 ## If a result is different
 Don't use the new version in class. Copy the test number and the result, and send them together with the `test.html` report.
