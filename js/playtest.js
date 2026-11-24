@@ -432,6 +432,8 @@ function drawWorld() {
   drawCar(car.x, car.y, car.a, car.paintIndex, me ? me.name : "You", true, car.model);
 }
 
+let lastRosterSignature = null;
+
 function renderRoster() {
   const rows = [];
   if (me && live && live.connected && running) rows.push({ uid, name: me.name, color: colorFor(uid), mine: true });
@@ -439,6 +441,15 @@ function renderRoster() {
     rows.push({ uid: id, name: value.n || "Driver", color: value.c, mine: false });
   }
   rows.sort((a, b) => a.name.localeCompare(b.name));
+
+  // Firebase position updates arrive more often than roster membership changes.
+  // Skip rebuilding the roster DOM when only car positions/timestamps changed.
+  const signature = rows.map((row) =>
+    row.uid + "|" + row.name + "|" + row.color + "|" + (row.mine ? "1" : "0")
+  ).join(";");
+  if (signature === lastRosterSignature) return;
+  lastRosterSignature = signature;
+
   rosterEl.innerHTML = "";
   rosterEl.classList.toggle("hidden", rows.length === 0);
   rows.slice(0, 30).forEach((entry) => {
@@ -1353,6 +1364,10 @@ async function start() {
     // map render and briefly freezing steering on slower mobile devices.
     overlayTitle.textContent = "Preparing the track…";
     overlayText.textContent = "Loading the city map. Please wait a moment.";
+
+    // Give the browser one paint opportunity so the loading message appears
+    // before the one-time canvas map render uses the main thread.
+    await new Promise((resolve) => requestAnimationFrame(resolve));
     prepareStaticMap();
 
     statusTimer = setInterval(applyStatus, 500);
