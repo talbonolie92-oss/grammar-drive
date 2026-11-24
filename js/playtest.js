@@ -34,6 +34,7 @@ const ctx = canvas.getContext("2d");
 const light = $("light");
 const connText = $("connText");
 const onlineEl = $("online");
+const surfaceEl = $("surface");
 const timerEl = $("timer");
 const rosterEl = $("roster");
 const debugEl = $("debug");
@@ -189,6 +190,8 @@ function renderRoster() {
 
 function updateCar(dt) {
   updateVehicle(car, keys, dt, { isOnRoad, collidesWithWorld });
+  surfaceEl.textContent = car.onRoad ? "ROAD" : "OFF-ROAD";
+  surfaceEl.style.borderColor = car.onRoad ? "#22c55e" : "#f59e0b";
 }
 
 function frame(timestamp) {
