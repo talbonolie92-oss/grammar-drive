@@ -45,6 +45,90 @@ const LOCATIONS = [
   { x: 2670, y: 1140, name: "DEALERSHIP", color: "#c4b5fd", symbol: "D" }
 ];
 
+// Decorative greenery and small park-entry gates, kept clear of roads and services.
+const TREES = [
+  [1510, 455], [1625, 520], [1515, 650], [1635, 760], [1510, 900], [1620, 1045],
+  [1510, 1515], [1630, 1600], [1515, 1745], [1625, 1850], [1510, 2025], [1635, 2110],
+  [1955, 500], [1950, 900], [1955, 1570], [1950, 2020],
+  [350, 430], [350, 1120], [350, 1460], [350, 2140],
+  [3150, 430], [3150, 1120], [3150, 1460], [3150, 2140]
+];
+
+const PARK_GATES = [
+  { x: 1450, y: 1135, width: 145, label: "CITY PARK" },
+  { x: 2110, y: 1445, width: 145, label: "GARDEN" }
+];
+
+function drawTree(ctx, project, x, y) {
+  const p = project(x, y);
+  const s = p.scale;
+  const r = Math.max(3, 22 * s);
+
+  // Soft ground shadow and visible trunk make the canopy feel raised.
+  ctx.fillStyle = "rgba(15,23,42,.24)";
+  ctx.beginPath();
+  ctx.ellipse(p.x + 5 * s, p.y + 9 * s, r * 1.12, r * .62, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#854d0e";
+  ctx.fillRect(p.x - 4 * s, p.y - 2 * s, 8 * s, 17 * s);
+
+  ctx.fillStyle = "#14532d";
+  ctx.beginPath();
+  ctx.arc(p.x, p.y - 7 * s, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#166534";
+  ctx.beginPath();
+  ctx.arc(p.x - 8 * s, p.y - 12 * s, r * .72, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#22c55e";
+  ctx.beginPath();
+  ctx.arc(p.x + 7 * s, p.y - 14 * s, r * .58, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(187,247,208,.48)";
+  ctx.beginPath();
+  ctx.arc(p.x - 7 * s, p.y - 20 * s, r * .2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(5,46,22,.65)";
+  ctx.lineWidth = Math.max(.7, 1.5 * s);
+  ctx.beginPath();
+  ctx.arc(p.x, p.y - 7 * s, r, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function drawParkGate(ctx, project, gate) {
+  const p = project(gate.x, gate.y);
+  const s = p.scale;
+  const half = gate.width * s / 2;
+  const postW = Math.max(3, 10 * s);
+  const postH = Math.max(5, 28 * s);
+
+  // Two stone pillars, a timber crossbar and small gold caps.
+  ctx.fillStyle = "rgba(15,23,42,.28)";
+  ctx.fillRect(p.x - half - postW / 2 + 2 * s, p.y - postH / 2 + 3 * s, postW, postH);
+  ctx.fillRect(p.x + half - postW / 2 + 2 * s, p.y - postH / 2 + 3 * s, postW, postH);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillRect(p.x - half - postW / 2, p.y - postH / 2, postW, postH);
+  ctx.fillRect(p.x + half - postW / 2, p.y - postH / 2, postW, postH);
+  ctx.fillStyle = "#92400e";
+  ctx.fillRect(p.x - half, p.y - postH / 2 + 2 * s, half * 2, Math.max(3, 7 * s));
+  ctx.fillStyle = "#fbbf24";
+  ctx.fillRect(p.x - half - postW / 2 - 2 * s, p.y - postH / 2 - 3 * s, postW + 4 * s, Math.max(3, 5 * s));
+  ctx.fillRect(p.x + half - postW / 2 - 2 * s, p.y - postH / 2 - 3 * s, postW + 4 * s, Math.max(3, 5 * s));
+
+  if (s > .24) {
+    ctx.fillStyle = "#fff7ed";
+    ctx.font = "bold " + Math.max(6, 9 * s) + "px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(gate.label, p.x, p.y - postH / 2 - 5 * s);
+  }
+}
+
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
 export function isOnRoad(x, y) {
@@ -115,6 +199,9 @@ export function drawMap(ctx, project, width, height) {
     ctx.stroke();
     ctx.setLineDash([]);
   });
+
+  TREES.forEach(([x, y]) => drawTree(ctx, project, x, y));
+  PARK_GATES.forEach((gate) => drawParkGate(ctx, project, gate));
 
   const crosswalks = [
     { x: 1650, y: 1190, w: 12, h: 220 },
