@@ -720,14 +720,68 @@ function bindTouch(buttonId, keyName) {
   });
 }
 
+function bindSteeringWheel() {
+  const wheel = $("steeringWheel");
+  if (!wheel) return;
+  let pointerId = null;
+  let previousAngle = 0;
+  let wheelAngle = 0;
+
+  const pointerAngle = (event) => {
+    const rect = wheel.getBoundingClientRect();
+    return Math.atan2(
+      event.clientY - (rect.top + rect.height / 2),
+      event.clientX - (rect.left + rect.width / 2)
+    ) * 180 / Math.PI;
+  };
+
+  const applySteering = () => {
+    const limited = Math.max(-135, Math.min(135, wheelAngle));
+    keys.left = limited < -12;
+    keys.right = limited > 12;
+    wheel.style.transform = "rotate(" + limited + "deg)";
+  };
+
+  wheel.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    pointerId = event.pointerId;
+    previousAngle = pointerAngle(event);
+    wheel.classList.add("active");
+    wheel.setPointerCapture(pointerId);
+  });
+
+  wheel.addEventListener("pointermove", (event) => {
+    if (pointerId !== event.pointerId) return;
+    event.preventDefault();
+    let delta = pointerAngle(event) - previousAngle;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    wheelAngle = Math.max(-135, Math.min(135, wheelAngle + delta));
+    previousAngle = pointerAngle(event);
+    applySteering();
+  });
+
+  const release = (event) => {
+    if (pointerId !== event.pointerId) return;
+    pointerId = null;
+    wheel.classList.remove("active");
+    wheelAngle = 0;
+    keys.left = false;
+    keys.right = false;
+    wheel.style.transform = "rotate(0deg)";
+  };
+  ["pointerup", "pointercancel", "lostpointercapture"].forEach((name) => {
+    wheel.addEventListener(name, release);
+  });
+}
+
 async function start() {
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
 
-  bindTouch("btnLeft", "left");
-  bindTouch("btnRight", "right");
+  bindSteeringWheel();
   bindTouch("btnGas", "gas");
   bindTouch("btnBrake", "brake");
   bindTouch("btnReverse", "reverse");
