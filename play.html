@@ -31,10 +31,9 @@
     .fuel-warning.critical { background: rgba(127,29,29,.97); border-color: #f87171; animation: fuelPulse 1s ease-in-out infinite alternate; }
     @keyframes fuelPulse { from { box-shadow: 0 3px 12px rgba(239,68,68,.18); } to { box-shadow: 0 3px 22px rgba(239,68,68,.65); } }
     @media (max-width: 430px) { .fuel-warning { top: 96px; font-size: 12px; padding: 8px 10px; } }
-    .steering-wheel::before, .steering-wheel::after { content: ""; position: absolute; left: 50%; top: 50%; background: rgba(226,232,240,.9); transform: translate(-50%,-50%); border-radius: 5px; }
-    .steering-wheel::before { width: 9px; height: 76px; }
-    .steering-wheel::after { width: 76px; height: 9px; }
-    .wheel-center { position: absolute; z-index: 2; left: 50%; top: 50%; width: 48px; height: 48px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #60a5fa, #1d4ed8 68%, #172554); border: 4px solid #dbeafe; box-shadow: 0 3px 10px rgba(0,0,0,.45), inset 0 1px 3px rgba(255,255,255,.35); transform: translate(-50%,-50%); pointer-events: none; }
+    /* Keep the steering rim completely clear: no four-way cross/spokes to obstruct touch dragging. */
+    .steering-wheel::before, .steering-wheel::after { content: none; display: none; }
+    .wheel-center { position: absolute; z-index: 2; left: 50%; top: 50%; width: 40px; height: 40px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #60a5fa, #1d4ed8 68%, #172554); border: 3px solid #dbeafe; box-shadow: 0 3px 10px rgba(0,0,0,.45), inset 0 1px 3px rgba(255,255,255,.35); transform: translate(-50%,-50%); pointer-events: none; }
     .steering-wheel.active { border-color: #60a5fa; }
     @media (hover: hover) and (pointer: fine) { .steering-wheel { display: none; } }
     #overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(15, 23, 42, .82); text-align: center; padding: 20px; }
