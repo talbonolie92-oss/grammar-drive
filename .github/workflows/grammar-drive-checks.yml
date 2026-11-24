@@ -1,0 +1,75 @@
+name: Grammar Drive static checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - performance/optimization-3.0
+
+permissions:
+  contents: read
+
+jobs:
+  syntax-and-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --input-type=module --check < "$file"
+          done < <(find js -type f -name '*.js' -print0)
+      - name: Validate Firebase rules JSON
+        run: node -e "JSON.parse(require('node:fs').readFileSync('database.rules.json', 'utf8')); console.log('database.rules.json is valid JSON')"
+      - name: Check local HTML and JavaScript references
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+
+          const root = process.cwd();
+          const failures = [];
+          const htmlFiles = ['index.html', 'play.html', 'teacher.html', 'student.html', 'setup-check.html'];
+
+          for (const file of htmlFiles) {
+            if (!fs.existsSync(path.join(root, file))) continue;
+            const source = fs.readFileSync(path.join(root, file), 'utf8');
+            for (const match of source.matchAll(/(?:src|href)=["']([^"']+)["']/g)) {
+              const value = match[1].split(/[?#]/)[0];
+              if (!value.startsWith('./') && !value.startsWith('../')) continue;
+              const target = path.resolve(root, path.dirname(file), value);
+              if (!fs.existsSync(target)) failures.push(file + ' -> ' + value);
+            }
+          }
+
+          function walk(directory) {
+            for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+              const full = path.join(directory, entry.name);
+              if (entry.isDirectory()) walk(full);
+              else if (entry.name.endsWith('.js')) {
+                const source = fs.readFileSync(full, 'utf8').replace(/^\s*\/\/.*$/gm, '');
+                for (const match of source.matchAll(/(?:from\s*|import\s*\()\s*["'](\.{1,2}\/[^"']+)["']/g)) {
+                  const target = path.resolve(path.dirname(full), match[1]);
+                  if (!fs.existsSync(target)) failures.push(path.relative(root, full) + ' -> ' + match[1]);
+                }
+              }
+            }
+          }
+
+          walk(path.join(root, 'js'));
+          if (failures.length) {
+            console.error('Missing local references:\n' + failures.join('\n'));
+            process.exit(1);
+          }
+          console.log('All local HTML assets and JavaScript imports exist.');
+          NODE

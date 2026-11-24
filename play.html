@@ -36,7 +36,10 @@
     .analog-stick-knob { position: absolute; left: 50%; top: 50%; width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 33% 24%, #bfdbfe 0%, #60a5fa 24%, #2563eb 62%, #172554 100%); border: 2px solid #93c5fd; box-shadow: 0 4px 8px rgba(0,0,0,.7), inset 0 3px 5px rgba(255,255,255,.4), inset 0 -4px 7px rgba(0,0,0,.35); transform: translate(-50%,-50%); pointer-events: none; will-change: transform; }
     @media (max-width: 430px) { .pad button { width: 82px; height: 60px; font-size: 15px; } .pad-right { right: 10px; bottom: 14px; gap: 8px; } .steering-wheel-control { width: 128px; height: 128px; left: 10px; bottom: 12px; } .analog-track { left: 24px; right: 24px; } }
     #overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(15, 23, 42, .82); text-align: center; padding: 20px; }
+    #miniMap { position:fixed; z-index:5; right:12px; bottom:104px; width:180px; height:132px; border:2px solid rgba(226,232,240,.72); border-radius:12px; background:rgba(15,23,42,.9); box-shadow:0 5px 16px rgba(0,0,0,.4); }
+    @media(max-width:430px){#miniMap{width:148px;height:108px;right:8px;bottom:92px;}}
     #debug { position: fixed; z-index: 5; left: 8px; bottom: 100px; font-size: 12px; color: #cbd5e1; background: rgba(15, 23, 42, .7); padding: 6px 8px; border-radius: 8px; }
+    .final-results { margin:14px 0; padding:12px; border-radius:12px; background:rgba(2,6,23,.55); border:1px solid #475569; color:#e2e8f0; text-align:left; white-space:pre-line; line-height:1.7; max-height:42vh; overflow:auto; font-size:14px; }
 
     .car-shop{width:min(760px,100%);max-height:90vh;overflow:auto;padding:20px;border-radius:20px;border:1px solid #475569;background:linear-gradient(145deg,#1e293b,#0f172a);box-shadow:0 24px 70px rgba(0,0,0,.6)}
     .car-shop-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0}
@@ -61,7 +64,9 @@
     <div class="pill" id="speed">0 km/h</div>
         <div class="pill" id="condition">Condition: 100%</div>
     <div class="pill" id="coinsHud">🪙 500</div>
+    <div class="pill" id="growthHud">🚗 Growth 50% · 0 XP</div>
     <div class="pill hidden" id="missionHud">Cargo: 0 / 4</div>
+    <div class="pill hidden" id="raceHud">🏁 Race ready</div>
     <label id="carSelectWrap" class="pill hidden" style="margin:0;padding:4px 8px">Garage car
       <select id="carSelect" aria-label="Select vehicle" style="width:auto;padding:4px 6px;font-size:13px">
         <option value="compact">Compact</option>
@@ -71,11 +76,13 @@
     </label>
     <div class="pill" id="timer">⏱ –</div>
     <button id="soundToggle" class="small secondary" type="button" aria-pressed="true">🔊 Sound On</button>
+    <button id="musicToggle" class="small secondary" type="button" aria-pressed="true">🎵 Music On</button>
     <label class="pill sound-volume-wrap" style="margin:0"><span>VOL</span><input id="soundVolume" type="range" min="0" max="100" value="55" aria-label="Sound volume"></label>
     <div class="spacer"></div>
     <button id="leaveButton" class="small secondary" type="button">Leave</button>
   </div>
   <div id="roster" class="hidden"></div>
+  <canvas id="miniMap" width="180" height="132" aria-label="City map"></canvas>
   <div id="debug" class="hidden"></div>
 
   <div id="serviceHint" class="pill hidden" style="position:fixed;z-index:6;left:50%;bottom:100px;transform:translateX(-50%);text-align:center">Press E to use service</div>
@@ -85,7 +92,7 @@
 
   <div id="challengePanel" class="hidden" style="position:fixed;inset:0;z-index:20;background:rgba(2,6,23,.88);display:grid;place-items:center;padding:16px">
     <section class="panel" style="width:min(620px,100%);max-height:90vh;overflow:auto;margin:0">
-      <div class="row"><span class="badge running">CITY DISPATCH · MISSION</span><span class="spacer"></span><button id="missionClose" class="small secondary" type="button">Back to Road</button></div>
+      <div class="row"><span id="missionBadge" class="badge running">CITY CENTER · MISSION BOARD</span><span class="spacer"></span><button id="missionClose" class="small secondary" type="button">Back to Road</button></div>
       <p id="missionTopic" class="muted small"></p>
       <h2 id="missionTitle">The Missing Message</h2>
       <p id="missionBriefing" class="muted"></p>
@@ -111,17 +118,27 @@
       </div>
     </section>
   </div>
+  <div id="racePanel" class="hidden" style="position:fixed;inset:0;z-index:21;background:rgba(2,6,23,.88);display:grid;place-items:center;padding:16px">
+    <section class="panel" style="width:min(560px,100%);max-height:90vh;overflow:auto;margin:0">
+      <div class="row"><span class="badge running">COUNTRYSIDE & RACE ZONE</span><span class="spacer"></span><button id="raceClose" class="small secondary" type="button">Back to Road</button></div>
+      <h2>🏁 Open Road Circuit</h2>
+      <p class="muted">Pass a short grammar gate to unlock the start, then complete the six glowing checkpoints around the city and return to the Race Club. Follow the route, keep control of your car, and beat your best time.</p>
+      <div class="message info">Reward: +50 XP · +50 coins · vehicle growth</div>
+      <button id="raceStart" class="good block" type="button">Start Time Trial</button>
+    </section>
+  </div>
+
   <div id="grammarPanel" class="hidden game-modal">
     <section class="panel grammar-card">
       <div class="row">
-        <span class="badge running">ROADside GRAMMAR</span>
+        <span id="grammarBadge" class="badge running">ROADSIDE GRAMMAR</span>
         <span class="spacer"></span>
         <button id="grammarClose" class="small secondary" type="button">Back to Road</button>
       </div>
       <p id="grammarType" class="muted small"></p>
       <h2 id="grammarPrompt">Grammar checkpoint</h2>
       <p id="grammarInstruction" class="muted"></p>
-      <p class="small muted">Correct answers earn +15 points. Read the explanation to remember the grammar rule.</p>
+      <p class="small muted">Clear the start-up grammar check before driving. Every mission cargo crate and Race Club time trial also requires a correct answer. Formats include choose, repair, spot the error, and build the sentence. Correct answers earn +15 points.</p>
       <div id="grammarSelection" class="grammar-selection">Choose your answer.</div>
       <div id="grammarOptions" class="grammar-options"></div>
       <div id="grammarFeedback" class="message hidden" aria-live="polite"></div>
@@ -153,9 +170,10 @@
   </div>
 
   <div id="overlay">
-    <div class="panel" style="max-width:420px">
+    <div class="panel" style="width:min(620px,100%);max-height:90vh;overflow:auto">
       <h2 id="overlayTitle">Connecting…</h2>
       <p id="overlayText" class="muted"></p>
+      <div id="finalResults" class="final-results hidden" aria-live="polite"></div>
       <a id="overlayLink" class="button block hidden" href="./student.html">Back</a>
     </div>
   </div>

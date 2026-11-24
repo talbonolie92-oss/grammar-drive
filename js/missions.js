@@ -4,14 +4,14 @@
 // --------------------------------------------------
 
 const STOPS = [
-  { x: 1725, y: 800 },
-  { x: 900, y: 2220 },
-  { x: 2580, y: 800 },
-  { x: 3220, y: 1225 },
-  { x: 300, y: 2220 },
-  { x: 1725, y: 2220 },
-  { x: 2580, y: 230 },
-  { x: 900, y: 230 }
+  { x: 1500, y: 325 },
+  { x: 2800, y: 1325 },
+  { x: 4100, y: 1325 },
+  { x: 5400, y: 2325 },
+  { x: 4100, y: 3325 },
+  { x: 2800, y: 3325 },
+  { x: 1500, y: 3325 },
+  { x: 200, y: 2325 }
 ];
 
 const MISSION_BANK = {
@@ -78,6 +78,12 @@ export function createMission({ grade, topics }) {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
 
+  const routeStops = STOPS.slice();
+  for (let i = routeStops.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [routeStops[i], routeStops[j]] = [routeStops[j], routeStops[i]];
+  }
+
   return {
     id: selected.topic + "-" + Date.now().toString(36),
     topic: selected.topic,
@@ -86,7 +92,7 @@ export function createMission({ grade, topics }) {
     explanation: selected.explanation,
     fragments,
     shuffled,
-    stops: STOPS.slice(0, fragments.length),
+    stops: routeStops.slice(0, fragments.length),
     collected: [],
     assembled: [],
     status: "available"

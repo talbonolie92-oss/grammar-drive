@@ -10,7 +10,8 @@ import {
   ref,
   get,
   update,
-  onValue
+  onValue,
+  serverTimestamp
 } from "./firebase.js";
 
 import {
@@ -25,11 +26,11 @@ import {
 } from "./common.js";
 
 import { createLiveCars, CAR_COLORS, colorFor } from "./multiplayer.js";
-import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChallenge, nearbyGrammarStop } from "./world.js";
+import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChallenge, nearbyDispatch, nearbyRace, nearbyGrammarStop } from "./world.js";
 import { createVehicle, updateVehicle, repairVehicle } from "./vehicle.js";
 import { createMission, nearbyMissionCrate, drawMissionMarkers } from "./missions.js";
 import { createGrammarChallenge } from "./grammar-challenges.js";
-import { initAudio, playSfx, updateEngineSound, stopEngineSound, toggleMuted, isMuted, setVolume, getVolume } from "./audio.js";
+import { initAudio, playSfx, updateEngineSound, stopEngineSound, toggleMuted, isMuted, setVolume, getVolume, toggleMusic, isMusicEnabled } from "./audio.js";
 
 const { auth, db } = studentFirebase();
 const serverNow = serverClock(db);
@@ -43,12 +44,17 @@ const surfaceEl = $("surface");
 const speedEl = $("speed");
 const conditionEl = $("condition");
 const missionHudEl = $("missionHud");
+const raceHudEl = $("raceHud");
+const racePanel = $("racePanel");
+const raceStartButton = $("raceStart");
+const raceCloseButton = $("raceClose");
 const serviceHintEl = $("serviceHint");
 const serviceButton = $("serviceButton");
 const challengeButton = $("challengeButton");
 const challengeHintEl = $("challengeHint");
 const challengePanel = $("challengePanel");
 const missionTopicEl = $("missionTopic");
+const missionBadge = $("missionBadge");
 const missionTitleEl = $("missionTitle");
 const missionBriefingEl = $("missionBriefing");
 const missionCargoStatusEl = $("missionCargoStatus");
@@ -60,6 +66,8 @@ const missionExplanationEl = $("missionExplanation");
 const missionRewardEl = $("missionReward");
 const grammarPanel = $("grammarPanel");
 const grammarTypeEl = $("grammarType");
+const grammarBadge = $("grammarBadge");
+const grammarCloseButton = $("grammarClose");
 const grammarPromptEl = $("grammarPrompt");
 const grammarInstructionEl = $("grammarInstruction");
 const grammarOptionsEl = $("grammarOptions");
@@ -80,14 +88,25 @@ const VEHICLE_PRICES={compact:0,bicycle:150,motorcycle:300,suv:450,jeep:500,truc
 const economy={coins:500,ownedModels:["compact"]};
 const timerEl = $("timer");
 const rosterEl = $("roster");
+const miniMap = $("miniMap");
+const miniCtx = miniMap ? miniMap.getContext("2d") : null;
 const debugEl = $("debug");
 const overlay = $("overlay");
 const overlayTitle = $("overlayTitle");
 const overlayText = $("overlayText");
 const overlayLink = $("overlayLink");
+const finalResultsEl = $("finalResults");
 
 const keys = { left: false, right: false, steer: 0, gas: false, brake: false, reverse: false };
-const car = createVehicle(1800, 1300, 0);
+const car = createVehicle(3000, 2325, 0);
+car.growthScale = 0.5;
+car.targetGrowthScale = 0.5;
+const growthHud = $("growthHud");
+let growthProfile = { xp: 0, missionsCompleted: 0, grammarCorrect: 0 };
+let growthSaveQueue = Promise.resolve();
+let lastGrowthHud = 0;
+let lastMiniMap = 0;
+let lastPublish = 0;
 const CAR_MODELS = {
   compact:{label:"Compact",icon:"🚗",note:"Easy handling",width:36,height:20},
   sport:{label:"Sports Car",icon:"🏎️",note:"Fast and agile",width:43,height:18},
@@ -121,20 +140,75 @@ let lastFrame = 0;
 let lastSave = 0;
 let stopCode = null;
 let stopMe = null;
+let stopResults = null;
+let resultsWaitTimer = 0;
+let finishMessage = "";
 let canvasWidth = 0;
 let canvasHeight = 0;
 let pixelRatio = 1;
 let mission = null;
 let missionBusy = false;
+const RACE_ROUTE = [
+  { x: 5400, y: 2325 },
+  { x: 4100, y: 1325 },
+  { x: 2800, y: 1325 },
+  { x: 1500, y: 2325 },
+  { x: 1500, y: 3325 },
+  { x: 4750, y: 3325 }
+];
+const race = { active: false, next: 0, startedAt: 0, lastHudAt: 0 };
 let grammarChallenge = null;
 let grammarBusy = false;
+let grammarContext = "none";
+let pendingMissionCrate = null;
+let pendingCrateAttemptRewarded = false;
+let raceStartPending = false;
+let raceAttemptRewarded = false;
+let driveUnlocked = false;
+let entryGateShown = false;
+let entryAttemptRewarded = false;
 
 function showOverlay(title, message, showBack = false) {
   overlayTitle.textContent = title;
   overlayText.textContent = message;
+  if (finalResultsEl) {
+    finalResultsEl.textContent = "";
+    finalResultsEl.classList.add("hidden");
+  }
   overlay.style.display = "grid";
   overlayLink.classList.toggle("hidden", !showBack);
   overlayLink.href = "./student.html?code=" + encodeURIComponent(code);
+}
+
+function renderFinalStandings(snapshot) {
+  const data = snapshot && typeof snapshot.val === "function" ? snapshot.val() : snapshot;
+  if (!data || !data.results || !finalResultsEl) return;
+
+  const rows = Object.entries(data.results).map(([playerUid, row]) => ({
+    uid: playerUid,
+    rank: Number(row.rank) || 0,
+    name: String(row.name || "Driver"),
+    classSection: String(row.classSection || ""),
+    score: Number(row.score) || 0,
+    accuracy: Number(row.accuracy) || 0
+  })).sort((a, b) => a.rank - b.rank);
+
+  const mine = rows.find(row => row.uid === uid);
+  const medals = ["🥇", "🥈", "🥉"];
+  const lines = rows.slice(0, 10).map(row =>
+    (medals[row.rank - 1] || "🏁") + "  #" + row.rank + "  " +
+    row.name + (row.classSection ? " · " + row.classSection : "") +
+    " — " + row.score + " pts · " + row.accuracy + "%"
+  );
+
+  finalResultsEl.textContent = "🏆 FINAL CLASS STANDINGS\n" +
+    lines.join("\n") +
+    (rows.length > 10 ? "\n…and " + (rows.length - 10) + " more drivers." : "");
+  finalResultsEl.classList.remove("hidden");
+
+  overlayText.textContent = finishMessage + (mine
+    ? "\n\nYour final result: #" + mine.rank + " · " + mine.score + " points · " + mine.accuracy + "% accuracy."
+    : "");
 }
 
 function hideOverlay() {
@@ -174,27 +248,74 @@ function resizeCanvas() {
   ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 }
 
-function worldToScreen(x, y) {
+function getCamera() {
   // Keep a close driving view instead of shrinking the entire map to fit.
   const scale = Math.max(0.45, Math.min(1, canvasWidth / 1000, canvasHeight / 700));
   const viewW = canvasWidth / scale;
   const viewH = canvasHeight / scale;
   const camX = Math.max(0, Math.min(WORLD.width - viewW, car.x - viewW / 2));
   const camY = Math.max(0, Math.min(WORLD.height - viewH, car.y - viewH / 2));
+  return { scale, viewW, viewH, camX, camY };
+}
+
+function worldToScreen(x, y) {
+  const camera = getCamera();
   return {
-    x: (x - camX) * scale,
-    y: (y - camY) * scale,
-    scale
+    x: (x - camera.camX) * camera.scale,
+    y: (y - camera.camY) * camera.scale,
+    scale: camera.scale
   };
 }
 
-function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "compact") {
+// The city itself is static. Render it once to a compact offscreen canvas,
+// then only copy the visible camera window each animation frame.
+let mapCache = null;
+let mapCacheScale = 0.5;
+
+function createMapCache() {
+  try {
+    const lowMemoryDevice =
+      (Number(navigator.deviceMemory) > 0 && Number(navigator.deviceMemory) <= 4) ||
+      (Number(navigator.hardwareConcurrency) > 0 && Number(navigator.hardwareConcurrency) <= 4) ||
+      Math.min(window.innerWidth, window.innerHeight) < 700;
+    mapCacheScale = lowMemoryDevice ? 0.5 : 0.75;
+
+    const cache = document.createElement("canvas");
+    cache.width = Math.ceil(WORLD.width * mapCacheScale);
+    cache.height = Math.ceil(WORLD.height * mapCacheScale);
+    const cacheCtx = cache.getContext("2d", { alpha: false });
+    if (!cacheCtx) return;
+
+    drawMap(
+      cacheCtx,
+      (x, y) => ({ x: x * mapCacheScale, y: y * mapCacheScale, scale: mapCacheScale }),
+      cache.width,
+      cache.height
+    );
+    mapCache = cache;
+  } catch (error) {
+    // Retain the original renderer if offscreen canvas is unavailable.
+    mapCache = null;
+  }
+}
+
+function scheduleMapCache() {
+  const build = () => createMapCache();
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(build, { timeout: 1500 });
+  } else {
+    window.setTimeout(build, 250);
+  }
+}
+
+function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "compact", growthScale = 0.5) {
   const p = worldToScreen(x, y);
   const scale = p.scale;
   const model = CAR_MODELS[modelKey] || CAR_MODELS.compact;
   const paint=PAINT_COLORS[colorIndex]||PAINT_COLORS[5];
-  const w = Math.max(24, model.width * scale);
-  const h = Math.max(14, model.height * scale);
+  const growthFactor = Math.max(1, Math.min(2, (Number(growthScale) || 0.5) / 0.5));
+  const w = Math.max(24, model.width * scale * growthFactor);
+  const h = Math.max(14, model.height * scale * growthFactor);
   const line = Math.max(1, 1.6 * scale);
 
   ctx.save();
@@ -334,16 +455,134 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
   ctx.fillStyle = isMine ? "#ffffff" : "#f8fafc";
   ctx.fillText(name || "Driver", p.x, p.y - h / 2 - 5);
 }
+function drawRaceMarkers() {
+  if (!race.active) return;
+  RACE_ROUTE.slice(race.next).forEach((checkpoint, index) => {
+    const p = worldToScreen(checkpoint.x, checkpoint.y);
+    const radius = Math.max(9, 20 * p.scale);
+    ctx.save();
+    ctx.strokeStyle = index === 0 ? "#fef08a" : "rgba(253,224,71,.72)";
+    ctx.fillStyle = "rgba(250,204,21,.18)";
+    ctx.lineWidth = Math.max(2, 3 * p.scale);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#fff";
+    ctx.font = "900 " + Math.max(9, 12 * p.scale) + "px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(race.next + index + 1), p.x, p.y);
+    ctx.restore();
+  });
+}
+
 function drawWorld() {
-  drawMap(ctx, worldToScreen, canvasWidth, canvasHeight);
+  if (mapCache) {
+    const camera = getCamera();
+    ctx.drawImage(
+      mapCache,
+      camera.camX * mapCacheScale,
+      camera.camY * mapCacheScale,
+      camera.viewW * mapCacheScale,
+      camera.viewH * mapCacheScale,
+      0,
+      0,
+      canvasWidth,
+      canvasHeight
+    );
+  } else {
+    drawMap(ctx, worldToScreen, canvasWidth, canvasHeight);
+  }
+
   drawMissionMarkers(ctx, worldToScreen, mission);
+  drawRaceMarkers();
 
   for (const [id, item] of others) {
     const pose = live ? live.pose(id) : item;
-    if (pose) drawCar(pose.x, pose.y, pose.a, pose.c, pose.n, false, pose.m || "compact");
+    if (pose) drawCar(pose.x, pose.y, pose.a, pose.c, pose.n, false, pose.m || "compact", pose.g || 0.5);
   }
 
-  drawCar(car.x, car.y, car.a, car.paintIndex, me ? me.name : "You", true, car.model);
+  drawCar(car.x, car.y, car.a, car.paintIndex, me ? me.name : "You", true, car.model, car.growthScale);
+}
+
+function drawMiniMap() {
+  if (!miniCtx || !miniMap) return;
+  const width = miniMap.width;
+  const height = miniMap.height;
+  miniCtx.clearRect(0, 0, width, height);
+
+  const mapScale = Math.min(width / WORLD.width, height / WORLD.height);
+  const drawW = WORLD.width * mapScale;
+  const drawH = WORLD.height * mapScale;
+  const offsetX = (width - drawW) / 2;
+  const offsetY = (height - drawH) / 2;
+
+  if (mapCache) {
+    miniCtx.drawImage(mapCache, offsetX, offsetY, drawW, drawH);
+  } else {
+    miniCtx.fillStyle = "#287447";
+    miniCtx.fillRect(0, 0, width, height);
+    miniCtx.fillStyle = "#3b4858";
+    [250, 1250, 2250, 3250, 4050].forEach(y =>
+      miniCtx.fillRect(offsetX, offsetY + y * mapScale, drawW, Math.max(2, 150 * mapScale))
+    );
+    [200, 1500, 2800, 4100, 5400].forEach(x =>
+      miniCtx.fillRect(offsetX + x * mapScale, offsetY, Math.max(2, 150 * mapScale), drawH)
+    );
+  }
+
+  const point = (x, y) => ({
+    x: offsetX + x * mapScale,
+    y: offsetY + y * mapScale
+  });
+
+  if (race.active) {
+    RACE_ROUTE.slice(race.next).forEach((checkpoint, index) => {
+      const p = point(checkpoint.x, checkpoint.y);
+      miniCtx.fillStyle = index === 0 ? "#fef08a" : "#fbbf24";
+      miniCtx.beginPath();
+      miniCtx.arc(p.x, p.y, 2.8, 0, Math.PI * 2);
+      miniCtx.fill();
+    });
+  }
+
+  if (mission && ["collecting", "return"].includes(mission.status)) {
+    mission.stops.forEach((stop, index) => {
+      if (mission.collected.includes(index)) return;
+      const p = point(stop.x, stop.y);
+      miniCtx.fillStyle = "#fbbf24";
+      miniCtx.beginPath();
+      miniCtx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+      miniCtx.fill();
+    });
+    if (mission.status === "return") {
+      const p = point(4100, 2325);
+      miniCtx.fillStyle = "#fb7185";
+      miniCtx.beginPath();
+      miniCtx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+      miniCtx.fill();
+    }
+  }
+
+  for (const [id, item] of others) {
+    const pose = live ? live.pose(id) : item;
+    if (!pose) continue;
+    const p = point(pose.x, pose.y);
+    miniCtx.fillStyle = CAR_COLORS[pose.c] || "#cbd5e1";
+    miniCtx.beginPath();
+    miniCtx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+    miniCtx.fill();
+  }
+
+  const mine = point(car.x, car.y);
+  miniCtx.fillStyle = "#ffffff";
+  miniCtx.beginPath();
+  miniCtx.arc(mine.x, mine.y, 4, 0, Math.PI * 2);
+  miniCtx.fill();
+  miniCtx.strokeStyle = "#2563eb";
+  miniCtx.lineWidth = 2;
+  miniCtx.stroke();
 }
 
 function renderRoster() {
@@ -366,8 +605,85 @@ function renderRoster() {
   onlineEl.textContent = "Online: " + rows.length;
 }
 
+function openRacePanel() {
+  if (!running || race.active || (mission && ["collecting", "return"].includes(mission.status)) || !nearbyRace(car.x, car.y)) return;
+  racePanel.classList.remove("hidden");
+  playSfx("click");
+  clearControls();
+}
+
+function closeRacePanel() {
+  racePanel.classList.add("hidden");
+}
+
+function startRace() {
+  if (!running || race.active || raceStartPending || !nearbyRace(car.x, car.y)) return;
+  raceStartPending = true;
+  grammarContext = "race-start";
+  if (grammarCloseButton) grammarCloseButton.classList.remove("hidden");
+  pendingMissionCrate = null;
+  grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
+  if (!grammarChallenge) {
+    grammarContext = "none";
+    raceStartPending = false;
+    beginRace();
+    return;
+  }
+  grammarBusy = false;
+  racePanel.classList.add("hidden");
+  grammarPanel.classList.remove("hidden");
+  playSfx("mission");
+  clearControls();
+  renderGrammarChallenge();
+}
+
+function beginRace() {
+  if (!running || race.active || !nearbyRace(car.x, car.y)) return;
+  raceStartPending = false;
+  raceAttemptRewarded = false;
+  race.active = true;
+  race.next = 0;
+  race.startedAt = Date.now();
+  race.lastHudAt = 0;
+  racePanel.classList.add("hidden");
+  raceHudEl.classList.remove("hidden");
+  raceHudEl.textContent = "🏁 Checkpoint 1 / " + RACE_ROUTE.length;
+  playSfx("mission");
+  clearControls();
+}
+
+function updateRace() {
+  if (!race.active) return;
+  const checkpoint = RACE_ROUTE[race.next];
+  if (!checkpoint) return;
+  const distance = Math.hypot(checkpoint.x - car.x, checkpoint.y - car.y);
+  const elapsed = (Date.now() - race.startedAt) / 1000;
+  if (distance <= 135) {
+    race.next += 1;
+    playSfx("collect");
+    if (race.next >= RACE_ROUTE.length) {
+      race.active = false;
+      const finalTime = ((Date.now() - race.startedAt) / 1000).toFixed(1);
+      economy.coins += 50;
+      saveVehicleProfile();
+      updateWalletDisplay();
+      void grantGrowthXp(50, "race");
+      raceHudEl.textContent = "🏁 Circuit complete · " + finalTime + "s · +50 XP";
+      playSfx("reward");
+      window.setTimeout(() => raceHudEl.classList.add("hidden"), 8000);
+    } else {
+      race.lastHudAt = Date.now();
+      raceHudEl.textContent = "🏁 Checkpoint " + (race.next + 1) + " / " + RACE_ROUTE.length + " · " + elapsed.toFixed(1) + "s";
+    }
+  } else if (Date.now() - race.lastHudAt >= 250) {
+    race.lastHudAt = Date.now();
+    raceHudEl.textContent = "🏁 Checkpoint " + (race.next + 1) + " / " + RACE_ROUTE.length + " · " + elapsed.toFixed(1) + "s";
+  }
+}
+
 function updateCar(dt) {
   updateVehicle(car, keys, dt, { isOnRoad, collidesWithWorld });
+  updateRace();
   surfaceEl.textContent = car.onRoad ? "ROAD" : "OFF-ROAD";
   surfaceEl.style.borderColor = car.onRoad ? "#22c55e" : "#f59e0b";
   speedEl.textContent = Math.round(Math.abs(car.s) * 0.32) + " km/h";
@@ -376,19 +692,28 @@ function updateCar(dt) {
 
   const service = nearbyService(car.x, car.y);
   const challenge = nearbyChallenge(car.x, car.y);
+  const dispatch = nearbyDispatch(car.x, car.y);
   const grammarStop = nearbyGrammarStop(car.x, car.y);
   const crate = nearbyMissionCrate(car.x, car.y, mission);
+  const missionActive = mission && ["collecting", "return"].includes(mission.status);
   carSelectWrap.classList.add("hidden");
-  serviceButton.classList.toggle("hidden",!service);serviceHintEl.classList.toggle("hidden",!service);
-  if(service){const action=service.type==="shop"?"OPEN CAR SHOP":"REPAIR";serviceHintEl.textContent=service.name+" · Press E or tap "+action;serviceButton.textContent=action;serviceButton.dataset.service=service.type;}
+  const canUseService = !!service && !race.active && !(service.type === "race" && missionActive);
+  serviceButton.classList.toggle("hidden", !canUseService);
+  serviceHintEl.classList.toggle("hidden", !canUseService);
+  if (canUseService) {
+    const action = service.type === "shop" ? "OPEN CAR SHOP" : service.type === "race" ? "START RACE" : "REPAIR";
+    serviceHintEl.textContent = service.name + " · Press E or tap " + action;
+    serviceButton.textContent = action;
+    serviceButton.dataset.service = service.type;
+  }
   const missionOpen = challengePanel.classList.contains("hidden") === false;
   const grammarOpen = grammarPanel && !grammarPanel.classList.contains("hidden");
-  const canInteract = !!crate || !!challenge || !!grammarStop;
-  const missionActive = mission && ["collecting", "return"].includes(mission.status);
+  const needsDispatch = mission && mission.status === "return";
+  const canInteract = !race.active && (!!crate || !!grammarStop || (needsDispatch ? !!dispatch : !!challenge));
   missionHudEl.classList.toggle("hidden", !missionActive);
   if (missionActive) {
     const target = mission.status === "return"
-      ? { x: 1940, y: 1420 }
+      ? { x: 4100, y: 2325 }
       : mission.stops.find((stop, index) => !mission.collected.includes(index));
     if (target) {
       const dx = target.x - car.x;
@@ -407,24 +732,26 @@ function updateCar(dt) {
   challengeButton.classList.toggle("hidden", !canInteract || missionOpen || grammarOpen || !running);
   challengeHintEl.classList.toggle("hidden", !canInteract || missionOpen || grammarOpen || !running);
   if (crate) {
-    challengeButton.textContent = "Collect Cargo";
-    challengeHintEl.textContent = "Message Crate " + (crate.index + 1) + " · Press E or tap Collect Cargo";
+    challengeButton.textContent = "Unlock Cargo";
+    challengeHintEl.textContent = "Message Crate " + (crate.index + 1) + " · Solve a grammar challenge to unlock this cargo";
   } else if (grammarStop) {
     challengeButton.textContent = "Grammar Challenge";
     challengeHintEl.textContent = grammarStop.name + " · Stop and answer a quick grammar challenge";
+  } else if (dispatch && mission && mission.status === "return") {
+    challengeButton.textContent = "Open City Dispatch";
+    challengeHintEl.textContent = "City Dispatch · Stop here to arrange and deliver your recovered message";
   } else if (challenge) {
-    challengeButton.textContent = mission && mission.status === "return" ? "Return Message" : "Open Dispatch";
-    challengeHintEl.textContent = mission && mission.status === "collecting"
-      ? "City Dispatch · Cargo " + mission.collected.length + "/" + mission.fragments.length
-      : "City Dispatch · Press E or tap Open Dispatch";
+    challengeButton.textContent = "Open Mission Board";
+    challengeHintEl.textContent = "City Center · Choose a mission and collect grammar cargo across the districts";
   }
 }
 
 function useNearbyService() {
-  if (!running) return;
+  if (!running || race.active) return;
   const service = nearbyService(car.x, car.y);
   if (!service) return;
   if(service.type==="shop"){openCarShop();return;}
+  if(service.type==="race"){openRacePanel();return;}
   if(service.type==="repair"){repairVehicle(car);playSfx("repair");}
   saveVehicleProfile();updateCar(0.001);
 }
@@ -452,8 +779,31 @@ function loadMissionState() {
   saveMissionState();
 }
 
+function openEntryGrammarGate() {
+  if (entryGateShown || !running) return;
+  entryGateShown = true;
+  driveUnlocked = false;
+  grammarContext = "entry-gate";
+  pendingMissionCrate = null;
+  grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
+  if (!grammarChallenge) {
+    grammarContext = "none";
+    driveUnlocked = true;
+    return;
+  }
+  grammarBusy = false;
+  if (grammarCloseButton) grammarCloseButton.classList.add("hidden");
+  grammarPanel.classList.remove("hidden");
+  playSfx("mission");
+  clearControls();
+  renderGrammarChallenge();
+}
+
 function openGrammarPanel() {
-  if (!running || !nearbyGrammarStop(car.x, car.y) || !grammarPanel) return;
+  if (!running || !driveUnlocked || race.active || !nearbyGrammarStop(car.x, car.y) || !grammarPanel) return;
+  grammarContext = "roadside";
+  if (grammarCloseButton) grammarCloseButton.classList.remove("hidden");
+  pendingMissionCrate = null;
   grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
   if (!grammarChallenge) return;
   grammarBusy = false;
@@ -464,17 +814,34 @@ function openGrammarPanel() {
 }
 
 function closeGrammarPanel() {
-  if (grammarBusy) return;
+  if (grammarBusy || grammarContext === "entry-gate") return;
   if (grammarPanel) grammarPanel.classList.add("hidden");
   grammarChallenge = null;
+  grammarContext = "none";
+  raceStartPending = false;
 }
 
 function renderGrammarChallenge() {
   if (!grammarChallenge) return;
   const challenge = grammarChallenge;
   grammarTypeEl.textContent = "GRADE " + codeInfo.grade + " · " + challenge.topic + " · " + challenge.mode.toUpperCase();
+  if (grammarBadge) {
+    grammarBadge.textContent = grammarContext === "entry-gate"
+      ? "START-UP CHECK · REQUIRED GRAMMAR"
+      : grammarContext === "mission-crate"
+        ? "CARGO LOCK · REQUIRED GRAMMAR"
+        : grammarContext === "race-start"
+          ? "RACE GATE · REQUIRED GRAMMAR"
+          : "ROADSIDE GRAMMAR";
+  }
   grammarPromptEl.textContent = challenge.prompt;
-  grammarInstructionEl.textContent = challenge.instruction;
+  grammarInstructionEl.textContent = grammarContext === "entry-gate"
+    ? "Answer correctly to start your engine and open the road. You cannot drive until this check is cleared."
+    : grammarContext === "mission-crate"
+      ? "Answer correctly to unlock this cargo crate. Try a new question if you make a mistake."
+      : grammarContext === "race-start"
+        ? "Answer correctly to unlock the Race Club time trial. A new question is available if you make a mistake."
+        : challenge.instruction;
   grammarFeedbackEl.className = "message hidden";
   grammarFeedbackEl.textContent = "";
   grammarExplanationEl.textContent = "";
@@ -550,14 +917,43 @@ async function submitGrammarChallenge() {
     const nextAnswered = (Number(progress.answered) || 0) + 1;
     await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
     me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
+    challenge.completedCorrectly = correct;
+    if (correct) {
+      await grantGrowthXp(20, "grammar-correct");
+    } else if (grammarContext === "mission-crate") {
+      if (!pendingCrateAttemptRewarded) {
+        pendingCrateAttemptRewarded = true;
+        await grantGrowthXp(5, "grammar-attempt");
+      }
+    } else if (grammarContext === "race-start") {
+      if (!raceAttemptRewarded) {
+        raceAttemptRewarded = true;
+        await grantGrowthXp(5, "grammar-attempt");
+      }
+    } else if (grammarContext === "entry-gate") {
+      if (!entryAttemptRewarded) {
+        entryAttemptRewarded = true;
+        await grantGrowthXp(5, "grammar-attempt");
+      }
+    } else if (!challenge.xpAttemptRewarded) {
+      challenge.xpAttemptRewarded = true;
+      await grantGrowthXp(5, "grammar-attempt");
+    }
 
     grammarFeedbackEl.className = correct ? "message success" : "message warn";
     grammarFeedbackEl.textContent = correct
-      ? "Correct! +15 points. Great driving, great grammar!"
+      ? (grammarContext === "mission-crate" ? "Correct! Cargo unlocked. +15 points." : "Correct! +15 points. Great driving, great grammar!")
       : "Not quite. No points this time, but here's the rule to remember.";
     grammarExplanationEl.textContent = challenge.explanation;
     playSfx(correct ? "correct" : "wrong");
     grammarCheckButton.classList.add("hidden");
+    grammarNextButton.textContent = grammarContext === "mission-crate"
+      ? (correct ? "Unlock Cargo →" : "Try Again →")
+      : grammarContext === "race-start"
+        ? (correct ? "Start Race →" : "Try Again →")
+        : grammarContext === "entry-gate"
+          ? (correct ? "Start Driving →" : "Try Again →")
+          : "Next Challenge →";
     grammarNextButton.classList.remove("hidden");
     grammarUndoButton.classList.add("hidden");
   } catch (error) {
@@ -570,14 +966,45 @@ async function submitGrammarChallenge() {
 }
 
 function nextGrammarChallenge() {
-  if (!running) return;
+  if (!running || grammarBusy) return;
+  if (grammarContext === "entry-gate" && grammarChallenge && grammarChallenge.completedCorrectly) {
+    grammarPanel.classList.add("hidden");
+    grammarChallenge = null;
+    grammarContext = "none";
+    driveUnlocked = true;
+    entryAttemptRewarded = false;
+    if (grammarCloseButton) grammarCloseButton.classList.remove("hidden");
+    playSfx("reward");
+    return;
+  }
+  if (grammarContext === "mission-crate" && grammarChallenge && grammarChallenge.completedCorrectly) {
+    const crate = pendingMissionCrate;
+    grammarPanel.classList.add("hidden");
+    grammarChallenge = null;
+    grammarContext = "none";
+    pendingMissionCrate = null;
+    pendingCrateAttemptRewarded = false;
+    completeMissionCrate(crate);
+    return;
+  }
+  if (grammarContext === "race-start" && grammarChallenge && grammarChallenge.completedCorrectly) {
+    grammarPanel.classList.add("hidden");
+    grammarChallenge = null;
+    grammarContext = "none";
+    beginRace();
+    return;
+  }
   grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
   renderGrammarChallenge();
 }
 
 function openMissionPanel() {
-  if (!running || !nearbyChallenge(car.x, car.y) || challengePanel.classList.contains("hidden") === false) return;
+  const atMissionBoard = nearbyChallenge(car.x, car.y);
+  const atDispatch = nearbyDispatch(car.x, car.y);
+  const validLocation = mission && mission.status === "return" ? atDispatch : atMissionBoard;
+  if (!running || race.active || !validLocation || challengePanel.classList.contains("hidden") === false) return;
   if (!mission) loadMissionState();
+  if (missionBadge) missionBadge.textContent = nearbyDispatch(car.x, car.y) ? "CITY DISPATCH · DELIVERY" : "CITY CENTER · MISSION BOARD";
   challengePanel.classList.remove("hidden");
   playSfx("click");
   clearControls();
@@ -601,17 +1028,17 @@ function renderMissionPanel() {
   missionPuzzleEl.classList.toggle("hidden", mission.status !== "return");
   missionSubmitButton.disabled = missionBusy;
   missionUndoButton.disabled = missionBusy;
-  missionRewardEl.textContent = "Mission reward: +30 points · +30 coins";
+  missionRewardEl.textContent = "Mission reward: +30 points · +30 coins · +100 XP";
 
   if (mission.status === "available") {
-    missionBriefingEl.textContent += " Drive to each glowing crate marker, collect all message fragments, then return here.";
+    missionBriefingEl.textContent += " Drive to each glowing crate marker, collect all message fragments, then return to City Dispatch.";
     missionActionButton.textContent = "Start Mission";
     missionActionButton.classList.remove("hidden");
   } else if (mission.status === "collecting") {
-    missionBriefingEl.textContent = "Your mission is active. Close Dispatch, drive to the glowing cargo markers, and press E or Collect Cargo at each stop.";
+    missionBriefingEl.textContent = "Your mission is active. Drive to each glowing cargo marker. Every crate is locked by a grammar challenge; answer correctly to collect it. Return to City Dispatch when all cargo is recovered.";
     missionActionButton.classList.add("hidden");
   } else if (mission.status === "return") {
-    missionBriefingEl.textContent = "All cargo recovered. Now arrange the fragments to reconstruct the original message.";
+    missionBriefingEl.textContent = "All cargo recovered. Return to City Dispatch and arrange the fragments to reconstruct the original message.";
     missionActionButton.classList.add("hidden");
     renderMissionBuilder();
   } else if (mission.status === "complete") {
@@ -619,7 +1046,7 @@ function renderMissionPanel() {
     missionCargoStatusEl.textContent = "All cargo delivered";
     missionExplanationEl.textContent = mission.explanation;
     missionFeedbackEl.className = "message success";
-    missionFeedbackEl.textContent = "MISSION COMPLETE · +30 POINTS";
+    missionFeedbackEl.textContent = "MISSION COMPLETE · +30 POINTS · +100 XP";
     missionActionButton.textContent = "Start Another Mission";
     missionActionButton.classList.remove("hidden");
   }
@@ -671,6 +1098,26 @@ function startMission() {
 }
 
 function collectMissionCrate(crate) {
+  if (!mission || mission.status !== "collecting" || !crate || grammarBusy) return;
+  if (mission.collected.includes(crate.index)) return;
+  pendingMissionCrate = crate;
+  grammarContext = "mission-crate";
+  if (grammarCloseButton) grammarCloseButton.classList.remove("hidden");
+  grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
+  if (!grammarChallenge) {
+    grammarContext = "none";
+    pendingMissionCrate = null;
+    completeMissionCrate(crate);
+    return;
+  }
+  grammarBusy = false;
+  grammarPanel.classList.remove("hidden");
+  playSfx("mission");
+  clearControls();
+  renderGrammarChallenge();
+}
+
+function completeMissionCrate(crate) {
   if (!mission || mission.status !== "collecting" || !crate) return;
   if (mission.collected.includes(crate.index)) return;
   mission.collected.push(crate.index);
@@ -679,7 +1126,7 @@ function collectMissionCrate(crate) {
   mission.lastRecovered = recovered.text;
   if (mission.collected.length >= mission.fragments.length) mission.status = "return";
   saveMissionState();
-  challengeHintEl.textContent = "Recovered: " + recovered.text + " · " + mission.collected.length + "/" + mission.fragments.length;
+  challengeHintEl.textContent = "Grammar cleared · Recovered: " + recovered.text + " · " + mission.collected.length + "/" + mission.fragments.length;
   challengeHintEl.classList.remove("hidden");
   challengeButton.classList.add("hidden");
   updateCar(0.001);
@@ -713,6 +1160,7 @@ async function deliverMission() {
   try {
     await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
     me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
+    await grantGrowthXp(100, "mission");
     mission.status = "complete";
     playSfx("reward");
     economy.coins += 30;
@@ -737,7 +1185,7 @@ function startAnotherMission() {
 }
 
 function interactMission() {
-  if (!running || challengePanel.classList.contains("hidden") === false || (grammarPanel && !grammarPanel.classList.contains("hidden"))) return;
+  if (!running || race.active || challengePanel.classList.contains("hidden") === false || (grammarPanel && !grammarPanel.classList.contains("hidden"))) return;
   const crate = nearbyMissionCrate(car.x, car.y, mission);
   if (crate) {
     collectMissionCrate(crate);
@@ -745,6 +1193,10 @@ function interactMission() {
   }
   if (nearbyGrammarStop(car.x, car.y)) {
     openGrammarPanel();
+    return;
+  }
+  if (mission && mission.status === "return") {
+    if (nearbyDispatch(car.x, car.y)) openMissionPanel();
     return;
   }
   if (nearbyChallenge(car.x, car.y)) openMissionPanel();
@@ -785,7 +1237,7 @@ function renderCarShop(){
  carShopApply.textContent=owned?"Use this vehicle":(economy.coins>=price?"Buy for "+price+" coins":"Need "+(price-economy.coins)+" more coins");
  carShopApply.disabled=!owned&&economy.coins<price;
 }
-function openCarShop(){const s=nearbyService(car.x,car.y);if(!running||!s||s.type!=="shop")return;pendingModel=car.model;pendingPaint=car.paintIndex;renderCarShop();carShopPanel.classList.remove("hidden");playSfx("click");clearControls();}
+function openCarShop(){const s=nearbyService(car.x,car.y);if(!running||race.active||!s||s.type!=="shop")return;pendingModel=car.model;pendingPaint=car.paintIndex;renderCarShop();carShopPanel.classList.remove("hidden");playSfx("click");clearControls();}
 function closeCarShop(){carShopPanel.classList.add("hidden");}
 function applyCarShopSelection(){
  if(!running||!CAR_MODELS[pendingModel]||!PAINT_COLORS[pendingPaint])return;
@@ -797,9 +1249,90 @@ function applyCarShopSelection(){
  }
  car.model=pendingModel;car.paintIndex=pendingPaint;car.s=0;
  saveVehicleProfile();updateWalletDisplay();
- if(live){live.publish({x:car.x,y:car.y,a:car.a,s:car.s,m:car.model});live.publishNow();}
+ if(live){live.publish({x:car.x,y:car.y,a:car.a,s:car.s,m:car.model,g:car.growthScale});live.publishNow();}
  closeCarShop();updateCar(.001);
 }
+function growthScaleForXp(xp) {
+  return Math.min(1, 0.5 + Math.max(0, Number(xp) || 0) * 0.0005);
+}
+
+function updateGrowthHud() {
+  if (!growthHud) return;
+  growthHud.textContent = "🚗 Growth " + Math.round(car.growthScale * 100) + "% · " + growthProfile.xp + " XP";
+}
+
+function applyGrowthProfile(value) {
+  growthProfile = {
+    xp: Math.max(0, Math.floor(Number(value.xp) || 0)),
+    missionsCompleted: Math.max(0, Math.floor(Number(value.missionsCompleted) || 0)),
+    grammarCorrect: Math.max(0, Math.floor(Number(value.grammarCorrect) || 0))
+  };
+  car.targetGrowthScale = growthScaleForXp(growthProfile.xp);
+  car.growthScale = car.targetGrowthScale;
+  try {
+    localStorage.setItem("gd_growth_profile_" + uid, JSON.stringify(growthProfile));
+  } catch (error) {}
+  updateGrowthHud();
+}
+
+async function loadGrowthProfile() {
+  if (!uid) return;
+  try {
+    const local = JSON.parse(localStorage.getItem("gd_growth_profile_" + uid) || "null");
+    if (local && typeof local === "object") applyGrowthProfile(local);
+  } catch (error) {}
+
+  try {
+    const snapshot = await get(ref(db, "vehicleProfiles/" + uid));
+    if (snapshot.exists()) {
+      applyGrowthProfile(snapshot.val());
+    } else {
+      await update(ref(db), {
+        ["vehicleProfiles/" + uid]: {
+          xp: 0,
+          missionsCompleted: 0,
+          grammarCorrect: 0,
+          updatedAt: serverTimestamp()
+        }
+      });
+    }
+  } catch (error) {
+    // Local progress remains playable if profile rules have not been published yet.
+  }
+}
+
+async function grantGrowthXp(amount, reason) {
+  const reward = Math.max(0, Math.min(100, Math.floor(Number(amount) || 0)));
+  if (!reward || !uid) return;
+  const previousScale = growthScaleForXp(growthProfile.xp);
+  growthProfile.xp += reward;
+  if (reason === "mission") growthProfile.missionsCompleted += 1;
+  if (reason === "grammar-correct") growthProfile.grammarCorrect += 1;
+  car.targetGrowthScale = growthScaleForXp(growthProfile.xp);
+
+  try {
+    localStorage.setItem("gd_growth_profile_" + uid, JSON.stringify(growthProfile));
+  } catch (error) {}
+  updateGrowthHud();
+
+  const payload = {
+    xp: growthProfile.xp,
+    missionsCompleted: growthProfile.missionsCompleted,
+    grammarCorrect: growthProfile.grammarCorrect,
+    updatedAt: serverTimestamp()
+  };
+  growthSaveQueue = growthSaveQueue
+    .catch(() => {})
+    .then(() => update(ref(db, "vehicleProfiles/" + uid), payload));
+  try {
+    await growthSaveQueue;
+  } catch (error) {
+    // Keep local XP if database profile access is not available.
+  }
+
+  if (car.targetGrowthScale - previousScale >= 0.05) playSfx("evolve");
+}
+
 function profileStorageKey() { return "gd_vehicle_profile_" + uid; }
 
 function saveVehicleProfile() {
@@ -830,16 +1363,32 @@ function frame(timestamp) {
   if (finished) return;
   const dt = Math.min(0.05, lastFrame ? (timestamp - lastFrame) / 1000 : 0);
   lastFrame = timestamp;
+  const growthEase = Math.min(1, dt * 3.5);
+  car.growthScale += (car.targetGrowthScale - car.growthScale) * growthEase;
+  if (Math.abs(car.targetGrowthScale - car.growthScale) < 0.001) car.growthScale = car.targetGrowthScale;
+  if (timestamp - lastGrowthHud > 500) {
+    lastGrowthHud = timestamp;
+    updateGrowthHud();
+  }
+  if (timestamp - lastMiniMap > 200) {
+    lastMiniMap = timestamp;
+    drawMiniMap();
+  }
 
   const modalOpen =
+    !driveUnlocked ||
     challengePanel.classList.contains("hidden") === false ||
     (grammarPanel && grammarPanel.classList.contains("hidden") === false) ||
-    carShopPanel.classList.contains("hidden") === false;
+    carShopPanel.classList.contains("hidden") === false ||
+    racePanel.classList.contains("hidden") === false;
 
   if (running && !modalOpen) {
     updateEngineSound(car.s, keys.gas);
     updateCar(dt);
-    if (live) live.publish({ x: car.x, y: car.y, a: car.a, s: car.s, m: car.model });
+    if (live && timestamp - lastPublish >= 50) {
+      lastPublish = timestamp;
+      live.publish({ x: car.x, y: car.y, a: car.a, s: car.s, m: car.model, g: car.growthScale });
+    }
     if (timestamp - lastSave > 1000) {
       lastSave = timestamp;
       try {
@@ -875,6 +1424,14 @@ function cleanupListeners() {
     stopMe();
     stopMe = null;
   }
+  if (stopResults) {
+    stopResults();
+    stopResults = null;
+  }
+  if (resultsWaitTimer) {
+    clearTimeout(resultsWaitTimer);
+    resultsWaitTimer = 0;
+  }
   if (rafId) {
     cancelAnimationFrame(rafId);
     rafId = 0;
@@ -889,6 +1446,7 @@ async function finish(title, message, showBack = true) {
   if (finished) return;
   finished = true;
   running = false;
+  finishMessage = message;
   stopEngineSound();
   cleanupListeners();
   if (live) {
@@ -896,6 +1454,38 @@ async function finish(title, message, showBack = true) {
     live = null;
   }
   showOverlay(title, message, showBack);
+
+  const shouldShowResults = codeInfo &&
+    (title === "Time's Up!" || (codeInfo.status === "ended" && !!codeInfo.startedAt));
+  if (shouldShowResults && sessionId && finalResultsEl) {
+    finalResultsEl.textContent = "Waiting for the teacher to publish the final standings…";
+    finalResultsEl.classList.remove("hidden");
+    stopResults = onValue(
+      ref(db, "publicResults/" + sessionId),
+      (snap) => {
+        if (snap.exists()) {
+          if (resultsWaitTimer) {
+            clearTimeout(resultsWaitTimer);
+            resultsWaitTimer = 0;
+          }
+          renderFinalStandings(snap);
+        }
+      },
+      () => {
+        if (resultsWaitTimer) {
+          clearTimeout(resultsWaitTimer);
+          resultsWaitTimer = 0;
+        }
+        finalResultsEl.textContent = "Final standings are available from your teacher's dashboard.";
+      }
+    );
+    resultsWaitTimer = window.setTimeout(() => {
+      resultsWaitTimer = 0;
+      if (finalResultsEl && finalResultsEl.textContent.startsWith("Waiting for the teacher")) {
+        finalResultsEl.textContent = "The final standings are taking longer than expected. Please ask your teacher to keep the dashboard open until the results are saved.";
+      }
+    }, 12000);
+  }
 }
 
 function applyStatus() {
@@ -916,7 +1506,9 @@ function applyStatus() {
   }
 
   if (status === "running") {
+    const justStarted = !running;
     running = true;
+    if (justStarted && !entryGateShown) openEntryGrammarGate();
     if (live) live.setEnabled(true);
     renderRoster();
     hideOverlay();
@@ -942,6 +1534,10 @@ function onKeyDown(event) {
   }
   if (!carShopPanel.classList.contains("hidden")) {
     if (key === "escape") closeCarShop();
+    return;
+  }
+  if (racePanel && !racePanel.classList.contains("hidden")) {
+    if (key === "escape") closeRacePanel();
     return;
   }
   if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) event.preventDefault();
@@ -1055,8 +1651,10 @@ function bindSteeringJoystick() {
 }
 async function start() {
   resizeCanvas();
+  scheduleMapCache();
   const soundButton = $("soundToggle");
   const soundVolume = $("soundVolume");
+  const musicButton = $("musicToggle");
   const refreshSoundButton = () => {
     if (soundButton) {
       soundButton.textContent = isMuted() ? "🔇 Sound Off" : "🔊 Sound On";
@@ -1072,6 +1670,19 @@ async function start() {
       toggleMuted();
       refreshSoundButton();
       if (!isMuted()) playSfx("click");
+    });
+  }
+  if (musicButton) {
+    const refreshMusicButton = () => {
+      musicButton.textContent = isMusicEnabled() ? "🎵 Music On" : "🎵 Music Off";
+      musicButton.setAttribute("aria-pressed", String(isMusicEnabled()));
+    };
+    refreshMusicButton();
+    musicButton.addEventListener("click", () => {
+      initAudio();
+      toggleMusic();
+      refreshMusicButton();
+      if (isMusicEnabled()) playSfx("click");
     });
   }
   if (soundVolume) {
@@ -1113,6 +1724,8 @@ async function start() {
     renderMissionBuilder();
   });
   $("carShopClose").addEventListener("click",closeCarShop);
+  raceStartButton.addEventListener("click", startRace);
+  raceCloseButton.addEventListener("click", closeRacePanel);
   $("carShopApply").addEventListener("click",applyCarShopSelection);
   carShopPanel.addEventListener("click",event=>{if(event.target===carShopPanel)closeCarShop();});
   renderCarShop();
@@ -1133,6 +1746,7 @@ async function start() {
     if (!auth.currentUser) await signInAnonymously(auth);
     uid = auth.currentUser.uid;
     loadVehicleProfile();
+    await loadGrowthProfile();
 
     const codeSnap = await get(ref(db, paths.joinCode(code)));
     if (!codeSnap.exists()) throw new Error("This game link is no longer valid.");
@@ -1156,11 +1770,11 @@ async function start() {
           car.x = sx; car.y = sy; car.a = Number(saved.a) || 0;
           car.safeX = sx; car.safeY = sy;
         } else {
-          car.x = 1800; car.y = 1300; car.a = 0;
+          car.x = 3000; car.y = 2325; car.a = 0;
         }
       } else {
-        car.x = 1800 + (Math.random() - .5) * 110;
-        car.y = 1300 + (Math.random() - .5) * 90;
+        car.x = 3000 + (Math.random() - .5) * 110;
+        car.y = 2325 + (Math.random() - .5) * 90;
       }
     } catch (error) {}
 
@@ -1182,7 +1796,7 @@ async function start() {
       }
     });
 
-    live.publish({ x: car.x, y: car.y, a: car.a, s: 0, m: car.model });
+    live.publish({ x: car.x, y: car.y, a: car.a, s: 0, m: car.model, g: car.growthScale });
     live.start();
     live.setEnabled(codeInfo.status === "running");
 

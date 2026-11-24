@@ -10,9 +10,13 @@ let engineGain = null;
 let muted = false;
 let volumeLevel = 0.55;
 let lastEngineUpdate = 0;
+let musicEnabled = true;
+let musicTimer = null;
+let musicStep = 0;
 
 try {
   muted = localStorage.getItem("gd_sound_muted") === "true";
+  musicEnabled = localStorage.getItem("gd_music_enabled") !== "false";
   const savedVolume = Number(localStorage.getItem("gd_sound_volume"));
   if (Number.isFinite(savedVolume)) volumeLevel = Math.max(0, Math.min(1, savedVolume));
 } catch (error) {}
@@ -48,6 +52,65 @@ function ensureAudio() {
 
 export function initAudio() {
   ensureAudio();
+  if (musicEnabled) startBackgroundMusic();
+}
+
+const MUSIC_MELODY = [523, 659, 784, 659, 587, 698, 880, 698, 523, 659, 784, 1047, 880, 784, 659, 523];
+const MUSIC_BASS = [131, 131, 165, 165, 147, 147, 175, 175, 131, 131, 165, 165, 147, 147, 175, 175];
+
+function musicTone(frequency, startAt, duration, level, type) {
+  if (!audioContext || !masterGain || muted) return;
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, startAt);
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(level, startAt + 0.025);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+  oscillator.connect(gain);
+  gain.connect(masterGain);
+  oscillator.start(startAt);
+  oscillator.stop(startAt + duration + 0.02);
+}
+
+function playMusicStep() {
+  if (!musicEnabled || !audioContext || muted) return;
+  const now = audioContext.currentTime + 0.025;
+  const index = musicStep % MUSIC_MELODY.length;
+  musicTone(MUSIC_MELODY[index], now, 0.24, 0.022, "triangle");
+  if (musicStep % 2 === 0) musicTone(MUSIC_BASS[index], now, 0.34, 0.012, "sine");
+  musicStep += 1;
+}
+
+export function startBackgroundMusic() {
+  const ctx = ensureAudio();
+  if (!ctx || !musicEnabled || musicTimer) return;
+  musicStep = 0;
+  playMusicStep();
+  musicTimer = setInterval(playMusicStep, 300);
+}
+
+export function stopBackgroundMusic() {
+  if (musicTimer) {
+    clearInterval(musicTimer);
+    musicTimer = null;
+  }
+}
+
+export function setMusicEnabled(value) {
+  musicEnabled = !!value;
+  try { localStorage.setItem("gd_music_enabled", String(musicEnabled)); } catch (error) {}
+  if (musicEnabled) startBackgroundMusic();
+  else stopBackgroundMusic();
+  return musicEnabled;
+}
+
+export function toggleMusic() {
+  return setMusicEnabled(!musicEnabled);
+}
+
+export function isMusicEnabled() {
+  return musicEnabled;
 }
 
 export function setMuted(value) {
@@ -90,6 +153,7 @@ export function playSfx(name) {
     correct: [523, 659, 784, 1047],
     wrong: [260, 210],
     reward: [660, 784, 988, 1318],
+    evolve: [392, 523, 659, 784, 1047, 1318],
     purchase: [440, 660, 880],
     repair: [392, 523, 659],
     mission: [523, 659, 784, 988, 1175]
@@ -100,7 +164,7 @@ export function playSfx(name) {
   notes.forEach((frequency, index) => {
     const oscillator = ctx.createOscillator();
     const gain = ctx.createGain();
-    oscillator.type = name === "wrong" ? "triangle" : "sine";
+    oscillator.type = name === "wrong" || name === "evolve" ? "triangle" : "sine";
     oscillator.frequency.setValueAtTime(frequency, now + index * 0.075);
     gain.gain.setValueAtTime(0.0001, now + index * 0.075);
     gain.gain.exponentialRampToValueAtTime(0.16, now + index * 0.075 + 0.012);

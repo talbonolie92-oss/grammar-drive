@@ -26,7 +26,7 @@ export const MP = Object.freeze({
   DELAY_MS: 750,
   STALE_MS: 12000,
   EXTRAPOLATE_MS: 400,
-  WORLD_MAX: 4000
+  WORLD_MAX: 6500
 });
 
 export const CAR_COLORS = [
@@ -108,7 +108,8 @@ export function createLiveCars(options) {
     const a = wrapAngle(Number(state.a) || 0);
     const s = clamp(Number(state.s) || 0, -1500, 1500);
     const model = ["compact", "sport", "suv", "truck", "motorcycle", "bicycle", "jeep", "police"].includes(state.m) ? state.m : "compact";
-    return { x, y, a, s, m: model };
+    const growth = clamp(Number(state.g) || 0.5, 0.5, 1);
+    return { x, y, a, s, m: model, g: growth };
   }
 
   function currentName() {
@@ -128,6 +129,7 @@ export function createLiveCars(options) {
       a: p.a,
       s: p.s,
       m: p.m,
+      g: p.g,
       c: currentColor(),
       n: currentName(),
       t: serverTimestamp()
@@ -142,6 +144,7 @@ export function createLiveCars(options) {
       a: p.a,
       s: p.s,
       m: p.m,
+      g: p.g,
       c: currentColor(),
       // Keep the display name synchronized with teacher renames.
       n: currentName(),
@@ -205,6 +208,7 @@ export function createLiveCars(options) {
       a: Number(value.a) || 0,
       s: Number(value.s) || 0,
       m: ["compact", "sport", "suv", "truck", "motorcycle", "bicycle", "jeep", "police"].includes(value.m) ? value.m : "compact",
+      g: clamp(Number(value.g) || 0.5, 0.5, 1),
       c: Number.isInteger(value.c) ? value.c : colorFor(carUid),
       n: String(value.n || "Driver"),
       t: Number(value.t) || serverNow()
@@ -314,8 +318,9 @@ export function createLiveCars(options) {
 
   function publish(state) {
     if (stopped || !state) return;
+    // Keep only the latest pose here. The existing 100 ms scheduler handles
+    // network writes at SEND_MS/HEARTBEAT_MS, avoiding a tick call every frame.
     latest = normalizedState(state);
-    if (enabled) void tick(false);
   }
 
   function publishNow() {
@@ -350,7 +355,8 @@ export function createLiveCars(options) {
         x: before.x + (after.x - before.x) * ratio,
         y: before.y + (after.y - before.y) * ratio,
         a: wrapAngle(before.a + angleDelta(before.a, after.a) * ratio),
-        s: before.s + (after.s - before.s) * ratio
+        s: before.s + (after.s - before.s) * ratio,
+        g: before.g + (after.g - before.g) * ratio
       };
     }
 
