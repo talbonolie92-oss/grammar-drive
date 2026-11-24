@@ -39,7 +39,10 @@ jobs:
 
           const root = process.cwd();
           const failures = [];
-          const htmlFiles = ['index.html', 'play.html', 'teacher.html', 'student.html', 'test.html'];
+          const htmlFiles = fs.readdirSync(root, { withFileTypes: true })
+            .filter(entry => entry.isFile() && entry.name.toLowerCase().endsWith('.html'))
+            .map(entry => entry.name)
+            .sort();
 
           for (const file of htmlFiles) {
             if (!fs.existsSync(path.join(root, file))) continue;
