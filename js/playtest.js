@@ -81,6 +81,8 @@ const VEHICLE_PRICES={compact:0,bicycle:150,motorcycle:300,suv:450,jeep:500,truc
 const economy={coins:500,ownedModels:["compact"]};
 const timerEl = $("timer");
 const rosterEl = $("roster");
+const miniMap = $("miniMap");
+const miniCtx = miniMap ? miniMap.getContext("2d") : null;
 const debugEl = $("debug");
 const overlay = $("overlay");
 const overlayTitle = $("overlayTitle");
@@ -95,6 +97,7 @@ car.targetGrowthScale = 0.5;
 const growthHud = $("growthHud");
 let growthProfile = { xp: 0, missionsCompleted: 0, grammarCorrect: 0 };
 let lastGrowthHud = 0;
+let lastMiniMap = 0;
 const CAR_MODELS = {
   compact:{label:"Compact",icon:"🚗",note:"Easy handling",width:36,height:20},
   sport:{label:"Sports Car",icon:"🏎️",note:"Fast and agile",width:43,height:18},
@@ -451,6 +454,75 @@ function drawWorld() {
   }
 
   drawCar(car.x, car.y, car.a, car.paintIndex, me ? me.name : "You", true, car.model, car.growthScale);
+}
+
+function drawMiniMap() {
+  if (!miniCtx || !miniMap) return;
+  const width = miniMap.width;
+  const height = miniMap.height;
+  miniCtx.clearRect(0, 0, width, height);
+
+  const mapScale = Math.min(width / WORLD.width, height / WORLD.height);
+  const drawW = WORLD.width * mapScale;
+  const drawH = WORLD.height * mapScale;
+  const offsetX = (width - drawW) / 2;
+  const offsetY = (height - drawH) / 2;
+
+  if (mapCache) {
+    miniCtx.drawImage(mapCache, offsetX, offsetY, drawW, drawH);
+  } else {
+    miniCtx.fillStyle = "#287447";
+    miniCtx.fillRect(0, 0, width, height);
+    miniCtx.fillStyle = "#3b4858";
+    [250, 1250, 2250, 3250, 4050].forEach(y =>
+      miniCtx.fillRect(offsetX, offsetY + y * mapScale, drawW, Math.max(2, 150 * mapScale))
+    );
+    [200, 1500, 2800, 4100, 5400].forEach(x =>
+      miniCtx.fillRect(offsetX + x * mapScale, offsetY, Math.max(2, 150 * mapScale), drawH)
+    );
+  }
+
+  const point = (x, y) => ({
+    x: offsetX + x * mapScale,
+    y: offsetY + y * mapScale
+  });
+
+  if (mission && ["collecting", "return"].includes(mission.status)) {
+    mission.stops.forEach((stop, index) => {
+      if (mission.collected.includes(index)) return;
+      const p = point(stop.x, stop.y);
+      miniCtx.fillStyle = "#fbbf24";
+      miniCtx.beginPath();
+      miniCtx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+      miniCtx.fill();
+    });
+    if (mission.status === "return") {
+      const p = point(4100, 2325);
+      miniCtx.fillStyle = "#fb7185";
+      miniCtx.beginPath();
+      miniCtx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+      miniCtx.fill();
+    }
+  }
+
+  for (const [id, item] of others) {
+    const pose = live ? live.pose(id) : item;
+    if (!pose) continue;
+    const p = point(pose.x, pose.y);
+    miniCtx.fillStyle = CAR_COLORS[pose.c] || "#cbd5e1";
+    miniCtx.beginPath();
+    miniCtx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+    miniCtx.fill();
+  }
+
+  const mine = point(car.x, car.y);
+  miniCtx.fillStyle = "#ffffff";
+  miniCtx.beginPath();
+  miniCtx.arc(mine.x, mine.y, 4, 0, Math.PI * 2);
+  miniCtx.fill();
+  miniCtx.strokeStyle = "#2563eb";
+  miniCtx.lineWidth = 2;
+  miniCtx.stroke();
 }
 
 function renderRoster() {
@@ -1032,6 +1104,10 @@ function frame(timestamp) {
   if (timestamp - lastGrowthHud > 500) {
     lastGrowthHud = timestamp;
     updateGrowthHud();
+  }
+  if (timestamp - lastMiniMap > 200) {
+    lastMiniMap = timestamp;
+    drawMiniMap();
   }
 
   const modalOpen =
