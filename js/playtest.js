@@ -593,7 +593,7 @@ function renderRoster() {
 }
 
 function openRacePanel() {
-  if (!running || !nearbyRace(car.x, car.y) || race.active) return;
+  if (!running || race.active || (mission && ["collecting", "return"].includes(mission.status)) || !nearbyRace(car.x, car.y)) return;
   racePanel.classList.remove("hidden");
   playSfx("click");
   clearControls();
@@ -604,7 +604,7 @@ function closeRacePanel() {
 }
 
 function startRace() {
-  if (!running || !nearbyRace(car.x, car.y) || race.active) return;
+  if (!running || race.active || !nearbyRace(car.x, car.y)) return;
   race.active = true;
   race.next = 0;
   race.startedAt = Date.now();
@@ -701,7 +701,7 @@ function updateCar(dt) {
 }
 
 function useNearbyService() {
-  if (!running) return;
+  if (!running || race.active) return;
   const service = nearbyService(car.x, car.y);
   if (!service) return;
   if(service.type==="shop"){openCarShop();return;}
@@ -861,7 +861,7 @@ function openMissionPanel() {
   const atMissionBoard = nearbyChallenge(car.x, car.y);
   const atDispatch = nearbyDispatch(car.x, car.y);
   const validLocation = mission && mission.status === "return" ? atDispatch : atMissionBoard;
-  if (!running || !validLocation || challengePanel.classList.contains("hidden") === false) return;
+  if (!running || race.active || !validLocation || challengePanel.classList.contains("hidden") === false) return;
   if (!mission) loadMissionState();
   if (missionBadge) missionBadge.textContent = nearbyDispatch(car.x, car.y) ? "CITY DISPATCH · DELIVERY" : "CITY CENTER · MISSION BOARD";
   challengePanel.classList.remove("hidden");
@@ -1024,7 +1024,7 @@ function startAnotherMission() {
 }
 
 function interactMission() {
-  if (!running || challengePanel.classList.contains("hidden") === false || (grammarPanel && !grammarPanel.classList.contains("hidden"))) return;
+  if (!running || race.active || challengePanel.classList.contains("hidden") === false || (grammarPanel && !grammarPanel.classList.contains("hidden"))) return;
   const crate = nearbyMissionCrate(car.x, car.y, mission);
   if (crate) {
     collectMissionCrate(crate);
@@ -1076,7 +1076,7 @@ function renderCarShop(){
  carShopApply.textContent=owned?"Use this vehicle":(economy.coins>=price?"Buy for "+price+" coins":"Need "+(price-economy.coins)+" more coins");
  carShopApply.disabled=!owned&&economy.coins<price;
 }
-function openCarShop(){const s=nearbyService(car.x,car.y);if(!running||!s||s.type!=="shop")return;pendingModel=car.model;pendingPaint=car.paintIndex;renderCarShop();carShopPanel.classList.remove("hidden");playSfx("click");clearControls();}
+function openCarShop(){const s=nearbyService(car.x,car.y);if(!running||race.active||!s||s.type!=="shop")return;pendingModel=car.model;pendingPaint=car.paintIndex;renderCarShop();carShopPanel.classList.remove("hidden");playSfx("click");clearControls();}
 function closeCarShop(){carShopPanel.classList.add("hidden");}
 function applyCarShopSelection(){
  if(!running||!CAR_MODELS[pendingModel]||!PAINT_COLORS[pendingPaint])return;
