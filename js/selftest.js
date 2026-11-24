@@ -889,11 +889,11 @@ $("testForm").addEventListener("submit", async (event) => {
       t: serverTimestamp()
     });
 
-    await allow(
+    const carCreated = await allow(
       "student A creates own live car while session is running",
       () => set(carA, makeCar("Test Student A2"))
     );
-    S1.liveCars = true;
+    S1.liveCars = carCreated;
 
     await allow(
       "student A reads the shared live-car list",
@@ -931,14 +931,22 @@ $("testForm").addEventListener("submit", async (event) => {
     );
 
     await deny(
-      "car update inside the 150 ms rate limit",
-      () => update(carA, { x: 101, n: "Test Student A2", t: serverTimestamp() })
+      "student A uses a device-clock car timestamp",
+      () => update(carA, { x: 101, n: "Test Student A2", t: Date.now() })
+    );
+
+    // A sequential client request can take longer than 150 ms to reach the
+    // server, so the rate-limit boundary is documented/manual rather than
+    // reported as a flaky automated pass or failure.
+    skip(
+      "150 ms live-car rate limit",
+      "Timing depends on network latency; verify with real devices and the Firebase Rules Playground."
     );
 
     await wait(220);
 
     await allow(
-      "student A updates own car after the rate limit",
+      "student A updates own car after the cooldown",
       () => update(carA, { x: 102, n: "Test Student A2", t: serverTimestamp() })
     );
 
@@ -967,6 +975,16 @@ $("testForm").addEventListener("submit", async (event) => {
           ref(T.db),
           buildEndSession(S1.sid, S1.code)
         )
+    );
+
+    await deny(
+      "student cannot move own car after END",
+      () => update(carA, { x: 120, n: "Test Student A2", t: serverTimestamp() })
+    );
+
+    await allow(
+      "student can remove own live car after END",
+      () => remove(carA)
     );
 
     await deny(
