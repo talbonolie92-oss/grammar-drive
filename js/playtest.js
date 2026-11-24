@@ -440,6 +440,13 @@ function drawWorld() {
   const maxY = camera.camY + camera.viewH + margin;
 
   for (const [id, item] of others) {
+    // Skip interpolation for cars clearly outside the camera. The wider
+    // margin accounts for remote movement between Firebase position updates.
+    if (
+      item.x < minX - 300 || item.x > maxX + 300 ||
+      item.y < minY - 300 || item.y > maxY + 300
+    ) continue;
+
     const pose = live ? live.pose(id) : item;
     if (
       pose &&
