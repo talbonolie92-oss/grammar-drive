@@ -26,7 +26,7 @@ import {
 } from "./common.js";
 
 import { createLiveCars, CAR_COLORS, colorFor } from "./multiplayer.js";
-import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChallenge, nearbyDispatch, nearbyGrammarStop } from "./world.js";
+import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChallenge, nearbyDispatch, nearbyRace, nearbyGrammarStop } from "./world.js";
 import { createVehicle, updateVehicle, repairVehicle } from "./vehicle.js";
 import { createMission, nearbyMissionCrate, drawMissionMarkers } from "./missions.js";
 import { createGrammarChallenge } from "./grammar-challenges.js";
@@ -44,6 +44,10 @@ const surfaceEl = $("surface");
 const speedEl = $("speed");
 const conditionEl = $("condition");
 const missionHudEl = $("missionHud");
+const raceHudEl = $("raceHud");
+const racePanel = $("racePanel");
+const raceStartButton = $("raceStart");
+const raceCloseButton = $("raceClose");
 const serviceHintEl = $("serviceHint");
 const serviceButton = $("serviceButton");
 const challengeButton = $("challengeButton");
@@ -138,6 +142,15 @@ let canvasHeight = 0;
 let pixelRatio = 1;
 let mission = null;
 let missionBusy = false;
+const RACE_ROUTE = [
+  { x: 5400, y: 2325 },
+  { x: 4100, y: 1325 },
+  { x: 2800, y: 1325 },
+  { x: 1500, y: 2325 },
+  { x: 1500, y: 3325 },
+  { x: 4750, y: 3325 }
+];
+const race = { active: false, next: 0, startedAt: 0 };
 let grammarChallenge = null;
 let grammarBusy = false;
 
@@ -428,6 +441,28 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
   ctx.fillStyle = isMine ? "#ffffff" : "#f8fafc";
   ctx.fillText(name || "Driver", p.x, p.y - h / 2 - 5);
 }
+function drawRaceMarkers() {
+  if (!race.active) return;
+  RACE_ROUTE.slice(race.next).forEach((checkpoint, index) => {
+    const p = worldToScreen(checkpoint.x, checkpoint.y);
+    const radius = Math.max(9, 20 * p.scale);
+    ctx.save();
+    ctx.strokeStyle = index === 0 ? "#fef08a" : "rgba(253,224,71,.72)";
+    ctx.fillStyle = "rgba(250,204,21,.18)";
+    ctx.lineWidth = Math.max(2, 3 * p.scale);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#fff";
+    ctx.font = "900 " + Math.max(9, 12 * p.scale) + "px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(race.next + index + 1), p.x, p.y);
+    ctx.restore();
+  });
+}
+
 function drawWorld() {
   if (mapCache) {
     const camera = getCamera();
@@ -447,6 +482,7 @@ function drawWorld() {
   }
 
   drawMissionMarkers(ctx, worldToScreen, mission);
+  drawRaceMarkers();
 
   for (const [id, item] of others) {
     const pose = live ? live.pose(id) : item;
@@ -486,6 +522,16 @@ function drawMiniMap() {
     x: offsetX + x * mapScale,
     y: offsetY + y * mapScale
   });
+
+  if (race.active) {
+    RACE_ROUTE.slice(race.next).forEach((checkpoint, index) => {
+      const p = point(checkpoint.x, checkpoint.y);
+      miniCtx.fillStyle = index === 0 ? "#fef08a" : "#fbbf24";
+      miniCtx.beginPath();
+      miniCtx.arc(p.x, p.y, 2.8, 0, Math.PI * 2);
+      miniCtx.fill();
+    });
+  }
 
   if (mission && ["collecting", "return"].includes(mission.status)) {
     mission.stops.forEach((stop, index) => {
@@ -545,8 +591,59 @@ function renderRoster() {
   onlineEl.textContent = "Online: " + rows.length;
 }
 
+function openRacePanel() {
+  if (!running || !nearbyRace(car.x, car.y) || race.active) return;
+  racePanel.classList.remove("hidden");
+  playSfx("click");
+  clearControls();
+}
+
+function closeRacePanel() {
+  racePanel.classList.add("hidden");
+}
+
+function startRace() {
+  if (!running || !nearbyRace(car.x, car.y) || race.active) return;
+  race.active = true;
+  race.next = 0;
+  race.startedAt = Date.now();
+  racePanel.classList.add("hidden");
+  raceHudEl.classList.remove("hidden");
+  raceHudEl.textContent = "🏁 Checkpoint 1 / " + RACE_ROUTE.length;
+  playSfx("mission");
+  clearControls();
+}
+
+function updateRace() {
+  if (!race.active) return;
+  const checkpoint = RACE_ROUTE[race.next];
+  if (!checkpoint) return;
+  const distance = Math.hypot(checkpoint.x - car.x, checkpoint.y - car.y);
+  const elapsed = (Date.now() - race.startedAt) / 1000;
+  if (distance <= 135) {
+    race.next += 1;
+    playSfx("collect");
+    if (race.next >= RACE_ROUTE.length) {
+      race.active = false;
+      const finalTime = ((Date.now() - race.startedAt) / 1000).toFixed(1);
+      economy.coins += 50;
+      saveVehicleProfile();
+      updateWalletDisplay();
+      void grantGrowthXp(50, "race");
+      raceHudEl.textContent = "🏁 Circuit complete · " + finalTime + "s · +50 XP";
+      playSfx("reward");
+      window.setTimeout(() => raceHudEl.classList.add("hidden"), 8000);
+    } else {
+      raceHudEl.textContent = "🏁 Checkpoint " + (race.next + 1) + " / " + RACE_ROUTE.length + " · " + elapsed.toFixed(1) + "s";
+    }
+  } else {
+    raceHudEl.textContent = "🏁 Checkpoint " + (race.next + 1) + " / " + RACE_ROUTE.length + " · " + elapsed.toFixed(1) + "s";
+  }
+}
+
 function updateCar(dt) {
   updateVehicle(car, keys, dt, { isOnRoad, collidesWithWorld });
+  updateRace();
   surfaceEl.textContent = car.onRoad ? "ROAD" : "OFF-ROAD";
   surfaceEl.style.borderColor = car.onRoad ? "#22c55e" : "#f59e0b";
   speedEl.textContent = Math.round(Math.abs(car.s) * 0.32) + " km/h";
@@ -560,7 +657,7 @@ function updateCar(dt) {
   const crate = nearbyMissionCrate(car.x, car.y, mission);
   carSelectWrap.classList.add("hidden");
   serviceButton.classList.toggle("hidden",!service);serviceHintEl.classList.toggle("hidden",!service);
-  if(service){const action=service.type==="shop"?"OPEN CAR SHOP":"REPAIR";serviceHintEl.textContent=service.name+" · Press E or tap "+action;serviceButton.textContent=action;serviceButton.dataset.service=service.type;}
+  if(service){const action=service.type==="shop"?"OPEN CAR SHOP":service.type==="race"?"START RACE":"REPAIR";serviceHintEl.textContent=service.name+" · Press E or tap "+action;serviceButton.textContent=action;serviceButton.dataset.service=service.type;}
   const missionOpen = challengePanel.classList.contains("hidden") === false;
   const grammarOpen = grammarPanel && !grammarPanel.classList.contains("hidden");
   const needsDispatch = mission && mission.status === "return";
@@ -607,6 +704,7 @@ function useNearbyService() {
   const service = nearbyService(car.x, car.y);
   if (!service) return;
   if(service.type==="shop"){openCarShop();return;}
+  if(service.type==="race"){openRacePanel();return;}
   if(service.type==="repair"){repairVehicle(car);playSfx("repair");}
   saveVehicleProfile();updateCar(0.001);
 }
@@ -1113,7 +1211,8 @@ function frame(timestamp) {
   const modalOpen =
     challengePanel.classList.contains("hidden") === false ||
     (grammarPanel && grammarPanel.classList.contains("hidden") === false) ||
-    carShopPanel.classList.contains("hidden") === false;
+    carShopPanel.classList.contains("hidden") === false ||
+    racePanel.classList.contains("hidden") === false;
 
   if (running && !modalOpen) {
     updateEngineSound(car.s, keys.gas);
@@ -1242,6 +1341,10 @@ function onKeyDown(event) {
   }
   if (!carShopPanel.classList.contains("hidden")) {
     if (key === "escape") closeCarShop();
+    return;
+  }
+  if (racePanel && !racePanel.classList.contains("hidden")) {
+    if (key === "escape") closeRacePanel();
     return;
   }
   if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) event.preventDefault();
@@ -1428,6 +1531,8 @@ async function start() {
     renderMissionBuilder();
   });
   $("carShopClose").addEventListener("click",closeCarShop);
+  raceStartButton.addEventListener("click", startRace);
+  raceCloseButton.addEventListener("click", closeRacePanel);
   $("carShopApply").addEventListener("click",applyCarShopSelection);
   carShopPanel.addEventListener("click",event=>{if(event.target===carShopPanel)closeCarShop();});
   renderCarShop();
