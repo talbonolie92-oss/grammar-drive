@@ -184,23 +184,55 @@ export function drawMap(ctx, project, width, height) {
 
   ROADS.forEach((road) => {
     const p = project(road.x, road.y);
-    ctx.fillStyle = "#334155";
-    ctx.fillRect(p.x, p.y, road.w * scale, road.h * scale);
-    ctx.strokeStyle = "rgba(226,232,240,.55)";
-    ctx.lineWidth = Math.max(1, 2 * scale);
-    ctx.setLineDash([24 * scale, 20 * scale]);
+    const rw = road.w * scale;
+    const rh = road.h * scale;
+
+    // Wide concrete sidewalks and a subtle curb make the road feel built into a city.
+    ctx.fillStyle = "#b8b8a6";
+    ctx.fillRect(p.x - 5 * scale, p.y - 5 * scale, rw + 10 * scale, rh + 10 * scale);
+    ctx.fillStyle = "#3b4858";
+    ctx.fillRect(p.x, p.y, rw, rh);
+    ctx.fillStyle = "rgba(255,255,255,.08)";
+    if (road.axis === "h") {
+      ctx.fillRect(p.x, p.y + 5 * scale, rw, 3 * scale);
+      ctx.fillRect(p.x, p.y + rh - 8 * scale, rw, 3 * scale);
+    } else {
+      ctx.fillRect(p.x + 5 * scale, p.y, 3 * scale, rh);
+      ctx.fillRect(p.x + rw - 8 * scale, p.y, 3 * scale, rh);
+    }
+
+    ctx.strokeStyle = "rgba(255,255,255,.7)";
+    ctx.lineWidth = Math.max(1, 1.5 * scale);
+    ctx.setLineDash([25 * scale, 22 * scale]);
     ctx.beginPath();
     if (road.axis === "h") {
-      const cy = p.y + road.h * scale / 2;
+      const cy = p.y + rh / 2;
       ctx.moveTo(p.x, cy);
-      ctx.lineTo(p.x + road.w * scale, cy);
+      ctx.lineTo(p.x + rw, cy);
     } else {
-      const cx = p.x + road.w * scale / 2;
+      const cx = p.x + rw / 2;
       ctx.moveTo(cx, p.y);
-      ctx.lineTo(cx, p.y + road.h * scale);
+      ctx.lineTo(cx, p.y + rh);
     }
     ctx.stroke();
     ctx.setLineDash([]);
+
+    // Short edge reflectors add definition without distracting from driving.
+    if (scale > 0.22) {
+      ctx.fillStyle = "rgba(248,250,252,.32)";
+      const step = Math.max(24, 70 * scale);
+      if (road.axis === "h") {
+        for (let x = p.x + 18 * scale; x < p.x + rw; x += step) {
+          ctx.fillRect(x, p.y + 4 * scale, 8 * scale, 2 * scale);
+          ctx.fillRect(x, p.y + rh - 6 * scale, 8 * scale, 2 * scale);
+        }
+      } else {
+        for (let y = p.y + 18 * scale; y < p.y + rh; y += step) {
+          ctx.fillRect(p.x + 4 * scale, y, 2 * scale, 8 * scale);
+          ctx.fillRect(p.x + rw - 6 * scale, y, 2 * scale, 8 * scale);
+        }
+      }
+    }
   });
 
   GRASS_PATCHES.forEach(([x,y,w,h])=>{const p=project(x,y);ctx.fillStyle="rgba(134,239,172,.13)";ctx.fillRect(p.x,p.y,w*scale,h*scale);ctx.strokeStyle="rgba(187,247,208,.12)";ctx.lineWidth=Math.max(1,scale);ctx.strokeRect(p.x,p.y,w*scale,h*scale);});
@@ -222,51 +254,134 @@ export function drawMap(ctx, project, width, height) {
     }
   });
 
-  BUILDINGS.forEach((b) => {
+  BUILDINGS.forEach((b, buildingIndex) => {
     const p = project(b.x, b.y);
     const bw = b.w * scale;
     const bh = b.h * scale;
-    ctx.fillStyle = "rgba(15,23,42,.28)";
-    ctx.fillRect(p.x + 7 * scale, p.y + 9 * scale, bw, bh);
-    ctx.fillStyle = b.color;
+    const depth = Math.max(3, 12 * scale);
+    const trim = Math.max(1, 3 * scale);
+    const columns = Math.max(3, Math.floor(b.w / 76));
+    const rows = b.h > 245 ? 3 : 2;
+    const windowW = Math.max(4, 22 * scale);
+    const windowH = Math.max(4, 17 * scale);
+    const roofColors = ["#e2e8f0", "#d6d3d1", "#cbd5e1", "#e5e7eb"];
+
+    ctx.save();
+
+    // Long shadow and visible side walls create a low-poly, raised building shape.
+    ctx.fillStyle = "rgba(8,18,34,.28)";
+    ctx.fillRect(p.x + depth * 1.7, p.y + depth * 1.9, bw, bh);
+    ctx.fillStyle = "rgba(15,23,42,.38)";
+    ctx.beginPath();
+    ctx.moveTo(p.x + bw, p.y + 3 * scale);
+    ctx.lineTo(p.x + bw + depth, p.y + depth);
+    ctx.lineTo(p.x + bw + depth, p.y + bh + depth);
+    ctx.lineTo(p.x + bw, p.y + bh);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "rgba(15,23,42,.24)";
+    ctx.beginPath();
+    ctx.moveTo(p.x + 3 * scale, p.y + bh);
+    ctx.lineTo(p.x + bw, p.y + bh);
+    ctx.lineTo(p.x + bw + depth, p.y + bh + depth);
+    ctx.lineTo(p.x + depth, p.y + bh + depth);
+    ctx.closePath();
+    ctx.fill();
+
+    const facade = ctx.createLinearGradient(p.x, p.y, p.x + bw, p.y + bh);
+    facade.addColorStop(0, b.color);
+    facade.addColorStop(1, "#26374d");
+    ctx.fillStyle = facade;
     ctx.fillRect(p.x, p.y, bw, bh);
-    // Roof trim and a repeatable window grid give each block a proper city facade.
-    ctx.fillStyle = "rgba(255,255,255,.16)";
-    ctx.fillRect(p.x + 8 * scale, p.y + 8 * scale, bw - 16 * scale, 12 * scale);
-    if (scale > 0.16) {
-      const columns = Math.max(3, Math.floor(b.w / 76));
-      const rows = b.h > 245 ? 3 : 2;
-      const windowW = Math.max(5, 22 * scale);
-      const windowH = Math.max(5, 17 * scale);
-      ctx.fillStyle = "rgba(147,197,253,.58)";
-      ctx.strokeStyle = "rgba(15,23,42,.45)";
-      ctx.lineWidth = Math.max(.7, scale);
+
+    // Raised rooftop with parapet edges, roof panels, and small utility units.
+    const roof = ctx.createLinearGradient(p.x, p.y, p.x + bw, p.y + bh);
+    roof.addColorStop(0, roofColors[buildingIndex % roofColors.length]);
+    roof.addColorStop(1, "#94a3b8");
+    ctx.fillStyle = roof;
+    ctx.fillRect(p.x + 5 * scale, p.y + 5 * scale, bw - 10 * scale, bh - 10 * scale);
+    ctx.strokeStyle = "rgba(15,23,42,.62)";
+    ctx.lineWidth = trim;
+    ctx.strokeRect(p.x + 5 * scale, p.y + 5 * scale, bw - 10 * scale, bh - 10 * scale);
+
+    // Roof texture: ventilation units, skylights, and access hatches.
+    if (scale > 0.13) {
+      ctx.fillStyle = "rgba(51,65,85,.5)";
+      const unitW = Math.max(7, 34 * scale);
+      const unitH = Math.max(5, 22 * scale);
+      for (let unit = 0; unit < 2; unit++) {
+        const ux = p.x + bw * (.18 + unit * .52);
+        const uy = p.y + bh * (.18 + (buildingIndex % 2) * .12);
+        ctx.fillRect(ux, uy, unitW, unitH);
+        ctx.fillStyle = "rgba(255,255,255,.45)";
+        ctx.fillRect(ux + 2 * scale, uy + 2 * scale, unitW - 4 * scale, 2 * scale);
+        ctx.fillStyle = "rgba(51,65,85,.5)";
+      }
+      ctx.fillStyle = "rgba(255,255,255,.42)";
+      ctx.fillRect(p.x + bw * .42, p.y + bh * .58, bw * .16, Math.max(4, 15 * scale));
+    }
+
+    // Front facade strip, evenly spaced windows, and warm-lit ground floor.
+    ctx.fillStyle = "rgba(15,23,42,.18)";
+    ctx.fillRect(p.x + 7 * scale, p.y + bh * .66, bw - 14 * scale, bh * .31);
+    if (scale > 0.15) {
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < columns; col++) {
           const wx = p.x + (bw / (columns + 1)) * (col + 1) - windowW / 2;
-          const wy = p.y + (bh * .28) + row * (bh * .19);
+          const wy = p.y + bh * (.24 + row * .19);
+          ctx.fillStyle = (row + col + buildingIndex) % 4 === 0
+            ? "rgba(255,224,138,.88)"
+            : "rgba(125,211,252,.78)";
           ctx.fillRect(wx, wy, windowW, windowH);
+          ctx.strokeStyle = "rgba(15,23,42,.48)";
+          ctx.lineWidth = Math.max(.7, scale);
           ctx.strokeRect(wx, wy, windowW, windowH);
+          ctx.fillStyle = "rgba(255,255,255,.3)";
+          ctx.fillRect(wx + 2 * scale, wy + 2 * scale, Math.max(1, 2 * scale), windowH - 4 * scale);
         }
       }
-      // Main entrance.
-      ctx.fillStyle = "rgba(15,23,42,.72)";
-      ctx.fillRect(p.x + bw * .43, p.y + bh - 28 * scale, bw * .14, 22 * scale);
-      ctx.fillStyle = "rgba(226,232,240,.55)";
-      ctx.fillRect(p.x + bw * .445, p.y + bh - 25 * scale, bw * .055, 16 * scale);
-      ctx.fillRect(p.x + bw * .51, p.y + bh - 25 * scale, bw * .045, 16 * scale);
-    }
-    ctx.strokeStyle = "rgba(15,23,42,.65)";
-    ctx.lineWidth = Math.max(1, 3 * scale);
-    ctx.strokeRect(p.x, p.y, bw, bh);
 
-    if (scale > 0.22) {
+      // Distinctive main entrance, glass doors, canopy, and steps.
+      const doorW = bw * .18;
+      const doorX = p.x + (bw - doorW) / 2;
+      const doorY = p.y + bh - 34 * scale;
+      ctx.fillStyle = "#182b40";
+      ctx.fillRect(doorX, doorY, doorW, 29 * scale);
+      ctx.fillStyle = "#8bd9ef";
+      ctx.fillRect(doorX + 3 * scale, doorY + 3 * scale, doorW * .43, 22 * scale);
+      ctx.fillRect(doorX + doorW * .54, doorY + 3 * scale, doorW * .4, 22 * scale);
       ctx.fillStyle = "#f8fafc";
-      ctx.font = "bold " + Math.max(8, 13 * scale) + "px system-ui";
+      ctx.fillRect(doorX - 5 * scale, doorY - 5 * scale, doorW + 10 * scale, 4 * scale);
+      ctx.fillStyle = "rgba(15,23,42,.35)";
+      ctx.fillRect(doorX - 4 * scale, doorY + 29 * scale, doorW + 8 * scale, 4 * scale);
+    }
+
+    // Signboard belongs to the building facade instead of floating as a text label.
+    if (scale > 0.2) {
+      const signW = Math.min(bw * .76, Math.max(62 * scale, b.name.length * 7 * scale));
+      const signH = Math.max(13, 23 * scale);
+      const signX = p.x + (bw - signW) / 2;
+      const signY = p.y + bh * .49;
+      ctx.fillStyle = "rgba(15,23,42,.82)";
+      ctx.fillRect(signX, signY, signW, signH);
+      ctx.strokeStyle = "rgba(255,255,255,.45)";
+      ctx.lineWidth = Math.max(1, scale);
+      ctx.strokeRect(signX, signY, signW, signH);
+      ctx.fillStyle = "#fff";
+      ctx.font = "900 " + Math.max(7, 11 * scale) + "px system-ui";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(b.name, p.x + bw / 2, p.y + bh / 2, Math.max(30, bw - 14 * scale));
+      ctx.fillText(b.name, p.x + bw / 2, signY + signH / 2, signW - 6 * scale);
     }
+
+    // Rooftop outline and corner highlights finish the building silhouette.
+    ctx.strokeStyle = "rgba(255,255,255,.78)";
+    ctx.lineWidth = Math.max(1, 2 * scale);
+    ctx.strokeRect(p.x + 2 * scale, p.y + 2 * scale, bw - 4 * scale, bh - 4 * scale);
+    ctx.fillStyle = "rgba(255,255,255,.32)";
+    ctx.fillRect(p.x + 7 * scale, p.y + 7 * scale, bw - 14 * scale, Math.max(2, 3 * scale));
+
+    ctx.restore();
   });
 
   LOCATIONS.forEach((loc) => {
