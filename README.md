@@ -63,13 +63,14 @@ All times are set by the Firebase server clock, never by the device.
 2. **Realtime Database → Data:** your teacher record exists at `teachers/<your UID>` with `role: "teacher"` and `active: true` (already done).
 
 ## Phase 3 release status
-Phase 1 and Phase 2 have already been deployed and manually tested. The Phase 3 frontend, test track, self-tests, documentation, and database rules have now been committed to the repository, but the Phase 3 database rules have **not** been published to Firebase. Do not test the new multiplayer track against the old published rules: the `liveCars` path will be denied.
 
-Before using Phase 3 with students, the matching frontend and `database.rules.json` must be released together. First back up the currently published rules. Then publish the Phase 3 rules and verify the updated `test.html` self-test, the manual checks in `docs/RULES-PLAYGROUND-TESTS.md`, and a real teacher laptop plus multiple student phones. The test-track page is `play.html`; it is a temporary multiplayer proof, not the finished driving game. The target is up to 30 students, but this is **not yet verified on the actual Firebase project**; a simulated 30-browser run had one test where some position updates were missing. Use the real-device checklist in `docs/RULES-PLAYGROUND-TESTS.md` before relying on a full class.
+**Phase 3 multiplayer foundation: tested successfully on real devices.** The matching Phase 3 Firebase Rules have been published. The automatic rules self-test passed all required checks; the optional time-limit test, 150 ms timing check, and second-teacher isolation check were skipped for the reasons shown in the test report. A teacher laptop and two student phones also passed the real-device multiplayer test: shared car movement, refresh/reconnect, teacher rename, disconnect cleanup, and session end.
 
-**Important:** adding files to the GitHub repository does not publish the Firebase Rules. The Firebase Rules update is a separate manual action and has not been performed by this project update.
+The 30-student target is still not verified at classroom scale. Test with a small group first and monitor performance before using a full class.
 
-**To undo a rules release:** restore the saved Firebase Rules backup. To undo a frontend release, restore the previous GitHub Pages commit.
+## Phase 4A status
+
+The first open-road build adds a larger 2D city map, named locations, road/off-road handling, basic steering and acceleration, and building/world-boundary collisions. It reuses the tested Phase 3 multiplayer synchronization. This is an initial driving foundation; fuel, vehicle condition, repairs, upgrades, and the full game world remain future Phase 4 work.
 
 ## Existing data
 Nothing is deleted. Sessions made with the earlier version:
