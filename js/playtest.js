@@ -89,7 +89,7 @@ const overlayLink = $("overlayLink");
 const finalResultsEl = $("finalResults");
 
 const keys = { left: false, right: false, steer: 0, gas: false, brake: false, reverse: false };
-const car = createVehicle(1800, 1300, 0);
+const car = createVehicle(3000, 2325, 0);
 car.growthScale = 0.5;
 car.targetGrowthScale = 0.5;
 const growthHud = $("growthHud");
@@ -495,7 +495,7 @@ function updateCar(dt) {
   missionHudEl.classList.toggle("hidden", !missionActive);
   if (missionActive) {
     const target = mission.status === "return"
-      ? { x: 1940, y: 1420 }
+      ? { x: 4100, y: 2325 }
       : mission.stops.find((stop, index) => !mission.collected.includes(index));
     if (target) {
       const dx = target.x - car.x;
@@ -1386,11 +1386,11 @@ async function start() {
           car.x = sx; car.y = sy; car.a = Number(saved.a) || 0;
           car.safeX = sx; car.safeY = sy;
         } else {
-          car.x = 1800; car.y = 1300; car.a = 0;
+          car.x = 3000; car.y = 2325; car.a = 0;
         }
       } else {
-        car.x = 1800 + (Math.random() - .5) * 110;
-        car.y = 1300 + (Math.random() - .5) * 90;
+        car.x = 3000 + (Math.random() - .5) * 110;
+        car.y = 2325 + (Math.random() - .5) * 90;
       }
     } catch (error) {}
 
