@@ -51,8 +51,8 @@ const LOCATIONS = [
   { x: 2800, y: 2325, name: "CITY CENTER", color: "#facc15", symbol: "C" },
   { x: 1500, y: 2325, name: "CAR WASH", type: "repair", color: "#7dd3fc", symbol: "W" },
   { x: 4100, y: 2325, name: "CITY DISPATCH", color: "#fb7185", symbol: "D" },
-  { x: 2800, y: 1325, name: "CAR SHOP", type: "shop", color: "#c4b5fd", symbol: "S" },
-  { x: 4750, y: 3325, name: "RACE CLUB", color: "#fb7185", symbol: "R" }
+  { x: 1500, y: 3325, name: "CAR SHOP", type: "shop", color: "#c4b5fd", symbol: "S" },
+  { x: 4750, y: 3325, name: "RACE CLUB", type: "race", color: "#fb7185", symbol: "R" }
 ];
 
 // Roadside grammar stops// Roadside grammar stops turn exploration into short learning encounters.
@@ -504,6 +504,14 @@ export function nearbyChallenge(x, y, radius = 175) {
   const dy = y - 2325;
   return dx * dx + dy * dy <= radius * radius
     ? { x: 2800, y: 2325, name: "CITY CENTER", type: "challenge" }
+    : null;
+}
+
+export function nearbyRace(x, y, radius = 190) {
+  const dx = x - 4750;
+  const dy = y - 3325;
+  return dx * dx + dy * dy <= radius * radius
+    ? { x: 4750, y: 3325, name: "RACE CLUB", type: "race" }
     : null;
 }
 
