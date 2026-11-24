@@ -37,6 +37,7 @@
     @media (max-width: 430px) { .pad button { width: 82px; height: 60px; font-size: 15px; } .pad-right { right: 10px; bottom: 14px; gap: 8px; } .steering-wheel-control { width: 128px; height: 128px; left: 10px; bottom: 12px; } .analog-track { left: 24px; right: 24px; } }
     #overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(15, 23, 42, .82); text-align: center; padding: 20px; }
     #debug { position: fixed; z-index: 5; left: 8px; bottom: 100px; font-size: 12px; color: #cbd5e1; background: rgba(15, 23, 42, .7); padding: 6px 8px; border-radius: 8px; }
+    .final-results { margin:14px 0; padding:12px; border-radius:12px; background:rgba(2,6,23,.55); border:1px solid #475569; color:#e2e8f0; text-align:left; white-space:pre-line; line-height:1.7; max-height:42vh; overflow:auto; font-size:14px; }
 
     .car-shop{width:min(760px,100%);max-height:90vh;overflow:auto;padding:20px;border-radius:20px;border:1px solid #475569;background:linear-gradient(145deg,#1e293b,#0f172a);box-shadow:0 24px 70px rgba(0,0,0,.6)}
     .car-shop-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0}
@@ -153,9 +154,10 @@
   </div>
 
   <div id="overlay">
-    <div class="panel" style="max-width:420px">
+    <div class="panel" style="width:min(620px,100%);max-height:90vh;overflow:auto">
       <h2 id="overlayTitle">Connecting…</h2>
       <p id="overlayText" class="muted"></p>
+      <div id="finalResults" class="final-results hidden" aria-live="polite"></div>
       <a id="overlayLink" class="button block hidden" href="./student.html">Back</a>
     </div>
   </div>
