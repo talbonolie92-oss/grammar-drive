@@ -230,8 +230,32 @@ export function drawMap(ctx, project, width, height) {
     ctx.fillRect(p.x + 7 * scale, p.y + 9 * scale, bw, bh);
     ctx.fillStyle = b.color;
     ctx.fillRect(p.x, p.y, bw, bh);
-    ctx.fillStyle = "rgba(255,255,255,.13)";
+    // Roof trim and a repeatable window grid give each block a proper city facade.
+    ctx.fillStyle = "rgba(255,255,255,.16)";
     ctx.fillRect(p.x + 8 * scale, p.y + 8 * scale, bw - 16 * scale, 12 * scale);
+    if (scale > 0.16) {
+      const columns = Math.max(3, Math.floor(b.w / 76));
+      const rows = b.h > 245 ? 3 : 2;
+      const windowW = Math.max(5, 22 * scale);
+      const windowH = Math.max(5, 17 * scale);
+      ctx.fillStyle = "rgba(147,197,253,.58)";
+      ctx.strokeStyle = "rgba(15,23,42,.45)";
+      ctx.lineWidth = Math.max(.7, scale);
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < columns; col++) {
+          const wx = p.x + (bw / (columns + 1)) * (col + 1) - windowW / 2;
+          const wy = p.y + (bh * .28) + row * (bh * .19);
+          ctx.fillRect(wx, wy, windowW, windowH);
+          ctx.strokeRect(wx, wy, windowW, windowH);
+        }
+      }
+      // Main entrance.
+      ctx.fillStyle = "rgba(15,23,42,.72)";
+      ctx.fillRect(p.x + bw * .43, p.y + bh - 28 * scale, bw * .14, 22 * scale);
+      ctx.fillStyle = "rgba(226,232,240,.55)";
+      ctx.fillRect(p.x + bw * .445, p.y + bh - 25 * scale, bw * .055, 16 * scale);
+      ctx.fillRect(p.x + bw * .51, p.y + bh - 25 * scale, bw * .045, 16 * scale);
+    }
     ctx.strokeStyle = "rgba(15,23,42,.65)";
     ctx.lineWidth = Math.max(1, 3 * scale);
     ctx.strokeRect(p.x, p.y, bw, bh);
