@@ -107,3 +107,14 @@ Vehicle classes now have different driving characteristics as well as distinct s
 - **SUV:** slower road speed and acceleration, steadier steering, and better off-road speed.
 
 The car artwork now includes class-specific body and roof shapes, visible wheels, lights and trim. These changes preserve the existing multiplayer model field, local vehicle profile, fuel/condition services and collision recovery. Phase 4D requires real-device playtesting before it is marked complete.
+
+
+## Phase 5A — Grammar Challenge Hub (implementation in progress)
+
+- The Challenge Hub is accessible when a student drives near its map marker; desktop uses **E**, and mobile uses the on-screen **Start Challenge** button.
+- Questions are selected from grade-specific banks for the teacher-selected topics: Question Forms, Yes/No Questions, Wh-Questions, and Tag Questions.
+- Each question has four choices and an explanation. Correct answers add 10 points; incorrect answers do not remove points.
+- Each student's browser tracks used questions for the session and cycles the bank only after the available pool is exhausted.
+- Progress is written to the existing student result record, so the teacher dashboard can show correct answers, answered count, and score.
+- **Scoring limitation:** under the chosen Firebase Spark/free-plan architecture, question checking is client-side and scores are provisional, not cheat-proof.
+- The public join-code record now carries the session grade and selected topics so student clients can load the correct question bank. The corresponding updated Firebase Rules must be published before new sessions can use the challenge feature.
