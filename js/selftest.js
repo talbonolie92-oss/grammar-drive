@@ -1,9 +1,9 @@
 
- // --------------------------------------------------
- // Grammar Drive: Open Road Challenge
- // js/selftest.js — Firebase Rules self-test
- // Uses temporary Firebase instances and test-only sessions.
- // --------------------------------------------------
+// --------------------------------------------------
+// Grammar Drive: Open Road Challenge
+// js/selftest.js — Phase 1 Firebase Rules self-test
+// Uses temporary Firebase instances and test-only sessions.
+// --------------------------------------------------
 
 import {
   testFirebase,
@@ -38,7 +38,43 @@ import {
   friendlyError
 } from "./common.js";
 
-/* ---------- helpers ---------- */
+// --------------------------------------------------
+// 1. CONNECTION TEST
+// --------------------------------------------------
+
+$("connButton").addEventListener("click", async () => {
+  const box = $("connStatus");
+  $("connButton").disabled = true;
+
+  showMessage(box, "Connecting to Firebase…", "info");
+
+  try {
+    const t = testFirebase("connection");
+    const result = await signInAnonymously(t.auth);
+
+    await deleteUser(result.user);
+
+    showMessage(
+      box,
+      "SUCCESS: Firebase Authentication and anonymous sign-in are working.",
+      "success"
+    );
+  } catch (error) {
+    showMessage(
+      box,
+      "CONNECTION FAILED: " +
+        (error.code || "") +
+        " " +
+        friendlyError(error)
+    );
+  } finally {
+    $("connButton").disabled = false;
+  }
+});
+
+// --------------------------------------------------
+// 2. TEST HELPERS
+// --------------------------------------------------
 
 const results = [];
 
@@ -49,22 +85,15 @@ const isDenied = (error) =>
     String((error && (error.code || error.message)) || "")
   );
 
-function report(status, label, detail) {
-  results.push({
-    status,
-    label,
-    detail: detail || ""
-  });
+function report(status, label, detail = "") {
+  results.push({ status, label, detail });
 
   $("testResults").appendChild(
-    el("div", {
-      className: "test-row " + status
-    }, [
+    el("div", { className: "test-row " + status }, [
       el("div", {
         className: "result",
         text: status.toUpperCase()
       }),
-
       el("div", {}, [
         label,
         detail
@@ -104,21 +133,16 @@ async function deny(label, fn, onUnexpected) {
     );
 
     if (onUnexpected) onUnexpected();
-
-    return false;
   } catch (error) {
     if (isDenied(error)) {
       report("pass", "refused: " + label);
-      return true;
+    } else {
+      report(
+        "fail",
+        "should be REFUSED: " + label,
+        "Failed for another reason: " + friendlyError(error)
+      );
     }
-
-    report(
-      "fail",
-      "should be REFUSED: " + label,
-      "Failed for another reason: " + friendlyError(error)
-    );
-
-    return false;
   }
 }
 
@@ -133,75 +157,43 @@ function newIds(db) {
   };
 }
 
-/*
- * Every test session carries testOnly:true.
- * The revised Rules permit deletion only for these
- * explicitly marked test sessions.
- */
-function createTestSession(sid, code, uid, options) {
-  const writes = buildCreateSession(sid, code, uid, options);
+// All test-created sessions carry testOnly: true.
+// Normal classroom sessions do not use this property.
+
+function createTestSession(sid, code, teacherUid, options) {
+  const writes = buildCreateSession(
+    sid,
+    code,
+    teacherUid,
+    options
+  );
 
   writes["sessions/" + sid].testOnly = true;
 
   return writes;
 }
 
-/* ---------- 1. connection test ---------- */
-
-$("connButton").addEventListener("click", async () => {
-  const box = $("connStatus");
-
-  $("connButton").disabled = true;
-
-  showMessage(box, "Connecting to Firebase…", "info");
-
-  try {
-    const t = testFirebase("connection");
-
-    const result = await signInAnonymously(t.auth);
-
-    await deleteUser(result.user);
-
-    showMessage(
-      box,
-      "SUCCESS: Firebase Authentication and anonymous sign-in are working.",
-      "success"
-    );
-
-  } catch (error) {
-    showMessage(
-      box,
-      "CONNECTION FAILED: " +
-        (error.code || "") + " " +
-        friendlyError(error)
-    );
-
-  } finally {
-    $("connButton").disabled = false;
-  }
-});
-
-/* ---------- 2. rules self-test ---------- */
+// --------------------------------------------------
+// 3. MAIN RULES SELF-TEST
+// --------------------------------------------------
 
 $("testForm").addEventListener("submit", async (event) => {
   event.preventDefault();
 
   $("runButton").disabled = true;
-  $("copyReport").classList.add("hidden");
   $("testResults").textContent = "";
+  $("copyReport").classList.add("hidden");
 
   results.length = 0;
 
   showMessage(
     $("testSummary"),
-    "Running… keep this tab open.",
+    "Running tests… Keep this tab open.",
     "info"
   );
 
-  /*
-   * created entries:
-   * { sid, code, deleteCode }
-   */
+  // Only these sessions are created by this test.
+  // removeCode prevents accidental deletion of a reused code.
   const created = [];
 
   const T = testFirebase("teacher");
@@ -212,19 +204,19 @@ $("testForm").addEventListener("submit", async (event) => {
   let tUid = null;
 
   try {
-    /* ---------- sign in ---------- */
+    // ------------------------------------------------
+    // SIGN IN
+    // ------------------------------------------------
 
     try {
-      tUid = (
-        await signInWithEmailAndPassword(
-          T.auth,
-          $("tEmail").value.trim(),
-          $("tPassword").value
-        )
-      ).user.uid;
+      const credential = await signInWithEmailAndPassword(
+        T.auth,
+        $("tEmail").value.trim(),
+        $("tPassword").value
+      );
 
+      tUid = credential.user.uid;
       report("pass", "Teacher login");
-
     } catch (error) {
       report("fail", "Teacher login", friendlyError(error));
       throw new Error("stop");
@@ -236,46 +228,53 @@ $("testForm").addEventListener("submit", async (event) => {
 
     report("pass", "Three temporary anonymous students signed in");
 
-    /* ---------- check rules publication ---------- */
+    // ------------------------------------------------
+    // RULES VERSION MARKER
+    // ------------------------------------------------
 
     try {
-      await get(ref(A.db, "rulesVersion"));
+      const version = (
+        await get(ref(A.db, "rulesVersion"))
+      ).val();
 
-      report(
-        "pass",
-        "Phase 1 rules are published (rulesVersion is readable)"
-      );
+      if (version !== "phase1-v1") {
+        throw new Error(
+          'Expected rulesVersion "phase1-v1", found: ' +
+            JSON.stringify(version)
+        );
+      }
 
+      report("pass", "Phase 1 rules marker verified: phase1-v1");
     } catch (error) {
       report(
         "fail",
-        "Phase 1 rules are NOT published",
-        "Publish database.rules.json in Firebase Console, then run this test again. Nothing was written."
+        "Phase 1 rules marker is missing or incorrect",
+        friendlyError(error) +
+          '. The database must contain rulesVersion: "phase1-v1".'
       );
 
       throw new Error("stop");
     }
 
-    /* ---------- teacher record ---------- */
+    // ------------------------------------------------
+    // TEACHER RECORD
+    // ------------------------------------------------
 
-    await allow(
-      "teacher reads own teachers record",
-      async () => {
-        const rec = (
-          await get(ref(T.db, "teachers/" + tUid))
-        ).val();
+    await allow("teacher reads own teachers record", async () => {
+      const record = (
+        await get(ref(T.db, "teachers/" + tUid))
+      ).val();
 
-        if (
-          !rec ||
-          rec.role !== "teacher" ||
-          rec.active !== true
-        ) {
-          throw new Error(
-            "Teacher record is not { role: 'teacher', active: true }"
-          );
-        }
+      if (
+        !record ||
+        record.role !== "teacher" ||
+        record.active !== true
+      ) {
+        throw new Error(
+          "Teacher record must contain role: teacher and active: true."
+        );
       }
-    );
+    });
 
     await deny(
       "student reads the teacher record",
@@ -284,23 +283,27 @@ $("testForm").addEventListener("submit", async (event) => {
 
     await deny(
       "student writes a teachers record",
-      () => set(
-        ref(A.db, "teachers/" + ua),
-        { role: "teacher", active: true }
-      )
+      () =>
+        set(ref(A.db, "teachers/" + ua), {
+          role: "teacher",
+          active: true
+        })
     );
 
     await deny(
       "teacher writes own teachers record",
-      () => set(
-        ref(T.db, "teachers/" + tUid + "/active"),
-        true
-      )
+      () =>
+        set(
+          ref(T.db, "teachers/" + tUid + "/active"),
+          true
+        )
     );
 
-    /* ---------- session creation ---------- */
+    // ------------------------------------------------
+    // SESSION CREATION
+    // ------------------------------------------------
 
-    const opts = {
+    const options = {
       grade: "11",
       topics: ["Tag Questions", "Wh-Questions"],
       durationMinutes: 10,
@@ -309,51 +312,30 @@ $("testForm").addEventListener("submit", async (event) => {
 
     let x = newIds(T.db);
 
-    const noJoinCode = createTestSession(
-      x.sid,
-      x.code,
-      tUid,
-      opts
-    );
-
     await deny(
       "session without a join code",
-      () => update(ref(T.db), {
-        ["sessions/" + x.sid]:
-          noJoinCode["sessions/" + x.sid]
-      }),
-      () => created.push({
-        sid: x.sid,
-        code: null,
-        deleteCode: false
-      })
-    );
+      () => {
+        const writes = createTestSession(
+          x.sid,
+          x.code,
+          tUid,
+          options
+        );
 
-    x = newIds(T.db);
-
-    const orphanCode = createTestSession(
-      x.sid,
-      x.code,
-      tUid,
-      opts
-    );
-
-    await deny(
-      "join code without a session",
-      () => update(ref(T.db), {
-        ["joinCodes/" + x.code]:
-          orphanCode["joinCodes/" + x.code]
-      })
+        return update(ref(T.db), {
+          ["sessions/" + x.sid]: writes["sessions/" + x.sid]
+        });
+      },
+      () => created.push({ sid: x.sid, code: null })
     );
 
     const variant = async (label, change) => {
       const v = newIds(T.db);
-
       const writes = createTestSession(
         v.sid,
         v.code,
         tUid,
-        opts
+        options
       );
 
       change(writes, v);
@@ -361,11 +343,7 @@ $("testForm").addEventListener("submit", async (event) => {
       await deny(
         label,
         () => update(ref(T.db), writes),
-        () => created.push({
-          sid: v.sid,
-          code: null,
-          deleteCode: false
-        })
+        () => created.push(v)
       );
     };
 
@@ -377,9 +355,10 @@ $("testForm").addEventListener("submit", async (event) => {
     );
 
     await variant(
-      "extra field (teacherEmail) in the session",
+      "extra field in the session",
       (writes, v) => {
-        writes["sessions/" + v.sid].teacherEmail = "x@example.com";
+        writes["sessions/" + v.sid].teacherEmail =
+          "test@example.com";
       }
     );
 
@@ -415,58 +394,83 @@ $("testForm").addEventListener("submit", async (event) => {
 
     x = newIds(A.db);
 
-    const studentSession = createTestSession(
-      x.sid,
-      x.code,
-      ua,
-      opts
-    );
-
     await deny(
       "student creates a session",
-      () => update(ref(A.db), studentSession)
+      () =>
+        update(
+          ref(A.db),
+          createTestSession(x.sid, x.code, ua, options)
+        )
     );
-
-    /* ---------- valid session ---------- */
 
     const S1 = newIds(T.db);
 
-    const okCreate = await allow(
+    const createdSuccessfully = await allow(
       "session + join code in ONE atomic update",
-      () => update(
-        ref(T.db),
-        createTestSession(S1.sid, S1.code, tUid, opts)
-      )
+      () =>
+        update(
+          ref(T.db),
+          createTestSession(S1.sid, S1.code, tUid, options)
+        )
     );
 
-    if (!okCreate) {
+    if (!createdSuccessfully) {
       throw new Error("stop");
     }
 
-    created.push({
-      sid: S1.sid,
-      code: S1.code,
-      deleteCode: true
-    });
+    created.push(S1);
 
-    /* ---------- duplicate join code ---------- */
-
+    // Reusing an existing code must never cause cleanup
+    // to delete the original session's join code.
     x = newIds(T.db);
 
     await deny(
       "re-using an existing join code",
-      () => update(
-        ref(T.db),
-        createTestSession(x.sid, S1.code, tUid, opts)
-      ),
-      () => created.push({
-        sid: x.sid,
-        code: null,
-        deleteCode: false
-      })
+      () =>
+        update(
+          ref(T.db),
+          createTestSession(x.sid, S1.code, tUid, options)
+        ),
+      () => created.push({ sid: x.sid, code: null })
     );
 
-    /* ---------- reading ---------- */
+    // ------------------------------------------------
+    // SESSION SETTINGS MUST BE IMMUTABLE
+    // ------------------------------------------------
+
+    await deny(
+      "teacher changes grade after creation",
+      () =>
+        set(
+          ref(T.db, paths.session(S1.sid) + "/grade"),
+          "12"
+        )
+    );
+
+    await deny(
+      "teacher changes topics after creation",
+      () =>
+        set(
+          ref(T.db, paths.session(S1.sid) + "/topics"),
+          ["Yes/No Questions"]
+        )
+    );
+
+    await deny(
+      "teacher changes late-join setting after creation",
+      () =>
+        set(
+          ref(
+            T.db,
+            paths.session(S1.sid) + "/allowLateJoin"
+          ),
+          true
+        )
+    );
+
+    // ------------------------------------------------
+    // READING PERMISSIONS
+    // ------------------------------------------------
 
     await allow(
       "student reads the join code",
@@ -485,26 +489,28 @@ $("testForm").addEventListener("submit", async (event) => {
 
     await allow(
       "teacher lists own sessions",
-      () => get(
-        query(
-          ref(T.db, "sessions"),
-          orderByChild("teacherUid"),
-          equalTo(tUid),
-          limitToLast(5)
+      () =>
+        get(
+          query(
+            ref(T.db, "sessions"),
+            orderByChild("teacherUid"),
+            equalTo(tUid),
+            limitToLast(5)
+          )
         )
-      )
     );
 
     await deny(
       "teacher lists another teacher's sessions",
-      () => get(
-        query(
-          ref(T.db, "sessions"),
-          orderByChild("teacherUid"),
-          equalTo("someone-else"),
-          limitToLast(5)
+      () =>
+        get(
+          query(
+            ref(T.db, "sessions"),
+            orderByChild("teacherUid"),
+            equalTo("someone-else"),
+            limitToLast(5)
+          )
         )
-      )
     );
 
     await deny(
@@ -514,114 +520,99 @@ $("testForm").addEventListener("submit", async (event) => {
 
     await deny(
       "student lists sessions",
-      () => get(
-        query(
-          ref(A.db, "sessions"),
-          orderByChild("teacherUid"),
-          equalTo(ua)
+      () =>
+        get(
+          query(
+            ref(A.db, "sessions"),
+            orderByChild("teacherUid"),
+            equalTo(ua)
+          )
         )
-      )
     );
 
-    /* ---------- session settings are immutable ---------- */
-
-    await deny(
-      "teacher changes grade after creation",
-      () => update(
-        ref(T.db, paths.session(S1.sid)),
-        { grade: "12" }
-      )
-    );
-
-    await deny(
-      "teacher changes topics after creation",
-      () => set(
-        ref(T.db, paths.session(S1.sid) + "/topics"),
-        ["Yes/No Questions"]
-      )
-    );
-
-    await deny(
-      "teacher changes late-join setting after creation",
-      () => set(
-        ref(T.db, paths.session(S1.sid) + "/allowLateJoin"),
-        true
-      )
-    );
-
-    /* ---------- joining ---------- */
+    // ------------------------------------------------
+    // STUDENT JOINING
+    // ------------------------------------------------
 
     await allow(
-      "student A joins (name, class, server time)",
-      () => set(
-        ref(A.db, paths.player(S1.sid, ua)),
-        buildPlayer("Test Student A", "TEST")
-      )
+      "student A joins",
+      () =>
+        set(
+          ref(A.db, paths.player(S1.sid, ua)),
+          buildPlayer("Test Student A", "TEST")
+        )
     );
 
     await deny(
-      "student A joins again (overwrite)",
-      () => set(
-        ref(A.db, paths.player(S1.sid, ua)),
-        buildPlayer("Test Student A", "TEST")
-      )
+      "student A joins again and overwrites record",
+      () =>
+        set(
+          ref(A.db, paths.player(S1.sid, ua)),
+          buildPlayer("Test Student A", "TEST")
+        )
     );
 
     await deny(
       "join with a device-clock joinedAt",
-      () => set(
-        ref(B.db, paths.player(S1.sid, ub)),
-        Object.assign(
-          buildPlayer("Test Student B", "TEST"),
-          { joinedAt: Date.now() }
+      () =>
+        set(
+          ref(B.db, paths.player(S1.sid, ub)),
+          Object.assign(
+            buildPlayer("Test Student B", "TEST"),
+            { joinedAt: Date.now() }
+          )
         )
-      )
     );
 
     await deny(
       "join with a starting score",
-      () => set(
-        ref(B.db, paths.player(S1.sid, ub)),
-        Object.assign(
-          buildPlayer("Test Student B", "TEST"),
-          { progress: buildProgress(50, 0, 0) }
+      () =>
+        set(
+          ref(B.db, paths.player(S1.sid, ub)),
+          Object.assign(
+            buildPlayer("Test Student B", "TEST"),
+            { progress: buildProgress(50, 0, 0) }
+          )
         )
-      )
     );
 
     await deny(
       "join with an extra uid field",
-      () => set(
-        ref(B.db, paths.player(S1.sid, ub)),
-        Object.assign(
-          buildPlayer("Test Student B", "TEST"),
-          { uid: ub }
+      () =>
+        set(
+          ref(B.db, paths.player(S1.sid, ub)),
+          Object.assign(
+            buildPlayer("Test Student B", "TEST"),
+            { uid: ub }
+          )
         )
-      )
     );
 
     await deny(
       "41-character name",
-      () => set(
-        ref(B.db, paths.player(S1.sid, ub)),
-        buildPlayer("x".repeat(41), "TEST")
-      )
+      () =>
+        set(
+          ref(B.db, paths.player(S1.sid, ub)),
+          buildPlayer("x".repeat(41), "TEST")
+        )
     );
 
     await deny(
       "student B writes a record for student C",
-      () => set(
-        ref(B.db, paths.player(S1.sid, uc)),
-        buildPlayer("Fake", "TEST")
-      )
+      () =>
+        set(
+          ref(B.db, paths.player(S1.sid, uc)),
+          buildPlayer("Fake", "TEST")
+        )
     );
 
     await allow(
       "student B joins",
-      () => set(
-        ref(B.db, paths.player(S1.sid, ub)),
-        buildPlayer("Test Student B", "TEST")
-      )
+      () =>
+        set(
+          ref(B.db, paths.player(S1.sid, ub)),
+          buildPlayer("Test Student B", "TEST")
+        )
     );
 
     await allow(
@@ -640,382 +631,435 @@ $("testForm").addEventListener("submit", async (event) => {
     );
 
     await allow(
-      "teacher reads the full player list (2 students)",
+      "teacher reads the full player list",
       async () => {
-        const n = Object.keys(
-          (await get(ref(T.db, paths.players(S1.sid))).val() || {})
+        const playerSnapshot = await get(
+          ref(T.db, paths.players(S1.sid))
+        );
+
+        const playerCount = Object.keys(
+          playerSnapshot.val() || {}
         ).length;
 
-        if (n !== 2) {
+        if (playerCount !== 2) {
           throw new Error(
-            "Expected 2 students, found " + n
+            "Expected 2 students, found " + playerCount
           );
         }
       }
     );
 
-    /* ---------- before start ---------- */
+    // ------------------------------------------------
+    // BEFORE START
+    // ------------------------------------------------
 
     await deny(
       "progress before the game starts",
-      () => set(
-        ref(A.db, paths.progress(S1.sid, ua)),
-        buildProgress(20, 1, 1)
-      )
+      () =>
+        set(
+          ref(A.db, paths.progress(S1.sid, ua)),
+          buildProgress(20, 1, 1)
+        )
     );
 
     await deny(
       "student renames self",
-      () => set(
-        ref(A.db, paths.player(S1.sid, ua) + "/name"),
-        "Hacker"
-      )
+      () =>
+        set(
+          ref(A.db, paths.player(S1.sid, ua) + "/name"),
+          "Hacker"
+        )
     );
 
     await allow(
-      "teacher fixes a student's name",
-      () => update(
-        ref(T.db, paths.player(S1.sid, ua)),
-        {
-          name: "Test Student A2",
-          classSection: "TEST2"
-        }
-      )
+      "teacher fixes a student's name and class",
+      () =>
+        update(
+          ref(T.db, paths.player(S1.sid, ua)),
+          {
+            name: "Test Student A2",
+            classSection: "TEST2"
+          }
+        )
     );
 
-    /* ---------- start ---------- */
+    // ------------------------------------------------
+    // START SESSION
+    // ------------------------------------------------
 
     await deny(
       "start without startedAt",
-      () => update(ref(T.db), {
-        ["sessions/" + S1.sid + "/status"]: "running",
-        ["joinCodes/" + S1.code + "/status"]: "running"
-      })
+      () =>
+        update(ref(T.db), {
+          ["sessions/" + S1.sid + "/status"]: "running",
+          ["joinCodes/" + S1.code + "/status"]: "running"
+        })
     );
 
     await deny(
       "start without updating the join code",
-      () => update(ref(T.db), {
-        ["sessions/" + S1.sid + "/status"]: "running",
-        ["sessions/" + S1.sid + "/startedAt"]: serverTimestamp()
-      })
+      () =>
+        update(ref(T.db), {
+          ["sessions/" + S1.sid + "/status"]: "running",
+          ["sessions/" + S1.sid + "/startedAt"]:
+            serverTimestamp()
+        })
     );
 
     await deny(
       "start with a device-clock startedAt",
-      () => update(ref(T.db), {
-        ["sessions/" + S1.sid + "/status"]: "running",
-        ["sessions/" + S1.sid + "/startedAt"]: 42,
-        ["joinCodes/" + S1.code + "/status"]: "running",
-        ["joinCodes/" + S1.code + "/startedAt"]: 42
-      })
+      () =>
+        update(ref(T.db), {
+          ["sessions/" + S1.sid + "/status"]: "running",
+          ["sessions/" + S1.sid + "/startedAt"]: 42,
+          ["joinCodes/" + S1.code + "/status"]: "running",
+          ["joinCodes/" + S1.code + "/startedAt"]: 42
+        })
     );
 
     await deny(
       "student starts the game",
-      () => update(
-        ref(A.db),
-        buildStartSession(S1.sid, S1.code)
-      )
+      () =>
+        update(
+          ref(A.db),
+          buildStartSession(S1.sid, S1.code)
+        )
     );
 
     await allow(
       "START: status + startedAt + join code in one update",
-      () => update(
-        ref(T.db),
-        buildStartSession(S1.sid, S1.code)
-      )
+      () =>
+        update(
+          ref(T.db),
+          buildStartSession(S1.sid, S1.code)
+        )
     );
 
     await deny(
-      "running → waiting",
-      () => update(ref(T.db), {
-        ["sessions/" + S1.sid + "/status"]: "waiting",
-        ["joinCodes/" + S1.code + "/status"]: "waiting"
-      })
+      "running to waiting",
+      () =>
+        update(ref(T.db), {
+          ["sessions/" + S1.sid + "/status"]: "waiting",
+          ["joinCodes/" + S1.code + "/status"]: "waiting"
+        })
     );
 
     await deny(
       "late join when late join is off",
-      () => set(
-        ref(C.db, paths.player(S1.sid, uc)),
-        buildPlayer("Test Student C", "TEST")
-      )
+      () =>
+        set(
+          ref(C.db, paths.player(S1.sid, uc)),
+          buildPlayer("Test Student C", "TEST")
+        )
     );
 
-    /* ---------- progress ---------- */
+    // ------------------------------------------------
+    // PROGRESS / PROVISIONAL SCORING LIMITS
+    // ------------------------------------------------
 
     await wait(2200);
 
     await allow(
       "valid progress update (+1 answer, +20 points)",
-      () => set(
-        ref(A.db, paths.progress(S1.sid, ua)),
-        buildProgress(20, 1, 1)
-      )
+      () =>
+        set(
+          ref(A.db, paths.progress(S1.sid, ua)),
+          buildProgress(20, 1, 1)
+        )
     );
 
     await deny(
       "another update within 2 seconds",
-      () => set(
-        ref(A.db, paths.progress(S1.sid, ua)),
-        buildProgress(40, 2, 2)
-      )
+      () =>
+        set(
+          ref(A.db, paths.progress(S1.sid, ua)),
+          buildProgress(40, 2, 2)
+        )
     );
 
     await wait(2200);
 
     await deny(
       "more than +60 points for one answer",
-      () => set(
-        ref(A.db, paths.progress(S1.sid, ua)),
-        buildProgress(81, 2, 2)
-      )
+      () =>
+        set(
+          ref(A.db, paths.progress(S1.sid, ua)),
+          buildProgress(81, 2, 2)
+        )
     );
 
     await deny(
       "two answers at once",
-      () => set(
-        ref(A.db, paths.progress(S1.sid, ua)),
-        buildProgress(40, 3, 3)
-      )
+      () =>
+        set(
+          ref(A.db, paths.progress(S1.sid, ua)),
+          buildProgress(40, 3, 3)
+        )
     );
 
     await deny(
       "score goes down",
-      () => set(
-        ref(A.db, paths.progress(S1.sid, ua)),
-        buildProgress(10, 1, 2)
-      )
+      () =>
+        set(
+          ref(A.db, paths.progress(S1.sid, ua)),
+          buildProgress(10, 1, 2)
+        )
     );
 
     await deny(
       "correct greater than answered",
-      () => set(
-        ref(A.db, paths.progress(S1.sid, ua)),
-        buildProgress(40, 3, 2)
-      )
+      () =>
+        set(
+          ref(A.db, paths.progress(S1.sid, ua)),
+          buildProgress(40, 3, 2)
+        )
     );
 
     await deny(
       "extra field inside progress",
-      () => set(
-        ref(A.db, paths.progress(S1.sid, ua)),
-        Object.assign(
-          buildProgress(40, 2, 2),
-          { coins: 999 }
+      () =>
+        set(
+          ref(A.db, paths.progress(S1.sid, ua)),
+          Object.assign(
+            buildProgress(40, 2, 2),
+            { coins: 999 }
+          )
         )
-      )
     );
 
     await deny(
       "device-clock updatedAt",
-      () => set(
-        ref(A.db, paths.progress(S1.sid, ua)),
-        {
-          score: 40,
-          correct: 2,
-          answered: 2,
-          updatedAt: Date.now() - 5000
-        }
-      )
+      () =>
+        set(
+          ref(A.db, paths.progress(S1.sid, ua)),
+          {
+            score: 40,
+            correct: 2,
+            answered: 2,
+            updatedAt: Date.now() - 5000
+          }
+        )
     );
 
     await deny(
       "progress write that also changes the name",
-      () => update(
-        ref(A.db, paths.player(S1.sid, ua)),
-        {
-          progress: buildProgress(40, 2, 2),
-          name: "Hacker"
-        }
-      )
+      () =>
+        update(
+          ref(A.db, paths.player(S1.sid, ua)),
+          {
+            progress: buildProgress(40, 2, 2),
+            name: "Hacker"
+          }
+        )
     );
 
     await deny(
       "student B changes student A's score",
-      () => set(
-        ref(B.db, paths.progress(S1.sid, ua)),
-        buildProgress(40, 2, 2)
-      )
+      () =>
+        set(
+          ref(B.db, paths.progress(S1.sid, ua)),
+          buildProgress(40, 2, 2)
+        )
     );
 
     await allow(
       "second valid update (wrong answer: +0 points)",
-      () => set(
-        ref(A.db, paths.progress(S1.sid, ua)),
-        buildProgress(20, 1, 2)
-      )
+      () =>
+        set(
+          ref(A.db, paths.progress(S1.sid, ua)),
+          buildProgress(20, 1, 2)
+        )
     );
 
-    /* ---------- end ---------- */
+    // ------------------------------------------------
+    // END SESSION
+    // ------------------------------------------------
 
     await deny(
       "end without endedAt",
-      () => update(ref(T.db), {
-        ["sessions/" + S1.sid + "/status"]: "ended",
-        ["joinCodes/" + S1.code + "/status"]: "ended"
-      })
+      () =>
+        update(ref(T.db), {
+          ["sessions/" + S1.sid + "/status"]: "ended",
+          ["joinCodes/" + S1.code + "/status"]: "ended"
+        })
     );
 
     await allow(
       "END: status + endedAt + join code in one update",
-      () => update(
-        ref(T.db),
-        buildEndSession(S1.sid, S1.code)
-      )
+      () =>
+        update(
+          ref(T.db),
+          buildEndSession(S1.sid, S1.code)
+        )
     );
 
     await deny(
-      "ended → running",
-      () => update(ref(T.db), {
-        ["sessions/" + S1.sid + "/status"]: "running",
-        ["joinCodes/" + S1.code + "/status"]: "running"
-      })
+      "ended to running",
+      () =>
+        update(ref(T.db), {
+          ["sessions/" + S1.sid + "/status"]: "running",
+          ["joinCodes/" + S1.code + "/status"]: "running"
+        })
     );
 
     await deny(
-      "ended → waiting",
-      () => update(ref(T.db), {
-        ["sessions/" + S1.sid + "/status"]: "waiting",
-        ["joinCodes/" + S1.code + "/status"]: "waiting"
-      })
+      "ended to waiting",
+      () =>
+        update(ref(T.db), {
+          ["sessions/" + S1.sid + "/status"]: "waiting",
+          ["joinCodes/" + S1.code + "/status"]: "waiting"
+        })
     );
 
     await wait(2200);
 
     await deny(
       "student progress after END",
-      () => set(
-        ref(B.db, paths.progress(S1.sid, ub)),
-        buildProgress(10, 1, 1)
-      )
+      () =>
+        set(
+          ref(B.db, paths.progress(S1.sid, ub)),
+          buildProgress(10, 1, 1)
+        )
     );
 
     await deny(
       "new student joins after END",
-      () => set(
-        ref(C.db, paths.player(S1.sid, uc)),
-        buildPlayer("Test Student C", "TEST")
-      )
+      () =>
+        set(
+          ref(C.db, paths.player(S1.sid, uc)),
+          buildPlayer("Test Student C", "TEST")
+        )
     );
 
     await deny(
-      "teacher changes a score after END",
-      () => set(
-        ref(T.db, paths.progress(S1.sid, ua)),
-        buildProgress(999, 1, 2)
-      )
+      "teacher changes a score",
+      () =>
+        set(
+          ref(T.db, paths.progress(S1.sid, ua)),
+          buildProgress(999, 1, 2)
+        )
     );
 
     await deny(
       "teacher renames a student after END",
-      () => update(
-        ref(T.db, paths.player(S1.sid, ua)),
-        {
-          name: "Changed After End",
-          classSection: "HACKED"
-        }
-      )
+      () =>
+        set(
+          ref(
+            T.db,
+            paths.player(S1.sid, ua) + "/name"
+          ),
+          "Changed After End"
+        )
     );
 
     await deny(
       "teacher removes a student after END",
-      () => remove(
-        ref(T.db, paths.player(S1.sid, ub))
-      )
+      () =>
+        remove(ref(T.db, paths.player(S1.sid, ub)))
     );
 
     await deny(
       "student deletes own record",
-      () => remove(
-        ref(A.db, paths.player(S1.sid, ua))
-      )
+      () =>
+        remove(ref(A.db, paths.player(S1.sid, ua)))
     );
 
-    /* ---------- cancel a waiting session ---------- */
+    // ------------------------------------------------
+    // CANCEL A WAITING SESSION
+    // ------------------------------------------------
 
     const SC = newIds(T.db);
 
     if (
       await allow(
-        "create a second session (for cancel)",
-        () => update(
-          ref(T.db),
-          createTestSession(SC.sid, SC.code, tUid, opts)
-        )
+        "create a second session for cancellation",
+        () =>
+          update(
+            ref(T.db),
+            createTestSession(
+              SC.sid,
+              SC.code,
+              tUid,
+              options
+            )
+          )
       )
     ) {
-      created.push({
-        sid: SC.sid,
-        code: SC.code,
-        deleteCode: true
-      });
+      created.push(SC);
 
       await allow(
-        "waiting → ended (cancel) with endedAt",
-        () => update(
-          ref(T.db),
-          buildEndSession(SC.sid, SC.code)
-        )
+        "waiting to ended (cancel) with endedAt",
+        () =>
+          update(
+            ref(T.db),
+            buildEndSession(SC.sid, SC.code)
+          )
       );
     }
 
-    /* ---------- late join ---------- */
+    // ------------------------------------------------
+    // LATE JOIN
+    // ------------------------------------------------
 
     const SL = newIds(T.db);
+
+    const lateJoinOptions = Object.assign({}, options, {
+      allowLateJoin: true
+    });
 
     if (
       await allow(
         "create a late-join session",
-        () => update(
-          ref(T.db),
-          createTestSession(
-            SL.sid,
-            SL.code,
-            tUid,
-            Object.assign({}, opts, { allowLateJoin: true })
+        () =>
+          update(
+            ref(T.db),
+            createTestSession(
+              SL.sid,
+              SL.code,
+              tUid,
+              lateJoinOptions
+            )
           )
-        )
       )
     ) {
-      created.push({
-        sid: SL.sid,
-        code: SL.code,
-        deleteCode: true
-      });
+      created.push(SL);
 
       await allow(
         "start the late-join session",
-        () => update(
-          ref(T.db),
-          buildStartSession(SL.sid, SL.code)
-        )
+        () =>
+          update(
+            ref(T.db),
+            buildStartSession(SL.sid, SL.code)
+          )
       );
 
       await allow(
         "student joins after the start (late join on)",
-        () => set(
-          ref(C.db, paths.player(SL.sid, uc)),
-          buildPlayer("Test Student C", "TEST")
-        )
+        () =>
+          set(
+            ref(C.db, paths.player(SL.sid, uc)),
+            buildPlayer("Test Student C", "TEST")
+          )
       );
 
       await allow(
         "end the late-join session",
-        () => update(
-          ref(T.db),
-          buildEndSession(SL.sid, SL.code)
-        )
+        () =>
+          update(
+            ref(T.db),
+            buildEndSession(SL.sid, SL.code)
+          )
       );
     }
 
-    /* ---------- time limit (optional) ---------- */
+    // ------------------------------------------------
+    // OPTIONAL TIME-LIMIT TEST
+    // ------------------------------------------------
 
     if ($("longTest").checked) {
       const ST = newIds(T.db);
 
-      const shortOpts = Object.assign({}, opts, {
+      const shortOptions = Object.assign({}, options, {
         durationMinutes: 5,
         allowLateJoin: true
       });
@@ -1023,37 +1067,41 @@ $("testForm").addEventListener("submit", async (event) => {
       if (
         await allow(
           "create a 5-minute session",
-          () => update(
-            ref(T.db),
-            createTestSession(ST.sid, ST.code, tUid, shortOpts)
-          )
+          () =>
+            update(
+              ref(T.db),
+              createTestSession(
+                ST.sid,
+                ST.code,
+                tUid,
+                shortOptions
+              )
+            )
         )
       ) {
-        created.push({
-          sid: ST.sid,
-          code: ST.code,
-          deleteCode: true
-        });
+        created.push(ST);
 
         await allow(
-          "student A joins it",
-          () => set(
-            ref(A.db, paths.player(ST.sid, ua)),
-            buildPlayer("Test Student A", "TEST")
-          )
+          "student A joins the timed session",
+          () =>
+            set(
+              ref(A.db, paths.player(ST.sid, ua)),
+              buildPlayer("Test Student A", "TEST")
+            )
         );
 
         await allow(
-          "start it",
-          () => update(
-            ref(T.db),
-            buildStartSession(ST.sid, ST.code)
-          )
+          "start the timed session",
+          () =>
+            update(
+              ref(T.db),
+              buildStartSession(ST.sid, ST.code)
+            )
         );
 
         showMessage(
           $("testSummary"),
-          "Waiting 5 minutes 20 seconds for the time limit… keep this tab open.",
+          "Waiting 5 minutes 20 seconds for the time limit… Keep this tab open.",
           "info"
         );
 
@@ -1061,38 +1109,41 @@ $("testForm").addEventListener("submit", async (event) => {
 
         await deny(
           "progress after the time limit",
-          () => set(
-            ref(A.db, paths.progress(ST.sid, ua)),
-            buildProgress(20, 1, 1)
-          )
+          () =>
+            set(
+              ref(A.db, paths.progress(ST.sid, ua)),
+              buildProgress(20, 1, 1)
+            )
         );
 
         await deny(
           "late join after the time limit",
-          () => set(
-            ref(B.db, paths.player(ST.sid, ub)),
-            buildPlayer("Test Student B", "TEST")
-          )
+          () =>
+            set(
+              ref(B.db, paths.player(ST.sid, ub)),
+              buildPlayer("Test Student B", "TEST")
+            )
         );
 
         await allow(
-          "teacher ends it",
-          () => update(
-            ref(T.db),
-            buildEndSession(ST.sid, ST.code)
-          )
+          "teacher ends the timed session",
+          () =>
+            update(
+              ref(T.db),
+              buildEndSession(ST.sid, ST.code)
+            )
         );
       }
     } else {
       skip(
         "time-limit test",
-        "Not selected (tick the box to include it)."
+        "Not selected. Tick the optional long test checkbox to include it."
       );
     }
 
     skip(
       "another teacher's sessions are protected",
-      "Needs a second teacher account. Checked separately in the Rules Playground."
+      "Requires a second teacher account. Verify separately in docs/RULES-PLAYGROUND-TESTS.md."
     );
 
   } catch (error) {
@@ -1105,87 +1156,62 @@ $("testForm").addEventListener("submit", async (event) => {
     }
 
   } finally {
-    /* ---------- cleanup ---------- */
-
-    let cleaned = 0;
+    // ------------------------------------------------
+    // CLEANUP — ONLY TEST-CREATED DATA
+    // ------------------------------------------------
 
     for (const item of created) {
-      /*
-       * Delete join code first.
-       * The Rules verify the existing testOnly session
-       * before allowing the code to be deleted.
-       */
-      if (item.deleteCode && item.code) {
-        try {
+      try {
+        if (item.code) {
           await remove(
-            ref(T.db, paths.joinCode(item.code))
-          );
-        } catch (error) {
-          report(
-            "fail",
-            "clean-up of test join code " + item.code,
-            friendlyError(error)
+            ref(T.db, "joinCodes/" + item.code)
           );
         }
-      }
 
-      /*
-       * Then delete the test-only session.
-       * Ordinary classroom sessions are not eligible.
-       */
-      try {
         await remove(
-          ref(T.db, paths.session(item.sid))
+          ref(T.db, "sessions/" + item.sid)
         );
-
-        cleaned++;
 
       } catch (error) {
         report(
           "fail",
           "clean-up of test session " + item.sid,
           friendlyError(error) +
-            " — inspect this test-only session in Firebase Console."
+            " — if it still exists, remove only this test session manually in Firebase Console."
         );
       }
     }
 
-    /* Delete temporary anonymous accounts. */
-
+    // Delete temporary anonymous student accounts.
     for (const student of [A, B, C]) {
       if (student.auth.currentUser) {
         try {
           await deleteUser(student.auth.currentUser);
         } catch (error) {
-          report(
-            "fail",
-            "temporary student account cleanup",
-            friendlyError(error)
-          );
+          // Temporary account cleanup failure does not stop the report.
         }
       }
     }
 
+    // Sign out the temporary teacher test instance.
     if (T.auth.currentUser) {
       try {
         await signOut(T.auth);
       } catch (error) {
-        report(
-          "fail",
-          "temporary teacher test sign-out",
-          friendlyError(error)
-        );
+        // Ignore sign-out cleanup failure.
       }
     }
 
-    if (cleaned) {
+    if (created.length) {
       report(
         "pass",
-        "clean-up: " + cleaned + " test session(s) deleted"
+        "Cleanup attempted for " +
+          created.length +
+          " test session(s) and temporary students"
       );
     }
 
-    const fails = results.filter(
+    const failures = results.filter(
       (item) => item.status === "fail"
     ).length;
 
@@ -1199,13 +1225,19 @@ $("testForm").addEventListener("submit", async (event) => {
 
     showMessage(
       $("testSummary"),
-      fails
-        ? fails + " check(s) FAILED, " + passes +
-          " passed, " + skips +
-          " skipped. Do not use this version in class until the failures are fixed."
-        : "All " + passes + " checks passed. " +
-          skips + " skipped.",
-      fails ? "error" : "success"
+      failures
+        ? failures +
+            " check(s) FAILED, " +
+            passes +
+            " passed, " +
+            skips +
+            " skipped. Do not use the new version in class until the failures are fixed."
+        : "All " +
+            passes +
+            " checks passed, " +
+            skips +
+            " skipped.",
+      failures ? "error" : "success"
     );
 
     $("copyReport").classList.remove("hidden");
@@ -1213,26 +1245,35 @@ $("testForm").addEventListener("submit", async (event) => {
   }
 });
 
-/* ---------- copy report ---------- */
+// --------------------------------------------------
+// 4. COPY TEST REPORT
+// --------------------------------------------------
 
 $("copyReport").addEventListener("click", () => {
-  const text = results
-    .map((item) =>
-      item.status.toUpperCase() +
-      "  " + item.label +
-      (item.detail ? "  — " + item.detail : "")
+  const reportText = results
+    .map(
+      (item) =>
+        item.status.toUpperCase() +
+        "  " +
+        item.label +
+        (item.detail ? "  — " + item.detail : "")
     )
     .join("\n");
 
-  navigator.clipboard.writeText(text).then(
-    () => showMessage(
-      $("testSummary"),
-      "Report copied.",
-      "success"
-    ),
-    () => showMessage(
-      $("testSummary"),
-      "Could not copy the report. You can select and copy the results manually."
-    )
-  );
+  navigator.clipboard
+    .writeText(reportText)
+    .then(() => {
+      showMessage(
+        $("testSummary"),
+        "Test report copied.",
+        "success"
+      );
+    })
+    .catch(() => {
+      showMessage(
+        $("testSummary"),
+        "Unable to copy automatically. Select and copy the report manually.",
+        "error"
+      );
+    });
 });
