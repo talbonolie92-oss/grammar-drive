@@ -90,6 +90,7 @@ export function playSfx(name) {
     correct: [523, 659, 784, 1047],
     wrong: [260, 210],
     reward: [660, 784, 988, 1318],
+    evolve: [392, 523, 659, 784, 1047, 1318],
     purchase: [440, 660, 880],
     repair: [392, 523, 659],
     mission: [523, 659, 784, 988, 1175]
@@ -100,7 +101,7 @@ export function playSfx(name) {
   notes.forEach((frequency, index) => {
     const oscillator = ctx.createOscillator();
     const gain = ctx.createGain();
-    oscillator.type = name === "wrong" ? "triangle" : "sine";
+    oscillator.type = name === "wrong" || name === "evolve" ? "triangle" : "sine";
     oscillator.frequency.setValueAtTime(frequency, now + index * 0.075);
     gain.gain.setValueAtTime(0.0001, now + index * 0.075);
     gain.gain.exponentialRampToValueAtTime(0.16, now + index * 0.075 + 0.012);
