@@ -26,7 +26,7 @@ export const MP = Object.freeze({
   DELAY_MS: 750,
   STALE_MS: 12000,
   EXTRAPOLATE_MS: 400,
-  WORLD_MAX: 4000
+  WORLD_MAX: 6500
 });
 
 export const CAR_COLORS = [
