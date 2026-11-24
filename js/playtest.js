@@ -187,8 +187,11 @@ function getCamera() {
   return { scale, viewW, viewH, camX, camY };
 }
 
+// Reuse one camera calculation for every object drawn in the same frame.
+let frameCamera = null;
+
 function worldToScreen(x, y) {
-  const camera = getCamera();
+  const camera = frameCamera || getCamera();
   return {
     x: (x - camera.camX) * camera.scale,
     y: (y - camera.camY) * camera.scale,
@@ -389,6 +392,7 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
 function drawWorld() {
   prepareStaticMap();
   const camera = getCamera();
+  frameCamera = camera;
 
   if (staticMapReady && staticMapCanvas) {
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
