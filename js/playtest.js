@@ -151,7 +151,7 @@ const RACE_ROUTE = [
   { x: 1500, y: 3325 },
   { x: 4750, y: 3325 }
 ];
-const race = { active: false, next: 0, startedAt: 0 };
+const race = { active: false, next: 0, startedAt: 0, lastHudAt: 0 };
 let grammarChallenge = null;
 let grammarBusy = false;
 
@@ -608,6 +608,7 @@ function startRace() {
   race.active = true;
   race.next = 0;
   race.startedAt = Date.now();
+  race.lastHudAt = 0;
   racePanel.classList.add("hidden");
   raceHudEl.classList.remove("hidden");
   raceHudEl.textContent = "🏁 Checkpoint 1 / " + RACE_ROUTE.length;
@@ -635,9 +636,11 @@ function updateRace() {
       playSfx("reward");
       window.setTimeout(() => raceHudEl.classList.add("hidden"), 8000);
     } else {
+      race.lastHudAt = Date.now();
       raceHudEl.textContent = "🏁 Checkpoint " + (race.next + 1) + " / " + RACE_ROUTE.length + " · " + elapsed.toFixed(1) + "s";
     }
-  } else {
+  } else if (Date.now() - race.lastHudAt >= 250) {
+    race.lastHudAt = Date.now();
     raceHudEl.textContent = "🏁 Checkpoint " + (race.next + 1) + " / " + RACE_ROUTE.length + " · " + elapsed.toFixed(1) + "s";
   }
 }
