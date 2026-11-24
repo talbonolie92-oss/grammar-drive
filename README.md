@@ -48,9 +48,9 @@ All times are set by the Firebase server clock, never by the device.
 - Only active teachers (listed in `teachers`) can create and control sessions, and only their own.
 - A session and its join code are created together in one atomic update. Start and End also update both together.
 - Status only moves forward: `waiting → running → ended`. Start needs `startedAt`; End needs `endedAt`.
-- Students can read only the join code and their own record. They can create their own record once, by joining.
+- Students can read the join code and their own player record. After joining, they can also read the shared live-car list for that session; they cannot read another student's player record. They can create their own player record once, by joining.
 - Name and class can't be changed by the student afterwards; the teacher can fix them.
-- Score updates only touch `progress`. Each update must be +1 answer, at most +60 points, at least 2 seconds apart, while the game is running and before the time limit. Nothing can be written after the game ends.
+- Score updates only touch `progress`. Each update must be +1 answer, at most +60 points, at least 2 seconds apart, while the game is running and before the time limit. No score/progress updates are allowed after the game ends; a student may still delete their own live-car record for cleanup.
 - Join codes contain no teacher information.
 - Phase 3 students can read the live-car list only after joining the session; each student can write only their own car record while the session is running and within its time limit.
 - Live-car records have bounded coordinates/speed, a server timestamp, a 150 ms minimum update interval, and a name that must match the student's current player record. The owner teacher can read the cars and delete the live-car subtree for their own session.
@@ -63,7 +63,7 @@ All times are set by the Firebase server clock, never by the device.
 2. **Realtime Database → Data:** your teacher record exists at `teachers/<your UID>` with `role: "teacher"` and `active: true` (already done).
 
 ## Phase 3 release status
-Phase 1 and Phase 2 have already been deployed and manually tested. Phase 3 files are being added to the repository, but the Phase 3 database rules have **not** been published to Firebase. Do not test the new multiplayer track against the old published rules: the `liveCars` path will be denied.
+Phase 1 and Phase 2 have already been deployed and manually tested. The Phase 3 frontend, test track, self-tests, documentation, and database rules have now been committed to the repository, but the Phase 3 database rules have **not** been published to Firebase. Do not test the new multiplayer track against the old published rules: the `liveCars` path will be denied.
 
 Before using Phase 3 with students, the matching frontend and `database.rules.json` must be released together. First back up the currently published rules. Then publish the Phase 3 rules and verify the updated `test.html` self-test, the manual checks in `docs/RULES-PLAYGROUND-TESTS.md`, and a real teacher laptop plus multiple student phones. The test-track page is `play.html`; it is a temporary multiplayer proof, not the finished driving game.
 
