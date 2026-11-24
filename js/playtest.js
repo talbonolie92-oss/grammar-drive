@@ -22,7 +22,7 @@ import {
   friendlyError
 } from "./common.js";
 
-import { createLiveCars, CAR_COLORS } from "./multiplayer.js";
+import { createLiveCars, CAR_COLORS, colorFor } from "./multiplayer.js";
 
 const { auth, db } = studentFirebase();
 const serverNow = serverClock(db);
@@ -221,12 +221,12 @@ function drawWorld() {
     if (pose) drawCar(pose.x, pose.y, pose.a, pose.c, pose.n, false);
   }
 
-  drawCar(car.x, car.y, car.a, live ? live.stats.color : 5, me ? me.name : "You", true);
+  drawCar(car.x, car.y, car.a, colorFor(uid), me ? me.name : "You", true);
 }
 
 function renderRoster() {
   const rows = [];
-  if (me) rows.push({ uid, name: me.name, color: 5, mine: true });
+  if (me) rows.push({ uid, name: me.name, color: colorFor(uid), mine: true });
   for (const [id, value] of others) {
     rows.push({ uid: id, name: value.n || "Driver", color: value.c, mine: false });
   }
