@@ -70,7 +70,7 @@ const overlayTitle = $("overlayTitle");
 const overlayText = $("overlayText");
 const overlayLink = $("overlayLink");
 
-const keys = { left: false, right: false, gas: false, brake: false, reverse: false };
+const keys = { left: false, right: false, steer: 0, gas: false, brake: false, reverse: false };
 const car = createVehicle(1800, 1300, 0);
 const CAR_MODELS = {
   compact: { label: "Compact", color: "#3b82f6", width: 34, height: 19 },
@@ -605,7 +605,7 @@ function frame(timestamp) {
 }
 
 function clearControls() {
-  Object.keys(keys).forEach((key) => { keys[key] = false; });
+  Object.keys(keys).forEach((key) => { keys[key] = key === "steer" ? 0 : false; });
   document.querySelectorAll(".pad button").forEach((button) => button.classList.remove("on"));
 }
 
@@ -679,8 +679,8 @@ function applyStatus() {
 function onKeyDown(event) {
   const key = event.key.toLowerCase();
   if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) event.preventDefault();
-  if (key === "arrowleft" || key === "a") keys.left = true;
-  if (key === "arrowright" || key === "d") keys.right = true;
+  if (key === "arrowleft" || key === "a") { keys.left = true; keys.steer = -1; }
+  if (key === "arrowright" || key === "d") { keys.right = true; keys.steer = 1; }
   if (key === "arrowup" || key === "w") keys.gas = true;
   if (key === "arrowdown" || key === "s") keys.reverse = true;
   if (key === " ") keys.brake = true;
@@ -692,8 +692,8 @@ function onKeyDown(event) {
 
 function onKeyUp(event) {
   const key = event.key.toLowerCase();
-  if (key === "arrowleft" || key === "a") keys.left = false;
-  if (key === "arrowright" || key === "d") keys.right = false;
+  if (key === "arrowleft" || key === "a") { keys.left = false; if (!keys.right) keys.steer = 0; }
+  if (key === "arrowright" || key === "d") { keys.right = false; if (!keys.left) keys.steer = 0; }
   if (key === "arrowup" || key === "w") keys.gas = false;
   if (key === "arrowdown" || key === "s") keys.reverse = false;
   if (key === " ") keys.brake = false;
@@ -702,80 +702,76 @@ function onKeyUp(event) {
 function bindTouch(buttonId, keyName) {
   const button = $(buttonId);
   if (!button) return;
-  const down = (event) => {
-    event.preventDefault();
-    keys[keyName] = true;
-    button.classList.add("on");
-    if (button.setPointerCapture && event.pointerId !== undefined) {
-      try { button.setPointerCapture(event.pointerId); } catch (error) {}
-    }
-  };
-  const up = (event) => {
-    event.preventDefault();
+  let activePointer = null;
+  const release = (event) => {
+    if (activePointer !== null && event && event.pointerId !== undefined && event.pointerId !== activePointer) return;
+    activePointer = null;
     keys[keyName] = false;
     button.classList.remove("on");
   };
-  button.addEventListener("pointerdown", down);
-  ["pointerup", "pointercancel", "lostpointercapture", "pointerleave"].forEach((name) => {
-    button.addEventListener(name, up);
+  button.addEventListener("pointerdown", (event) => {
+    if (activePointer !== null) return;
+    event.preventDefault();
+    activePointer = event.pointerId;
+    keys[keyName] = true;
+    button.classList.add("on");
+    try { button.setPointerCapture(event.pointerId); } catch (error) {}
   });
+  button.addEventListener("pointerup", release);
+  button.addEventListener("pointercancel", release);
+  button.addEventListener("lostpointercapture", release);
+  button.addEventListener("contextmenu", (event) => event.preventDefault());
 }
 
 function bindSteeringWheel() {
   const wheel = $("steeringWheel");
   if (!wheel) return;
   let pointerId = null;
-  let previousAngle = 0;
-  let wheelAngle = 0;
+  let steerValue = 0;
 
-  const pointerAngle = (event) => {
+  const applySteering = (event) => {
     const rect = wheel.getBoundingClientRect();
-    return Math.atan2(
-      event.clientY - (rect.top + rect.height / 2),
-      event.clientX - (rect.left + rect.width / 2)
-    ) * 180 / Math.PI;
-  };
-
-  const applySteering = () => {
-    const limited = Math.max(-135, Math.min(135, wheelAngle));
-    keys.left = limited < -12;
-    keys.right = limited > 12;
-    wheel.style.transform = "rotate(" + limited + "deg)";
+    const centerX = rect.left + rect.width / 2;
+    const radius = rect.width * 0.38;
+    // Horizontal drag behaves like an analog joystick:
+    // center = straight, left/right edge = progressively stronger steering.
+    const offset = Math.max(-1, Math.min(1, (event.clientX - centerX) / radius));
+    steerValue = Math.abs(offset) < 0.08 ? 0 : offset;
+    keys.steer = steerValue;
+    keys.left = steerValue < -0.08;
+    keys.right = steerValue > 0.08;
+    wheel.style.setProperty("--steer", String(steerValue));
+    wheel.style.transform = "rotate(" + (steerValue * 115) + "deg)";
+    wheel.classList.toggle("active", Math.abs(steerValue) > 0.08);
   };
 
   wheel.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     pointerId = event.pointerId;
-    previousAngle = pointerAngle(event);
-    wheel.classList.add("active");
-    wheel.setPointerCapture(pointerId);
+    try { wheel.setPointerCapture(pointerId); } catch (error) {}
+    applySteering(event);
   });
 
   wheel.addEventListener("pointermove", (event) => {
     if (pointerId !== event.pointerId) return;
     event.preventDefault();
-    let delta = pointerAngle(event) - previousAngle;
-    if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360;
-    wheelAngle = Math.max(-135, Math.min(135, wheelAngle + delta));
-    previousAngle = pointerAngle(event);
-    applySteering();
+    applySteering(event);
   });
 
   const release = (event) => {
-    if (pointerId !== event.pointerId) return;
+    if (pointerId === null || (event && event.pointerId !== undefined && pointerId !== event.pointerId)) return;
     pointerId = null;
-    wheel.classList.remove("active");
-    wheelAngle = 0;
+    steerValue = 0;
+    keys.steer = 0;
     keys.left = false;
     keys.right = false;
+    wheel.classList.remove("active");
     wheel.style.transform = "rotate(0deg)";
   };
-  ["pointerup", "pointercancel", "lostpointercapture"].forEach((name) => {
-    wheel.addEventListener(name, release);
-  });
+  wheel.addEventListener("pointerup", release);
+  wheel.addEventListener("pointercancel", release);
+  wheel.addEventListener("lostpointercapture", release);
 }
-
 async function start() {
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
