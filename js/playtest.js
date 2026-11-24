@@ -1298,7 +1298,7 @@ async function start() {
   const soundVolume = $("soundVolume");
   const refreshSoundButton = () => {
     if (soundButton) {
-      soundButton.textContent = isMuted() ? "🔇 Sound Off" : "🔊 Sound On";
+      soundButton.textContent = isMuted() ? "🔇" : "🔊";
       soundButton.setAttribute("aria-pressed", String(!isMuted()));
     }
   };
