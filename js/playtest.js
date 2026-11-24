@@ -90,6 +90,8 @@ const overlayText = $("overlayText");
 const overlayLink = $("overlayLink");
 
 const keys = { left: false, right: false, steer: 0, gas: false, brake: false, reverse: false };
+// Keep pointer-control internals in sync when a modal opens or the page is backgrounded.
+const controlReleaseHandlers = new Set();
 const car = createVehicle(1800, 1300, 0);
 const CAR_MODELS = {
   compact:{label:"Compact",icon:"🚗",note:"Easy handling",width:36,height:20},
@@ -1145,6 +1147,10 @@ function handleVisibilityChange() {
 }
 
 function clearControls() {
+  // Reset shared movement flags and each control's captured-pointer state.
+  // This prevents held touch from leaving steering/throttle stuck after a modal,
+  // app switch, pointer cancellation, or session cleanup.
+  controlReleaseHandlers.forEach((release) => release());
   Object.keys(keys).forEach((key) => { keys[key] = key === "steer" ? 0 : false; });
   document.querySelectorAll(".pad button").forEach((button) => button.classList.remove("on"));
 }
@@ -1266,6 +1272,7 @@ function bindTouch(buttonId, keyName) {
     keys[keyName] = false;
     button.classList.remove("on");
   };
+  controlReleaseHandlers.add(() => release());
 
   button.addEventListener("pointerdown", (event) => {
     if (activePointer !== null || !running) return;
@@ -1337,6 +1344,7 @@ function bindSteeringJoystick() {
     knob.style.transform = "translate(-50%, -50%)";
     base.classList.remove("active");
   };
+  controlReleaseHandlers.add(() => release());
 
   base.addEventListener("pointerup", release);
   base.addEventListener("pointercancel", release);
