@@ -30,6 +30,7 @@ import { createVehicle, updateVehicle, repairVehicle } from "./vehicle.js";
 import { createMission, nearbyMissionCrate, drawMissionMarkers } from "./missions.js";
 import { createRoadsideEvents, nearbyRoadsideEvent, drawRoadsideEvents } from "./roadside-events.js";
 import { createRoadLoot, nearbyRoadLoot, drawRoadLoot } from "./road-loot.js";
+import { createBridge, nearbyBridge, isBridgeBlocked, drawBridge } from "./bridge-events.js";
 import { createGrammarChallenge } from "./grammar-challenges.js";
 import { initAudio, playSfx, updateEngineSound, stopEngineSound, toggleMuted, isMuted, setVolume, getVolume } from "./audio.js";
 
@@ -131,6 +132,9 @@ let mission = null;
 let missionBusy = false;
 let roadsideEvents = [];
 let roadLoot = [];
+let bridge = null;
+let bridgeRetryAfter = 0;
+let grammarBridgeMode = false;
 const collectedRoadLoot = new Set();
 const clearedRoadsideEvents = new Set();
 let activeRoadsideEventId = null;
@@ -423,6 +427,7 @@ function drawWorld() {
   drawMissionMarkers(ctx, worldToScreen, mission);
   drawRoadsideEvents(ctx, worldToScreen, roadsideEvents, clearedRoadsideEvents);
   drawRoadLoot(ctx, worldToScreen, roadLoot, collectedRoadLoot);
+  drawBridge(ctx, worldToScreen, bridge);
 
   // Avoid drawing cars outside the visible camera area. The margin prevents
   // vehicles entering the screen from popping in at the edge.
@@ -480,7 +485,7 @@ function renderRoster() {
 let lastCarUiUpdate = 0;
 
 function updateCar(dt, forceUI = false) {
-  updateVehicle(car, keys, dt, { isOnRoad, collidesWithWorld });
+  updateVehicle(car, keys, dt, { isOnRoad, collidesWithWorld: collidesWithBridge });
 
   // Physics remains frame-by-frame; DOM/HUD work is capped at 12.5 updates/sec.
   // Explicit interactions force an immediate refresh so buttons and panels stay responsive.
@@ -571,9 +576,10 @@ function loadMissionState() {
   saveMissionState();
 }
 
-function openGrammarPanel(autoReturn = false, eventId = null) {
-  if (!running || (!autoReturn && !nearbyGrammarStop(car.x, car.y)) || !grammarPanel) return;
+function openGrammarPanel(autoReturn = false, eventId = null, bridgeMode = false) {
+  if (!running || (!autoReturn && !bridgeMode && !nearbyGrammarStop(car.x, car.y)) || !grammarPanel) return;
   grammarAutoReturn = !!autoReturn;
+  grammarBridgeMode = !!bridgeMode;
   activeRoadsideEventId = eventId;
   grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
   if (!grammarChallenge) return;
@@ -587,8 +593,10 @@ function openGrammarPanel(autoReturn = false, eventId = null) {
 function closeGrammarPanel() {
   if (grammarBusy) return;
   if (activeRoadsideEventId) clearedRoadsideEvents.add(activeRoadsideEventId);
+  if (grammarBridgeMode && bridge && !bridge.repaired) bridgeRetryAfter = performance.now() + 1400;
   activeRoadsideEventId = null;
   grammarAutoReturn = false;
+  grammarBridgeMode = false;
   if (grammarPanel) grammarPanel.classList.add("hidden");
   grammarChallenge = null;
 }
@@ -596,7 +604,9 @@ function closeGrammarPanel() {
 function renderGrammarChallenge() {
   if (!grammarChallenge) return;
   const challenge = grammarChallenge;
-  grammarTypeEl.textContent = "GRADE " + codeInfo.grade + " · " + challenge.topic + " · " + challenge.mode.toUpperCase();
+  grammarTypeEl.textContent = grammarBridgeMode
+    ? "BRIDGE REPAIR · " + challenge.topic + " · " + challenge.mode.toUpperCase()
+    : "GRADE " + codeInfo.grade + " · " + challenge.topic + " · " + challenge.mode.toUpperCase();
   grammarPromptEl.textContent = challenge.prompt;
   grammarInstructionEl.textContent = challenge.instruction;
   grammarFeedbackEl.className = "message hidden";
@@ -676,13 +686,30 @@ async function submitGrammarChallenge() {
     me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
 
     grammarFeedbackEl.className = correct ? "message success" : "message warn";
-    grammarFeedbackEl.textContent = correct
-      ? "Correct! +15 points. Great driving, great grammar!"
-      : "Not quite. No points this time, but here's the rule to remember.";
+    if (grammarBridgeMode && correct && bridge && !bridge.repaired) {
+      bridge.repaired = true;
+      saveBridgeState();
+      economy.coins += 25;
+      saveVehicleProfile();
+      updateWalletDisplay();
+      if (!collectedRoadLoot.has("bridge-chest") && !roadLoot.some((item) => item.id === "bridge-chest")) {
+        roadLoot.push({ id: "bridge-chest", x: bridge.exit.x, y: bridge.exit.y, type: "chest", reward: 120 });
+      }
+      grammarAutoReturn = true;
+      grammarFeedbackEl.textContent = "Bridge repaired! +25 coins. Cross it and collect the treasure chest!";
+      playSfx("repair");
+    } else {
+      grammarFeedbackEl.textContent = correct
+        ? "Correct! +15 points. Great driving, great grammar!"
+        : "Not quite. No points this time, but here's the rule to remember.";
+    }
     grammarExplanationEl.textContent = challenge.explanation;
     playSfx(correct ? "correct" : "wrong");
     grammarCheckButton.classList.add("hidden");
-    if (grammarAutoReturn) {
+    if (grammarBridgeMode && !correct) {
+      grammarNextButton.textContent = "Try Another Question";
+      grammarNextButton.classList.remove("hidden");
+    } else if (grammarAutoReturn) {
       grammarNextButton.classList.add("hidden");
       window.setTimeout(() => {
         if (grammarAutoReturn) closeGrammarPanel();
@@ -706,10 +733,19 @@ function nextGrammarChallenge() {
   renderGrammarChallenge();
 }
 
+function saveLootState() {
+  try { localStorage.setItem("gd_loot_" + sessionId + "_" + uid, JSON.stringify([...collectedRoadLoot])); } catch (error) {}
+}
+
+function saveBridgeState() {
+  try { localStorage.setItem("gd_bridge_" + sessionId + "_" + uid, JSON.stringify({ repaired: !!(bridge && bridge.repaired) })); } catch (error) {}
+}
+
 function collectRoadLoot() {
   const item = nearbyRoadLoot(car.x, car.y, roadLoot, collectedRoadLoot);
   if (!item) return;
   collectedRoadLoot.add(item.id);
+  saveLootState();
   economy.coins += item.reward;
   updateWalletDisplay();
   saveVehicleProfile();
@@ -718,6 +754,10 @@ function collectRoadLoot() {
 
 function checkRoadsideEncounter() {
   if (!running || Math.abs(car.s) < 20 || grammarPanel.classList.contains("hidden") === false || challengePanel.classList.contains("hidden") === false || !carShopPanel.classList.contains("hidden")) return;
+  if (bridge && nearbyBridge(car.x, car.y, bridge) && performance.now() >= bridgeRetryAfter) {
+    openGrammarPanel(false, null, true);
+    return;
+  }
   const event = nearbyRoadsideEvent(car.x, car.y, roadsideEvents, clearedRoadsideEvents);
   if (event) openGrammarPanel(true, event.id);
 }
@@ -951,6 +991,10 @@ function applyCarShopSelection(){
  if(live){live.publish({x:car.x,y:car.y,a:car.a,s:car.s,m:car.model});live.publishNow();}
  closeCarShop();updateCar(.001, true);
 }
+function collidesWithBridge(x, y, radius) {
+  return collidesWithWorld(x, y, radius) || isBridgeBlocked(x, y, radius, bridge);
+}
+
 function profileStorageKey() { return "gd_vehicle_profile_" + uid; }
 
 function saveVehicleProfile() {
@@ -1331,8 +1375,18 @@ async function start() {
     sessionId = codeInfo.sessionId;
     roadsideEvents = createRoadsideEvents(uid + "|" + sessionId);
     roadLoot = createRoadLoot(uid + "|" + sessionId);
+    bridge = createBridge(uid + "|" + sessionId);
     clearedRoadsideEvents.clear();
     collectedRoadLoot.clear();
+    try {
+      const savedLoot = JSON.parse(localStorage.getItem("gd_loot_" + sessionId + "_" + uid) || "[]");
+      if (Array.isArray(savedLoot)) savedLoot.forEach((id) => collectedRoadLoot.add(id));
+      const savedBridge = JSON.parse(localStorage.getItem("gd_bridge_" + sessionId + "_" + uid) || "null");
+      if (savedBridge && savedBridge.repaired) bridge.repaired = true;
+    } catch (error) {}
+    if (bridge.repaired && !collectedRoadLoot.has("bridge-chest")) {
+      roadLoot.push({ id: "bridge-chest", x: bridge.exit.x, y: bridge.exit.y, type: "chest", reward: 120 });
+    }
 
     if (!sessionId) throw new Error("The session information is incomplete.");
     if (!codeInfo.grade || !codeInfo.topics) throw new Error("This session is missing its grade or grammar topics. Ask your teacher to create a new session.");
