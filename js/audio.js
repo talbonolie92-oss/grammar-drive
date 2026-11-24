@@ -1,20 +1,24 @@
 // --------------------------------------------------
-// Grammar Drive 2.0 — lightweight playful sound system
-// Uses Web Audio synthesis; no external audio files or downloads.
+// Grammar Drive — lightweight road-trip sound system
+// Web Audio synthesis only; no external files or downloads.
 // --------------------------------------------------
 
 let audioContext = null;
 let masterGain = null;
 let engineOscillator = null;
 let engineGain = null;
+let ambienceGain = null;
 let muted = false;
-let volumeLevel = 0.55;
+let volumeLevel = 0.75;
 let lastEngineUpdate = 0;
 
 try {
   muted = localStorage.getItem("gd_sound_muted") === "true";
-  const savedVolume = Number(localStorage.getItem("gd_sound_volume"));
-  if (Number.isFinite(savedVolume)) volumeLevel = Math.max(0, Math.min(1, savedVolume));
+  const savedRaw = localStorage.getItem("gd_sound_volume");
+  if (savedRaw !== null) {
+    const savedVolume = Number(savedRaw);
+    if (Number.isFinite(savedVolume)) volumeLevel = Math.max(0, Math.min(1, savedVolume));
+  }
 } catch (error) {}
 
 function ensureAudio() {
@@ -27,22 +31,41 @@ function ensureAudio() {
     masterGain.gain.value = muted ? 0 : volumeLevel;
     masterGain.connect(audioContext.destination);
 
+    // A single looping filtered-noise bed creates a soft road/wind ambience.
+    // It uses one source node and a short in-memory buffer, keeping CPU use low.
+    const bufferLength = Math.max(1, Math.floor(audioContext.sampleRate * 2));
+    const noiseBuffer = audioContext.createBuffer(1, bufferLength, audioContext.sampleRate);
+    const noiseData = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferLength; i++) noiseData[i] = (Math.random() * 2 - 1) * 0.22;
+
+    const wind = audioContext.createBufferSource();
+    wind.buffer = noiseBuffer;
+    wind.loop = true;
+    const windFilter = audioContext.createBiquadFilter();
+    windFilter.type = "lowpass";
+    windFilter.frequency.value = 420;
+    windFilter.Q.value = 0.35;
+    ambienceGain = audioContext.createGain();
+    ambienceGain.gain.value = 0.045;
+    wind.connect(windFilter);
+    windFilter.connect(ambienceGain);
+    ambienceGain.connect(masterGain);
+    wind.start();
+
     engineOscillator = audioContext.createOscillator();
     engineOscillator.type = "triangle";
-    const filter = audioContext.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = 520;
+    const engineFilter = audioContext.createBiquadFilter();
+    engineFilter.type = "lowpass";
+    engineFilter.frequency.value = 520;
     engineGain = audioContext.createGain();
     engineGain.gain.value = 0;
-    engineOscillator.connect(filter);
-    filter.connect(engineGain);
+    engineOscillator.connect(engineFilter);
+    engineFilter.connect(engineGain);
     engineGain.connect(masterGain);
     engineOscillator.start();
   }
 
-  if (audioContext.state === "suspended") {
-    audioContext.resume().catch(() => {});
-  }
+  if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
   return audioContext;
 }
 
@@ -103,7 +126,7 @@ export function playSfx(name) {
     oscillator.type = name === "wrong" ? "triangle" : "sine";
     oscillator.frequency.setValueAtTime(frequency, now + index * 0.075);
     gain.gain.setValueAtTime(0.0001, now + index * 0.075);
-    gain.gain.exponentialRampToValueAtTime(0.16, now + index * 0.075 + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.13, now + index * 0.075 + 0.012);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.075 + 0.19);
     oscillator.connect(gain);
     gain.connect(masterGain);
@@ -120,7 +143,7 @@ export function updateEngineSound(speed, accelerating = false) {
 
   const velocity = Math.max(0, Math.min(520, Math.abs(Number(speed) || 0)));
   const targetFrequency = 48 + velocity * 0.42 + (accelerating ? 16 : 0);
-  const targetGain = velocity < 8 ? 0.0001 : Math.min(0.055, 0.008 + velocity / 10500) * (accelerating ? 1 : 0.58);
+  const targetGain = velocity < 8 ? 0.0001 : Math.min(0.065, 0.01 + velocity / 9000) * (accelerating ? 1 : 0.58);
 
   engineOscillator.frequency.setTargetAtTime(targetFrequency, now, 0.12);
   engineGain.gain.setTargetAtTime(targetGain, now, 0.16);
