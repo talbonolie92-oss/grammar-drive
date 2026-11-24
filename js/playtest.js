@@ -141,6 +141,7 @@ let lastSave = 0;
 let stopCode = null;
 let stopMe = null;
 let stopResults = null;
+let resultsWaitTimer = 0;
 let finishMessage = "";
 let canvasWidth = 0;
 let canvasHeight = 0;
@@ -1427,6 +1428,10 @@ function cleanupListeners() {
     stopResults();
     stopResults = null;
   }
+  if (resultsWaitTimer) {
+    clearTimeout(resultsWaitTimer);
+    resultsWaitTimer = 0;
+  }
   if (rafId) {
     cancelAnimationFrame(rafId);
     rafId = 0;
@@ -1458,12 +1463,28 @@ async function finish(title, message, showBack = true) {
     stopResults = onValue(
       ref(db, "publicResults/" + sessionId),
       (snap) => {
-        if (snap.exists()) renderFinalStandings(snap);
+        if (snap.exists()) {
+          if (resultsWaitTimer) {
+            clearTimeout(resultsWaitTimer);
+            resultsWaitTimer = 0;
+          }
+          renderFinalStandings(snap);
+        }
       },
       () => {
+        if (resultsWaitTimer) {
+          clearTimeout(resultsWaitTimer);
+          resultsWaitTimer = 0;
+        }
         finalResultsEl.textContent = "Final standings are available from your teacher's dashboard.";
       }
     );
+    resultsWaitTimer = window.setTimeout(() => {
+      resultsWaitTimer = 0;
+      if (finalResultsEl && finalResultsEl.textContent.startsWith("Waiting for the teacher")) {
+        finalResultsEl.textContent = "The final standings are taking longer than expected. Please ask your teacher to keep the dashboard open until the results are saved.";
+      }
+    }, 12000);
   }
 }
 
