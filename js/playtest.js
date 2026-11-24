@@ -761,8 +761,15 @@ function bindSteeringJoystick() {
 
     // The blue thumb physically follows the finger/mouse in every direction.
     knob.style.transform = "translate(-50%, -50%) translate(" + dx + "px, " + dy + "px)";
-    // In a driving game, the horizontal stick axis controls steering.
-    keys.steer = Math.max(-1, Math.min(1, dx / maxRadius));
+    // Add a soft center dead zone and a gentle response curve so
+    // small thumb movements do not make the car suddenly turn.
+    const rawX = Math.max(-1, Math.min(1, dx / maxRadius));
+    const deadZone = 0.14;
+    const magnitude = Math.abs(rawX);
+    const adjusted = magnitude <= deadZone
+      ? 0
+      : Math.pow((magnitude - deadZone) / (1 - deadZone), 1.55);
+    keys.steer = Math.sign(rawX) * adjusted;
     keys.left = keys.steer < -0.02;
     keys.right = keys.steer > 0.02;
   };
