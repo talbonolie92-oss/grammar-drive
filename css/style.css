@@ -331,3 +331,45 @@ button.danger:focus-visible, button:focus-visible, a:focus-visible {
   .grammar-options { grid-template-columns:1fr; gap:8px; }
   .grammar-option { min-height:44px; }
 }
+
+
+/* Grammar Drive 2.0 — consistent classroom UI polish */
+.dashboard-page { max-width:1240px; }
+.dashboard-page > .row:first-child { padding:10px 2px 18px; border-bottom:1px solid rgba(148,163,184,.18); }
+.dashboard-page .brand { font-size:30px; letter-spacing:-1px; }
+.dashboard-page .panel,.join-page .panel,.teacher-login-page .panel {
+  background:linear-gradient(155deg,rgba(35,50,77,.98),rgba(24,37,61,.98));
+  border-color:rgba(148,163,184,.22);
+  box-shadow:0 12px 34px rgba(0,0,0,.14);
+}
+.dashboard-page .panel h2,.join-page .panel h2 { letter-spacing:-.35px; }
+.dashboard-page .session-list button {
+  position:relative; padding:14px 15px; border-radius:12px;
+  transition:border-color .16s ease,background .16s ease,transform .16s ease;
+}
+.dashboard-page .session-list button:hover { border-color:#60a5fa; background:#172a49; transform:translateY(-1px); }
+.dashboard-page .session-list button.selected { background:#1d355a; border-color:#93c5fd; }
+.teacher-login-page .narrow { width:min(100%,460px); }
+.teacher-login-page .brand,.join-page .brand { font-size:34px; letter-spacing:-1px; }
+.teacher-login-page .panel,.join-page .panel { border-radius:18px; }
+.teacher-login-page input,.join-page input,.dashboard-page input,.dashboard-page select {
+  border-radius:10px; border-color:#526783; transition:border-color .16s ease,box-shadow .16s ease;
+}
+.teacher-login-page input:focus,.join-page input:focus,.dashboard-page input:focus,.dashboard-page select:focus {
+  outline:none; border-color:#60a5fa; box-shadow:0 0 0 3px rgba(96,165,250,.16);
+}
+button,.button { transition:filter .16s ease,transform .16s ease,box-shadow .16s ease; }
+button:active,.button:active { transform:translateY(1px); }
+.hud .pill {
+  backdrop-filter:blur(9px);
+  background:rgba(10,20,38,.88);
+  border-color:rgba(191,219,254,.24);
+  box-shadow:0 4px 14px rgba(0,0,0,.16);
+}
+.hud button { min-height:34px; padding:7px 11px; border:1px solid rgba(191,219,254,.25); }
+@media(max-width:640px) {
+  .dashboard-page { padding:14px; }
+  .dashboard-page .brand { font-size:25px; }
+  .dashboard-page .panel { padding:17px; }
+  .teacher-login-page .brand,.join-page .brand { font-size:30px; }
+}
