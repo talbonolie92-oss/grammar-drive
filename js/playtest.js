@@ -28,6 +28,7 @@ import { createLiveCars, CAR_COLORS, colorFor } from "./multiplayer.js";
 import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChallenge, nearbyGrammarStop } from "./world.js";
 import { createVehicle, updateVehicle, repairVehicle } from "./vehicle.js";
 import { createMission, nearbyMissionCrate, drawMissionMarkers } from "./missions.js";
+import { createRoadsideEvents, nearbyRoadsideEvent, drawRoadsideEvents } from "./roadside-events.js";
 import { createGrammarChallenge } from "./grammar-challenges.js";
 import { initAudio, playSfx, updateEngineSound, stopEngineSound, toggleMuted, isMuted, setVolume, getVolume } from "./audio.js";
 
@@ -127,6 +128,10 @@ let canvasHeight = 0;
 let pixelRatio = 1;
 let mission = null;
 let missionBusy = false;
+let roadsideEvents = [];
+const clearedRoadsideEvents = new Set();
+let activeRoadsideEventId = null;
+let grammarAutoReturn = false;
 let grammarChallenge = null;
 let grammarBusy = false;
 
@@ -413,6 +418,7 @@ function drawWorld() {
 
   // Mission crates and vehicles are dynamic, so they remain on the live layer.
   drawMissionMarkers(ctx, worldToScreen, mission);
+  drawRoadsideEvents(ctx, worldToScreen, roadsideEvents, clearedRoadsideEvents);
 
   // Avoid drawing cars outside the visible camera area. The margin prevents
   // vehicles entering the screen from popping in at the edge.
@@ -561,8 +567,10 @@ function loadMissionState() {
   saveMissionState();
 }
 
-function openGrammarPanel() {
-  if (!running || !nearbyGrammarStop(car.x, car.y) || !grammarPanel) return;
+function openGrammarPanel(autoReturn = false, eventId = null) {
+  if (!running || (!autoReturn && !nearbyGrammarStop(car.x, car.y)) || !grammarPanel) return;
+  grammarAutoReturn = !!autoReturn;
+  activeRoadsideEventId = eventId;
   grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
   if (!grammarChallenge) return;
   grammarBusy = false;
@@ -574,6 +582,9 @@ function openGrammarPanel() {
 
 function closeGrammarPanel() {
   if (grammarBusy) return;
+  if (activeRoadsideEventId) clearedRoadsideEvents.add(activeRoadsideEventId);
+  activeRoadsideEventId = null;
+  grammarAutoReturn = false;
   if (grammarPanel) grammarPanel.classList.add("hidden");
   grammarChallenge = null;
 }
@@ -667,7 +678,14 @@ async function submitGrammarChallenge() {
     grammarExplanationEl.textContent = challenge.explanation;
     playSfx(correct ? "correct" : "wrong");
     grammarCheckButton.classList.add("hidden");
-    grammarNextButton.classList.remove("hidden");
+    if (grammarAutoReturn) {
+      grammarNextButton.classList.add("hidden");
+      window.setTimeout(() => {
+        if (grammarAutoReturn) closeGrammarPanel();
+      }, 1100);
+    } else {
+      grammarNextButton.classList.remove("hidden");
+    }
     grammarUndoButton.classList.add("hidden");
   } catch (error) {
     grammarFeedbackEl.className = "message error";
@@ -682,6 +700,12 @@ function nextGrammarChallenge() {
   if (!running) return;
   grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
   renderGrammarChallenge();
+}
+
+function checkRoadsideEncounter() {
+  if (!running || Math.abs(car.s) < 20 || grammarPanel.classList.contains("hidden") === false || challengePanel.classList.contains("hidden") === false || !carShopPanel.classList.contains("hidden")) return;
+  const event = nearbyRoadsideEvent(car.x, car.y, roadsideEvents, clearedRoadsideEvents);
+  if (event) openGrammarPanel(true, event.id);
 }
 
 function openMissionPanel() {
@@ -952,6 +976,7 @@ function frame(timestamp) {
   if (running && !modalOpen) {
     updateEngineSound(car.s, keys.gas);
     updateCar(dt);
+    checkRoadsideEncounter();
     if (live) live.publish(car);
     if (timestamp - lastSave > 1000) {
       lastSave = timestamp;
@@ -1289,6 +1314,8 @@ async function start() {
     if (!codeSnap.exists()) throw new Error("This game link is no longer valid.");
     codeInfo = codeSnap.val();
     sessionId = codeInfo.sessionId;
+    roadsideEvents = createRoadsideEvents(uid + "|" + sessionId);
+    clearedRoadsideEvents.clear();
 
     if (!sessionId) throw new Error("The session information is incomplete.");
     if (!codeInfo.grade || !codeInfo.topics) throw new Error("This session is missing its grade or grammar topics. Ask your teacher to create a new session.");
