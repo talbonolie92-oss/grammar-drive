@@ -73,7 +73,7 @@ export function createGrammarChallenge(grade, topics) {
       const j = Math.floor(Math.random() * (i + 1));
       [words[i], words[j]] = [words[j], words[i]];
     }
-    return { ...selected, words, selectedWords: [] };
+    return { ...selected, words, selectedWords: [], selectedWordIndexes: [] };
   }
   return { ...selected, selectedOption: null };
 }
