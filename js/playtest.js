@@ -61,6 +61,8 @@ const missionSubmitButton = $("missionSubmit");
 const missionUndoButton = $("missionUndo");
 const carSelect = $("carSelect");
 const carSelectWrap = $("carSelectWrap");
+const carShopPanel=$("carShopPanel"),carShopCards=$("carShopCards"),carShopColors=$("carShopColors"),carShopSelection=$("carShopSelection");
+let pendingModel="compact",pendingPaint=5;
 const timerEl = $("timer");
 const rosterEl = $("roster");
 const debugEl = $("debug");
@@ -72,11 +74,22 @@ const overlayLink = $("overlayLink");
 const keys = { left: false, right: false, steer: 0, gas: false, brake: false, reverse: false };
 const car = createVehicle(1800, 1300, 0);
 const CAR_MODELS = {
-  compact: { label: "Compact", color: "#3b82f6", width: 34, height: 19 },
-  sport: { label: "Sport", color: "#ef4444", width: 40, height: 17 },
-  suv: { label: "SUV", color: "#eab308", width: 37, height: 23 }
+  compact:{label:"Compact",icon:"🚗",note:"Easy handling",width:36,height:20},
+  sport:{label:"Sports Car",icon:"🏎️",note:"Fast and agile",width:43,height:18},
+  suv:{label:"SUV",icon:"🚙",note:"Stable all-rounder",width:40,height:25},
+  truck:{label:"Truck",icon:"🚚",note:"Heavy duty",width:49,height:28},
+  motorcycle:{label:"Motorcycle",icon:"🏍️",note:"Quick and nimble",width:31,height:15},
+  bicycle:{label:"Bicycle",icon:"🚲",note:"Slow and light",width:29,height:15},
+  jeep:{label:"Jeep",icon:"🚙",note:"Rugged utility",width:43,height:25},
+  police:{label:"Police Cruiser",icon:"🚓",note:"Patrol style",width:42,height:22}
 };
+const PAINT_COLORS=[
+ {name:"Blue",value:"#3b82f6"},{name:"Red",value:"#ef4444"},{name:"Yellow",value:"#eab308"},
+ {name:"Green",value:"#22c55e"},{name:"Orange",value:"#f97316"},{name:"Purple",value:"#8b5cf6"},
+ {name:"Pink",value:"#ec4899"},{name:"White",value:"#f8fafc"},{name:"Black",value:"#334155"},{name:"Teal",value:"#14b8a6"}
+];
 car.model = "compact";
+car.paintIndex=5;
 const others = new Map();
 
 let uid = null;
@@ -162,6 +175,7 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
   const p = worldToScreen(x, y);
   const scale = p.scale;
   const model = CAR_MODELS[modelKey] || CAR_MODELS.compact;
+  const paint=PAINT_COLORS[colorIndex]||PAINT_COLORS[5];
   const w = Math.max(24, model.width * scale);
   const h = Math.max(14, model.height * scale);
   const line = Math.max(1, 1.6 * scale);
@@ -185,7 +199,7 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
 
   // Body silhouette: low wedge for Sport, tall squared body for SUV,
   // rounded hatchback for Compact.
-  ctx.fillStyle = model.color;
+  ctx.fillStyle = paint.value;
   ctx.strokeStyle = isMine ? "#ffffff" : "#0f172a";
   ctx.lineWidth = Math.max(1.2, 1.8 * scale);
   ctx.beginPath();
@@ -252,6 +266,22 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
     ctx.stroke();
   }
 
+  if(modelKey==="truck"){
+    ctx.fillStyle="#1e293b";ctx.fillRect(w*.08,-h*.43,w*.35,h*.86);ctx.fillStyle="rgba(191,219,254,.9)";ctx.fillRect(w*.16,-h*.32,w*.2,h*.64);
+    ctx.fillStyle="#64748b";ctx.fillRect(-w*.46,-h*.38,w*.5,h*.76);ctx.strokeStyle="#cbd5e1";ctx.lineWidth=line;ctx.strokeRect(-w*.46,-h*.38,w*.5,h*.76);
+  }else if(modelKey==="jeep"){
+    ctx.fillStyle="#1e293b";ctx.fillRect(-w*.13,-h*.39,w*.43,h*.78);ctx.fillStyle="rgba(191,219,254,.85)";ctx.fillRect(-w*.05,-h*.32,w*.27,h*.64);
+    ctx.strokeStyle="#e2e8f0";ctx.lineWidth=line;ctx.beginPath();ctx.moveTo(-w*.28,-h*.48);ctx.lineTo(w*.32,-h*.48);ctx.moveTo(-w*.28,h*.48);ctx.lineTo(w*.32,h*.48);ctx.stroke();
+  }else if(modelKey==="motorcycle"||modelKey==="bicycle"){
+    const wr=Math.max(4,h*.42);ctx.fillStyle="#0f172a";[-w*.34,w*.34].forEach(x=>{ctx.beginPath();ctx.arc(x,0,wr,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#cbd5e1";ctx.lineWidth=Math.max(1,scale);ctx.stroke();});
+    ctx.strokeStyle=modelKey==="bicycle"?"#e2e8f0":"#1e293b";ctx.lineWidth=Math.max(2,3*scale);ctx.beginPath();ctx.moveTo(-w*.34,0);ctx.lineTo(-w*.04,-h*.35);ctx.lineTo(w*.34,0);ctx.lineTo(w*.08,h*.25);ctx.lineTo(-w*.34,0);ctx.stroke();
+    if(modelKey==="motorcycle"){ctx.fillStyle="#111827";ctx.fillRect(-w*.12,-h*.2,w*.45,h*.4);ctx.fillStyle="#fef3c7";ctx.fillRect(w*.34,-h*.13,w*.1,h*.26);}
+  }else if(modelKey==="police"){
+    ctx.fillStyle="#f8fafc";ctx.fillRect(-w*.13,-h*.38,w*.44,h*.76);ctx.fillStyle="#1e3a8a";ctx.fillRect(-w*.48,-h*.36,w*.32,h*.72);ctx.fillRect(w*.18,-h*.36,w*.29,h*.72);
+    ctx.fillStyle="#1e293b";ctx.fillRect(-w*.12,-h*.32,w*.4,h*.64);ctx.fillStyle="#ef4444";ctx.fillRect(-5*scale,-h*.55,6*scale,h*.12);ctx.fillStyle="#3b82f6";ctx.fillRect(1*scale,-h*.55,6*scale,h*.12);
+    ctx.fillStyle="#0f172a";ctx.font="bold "+Math.max(5,7*scale)+"px system-ui";ctx.textAlign="center";ctx.fillText("POLICE",0,h*.12);
+  }
+
   // Highly visible cyan arrow at the nose: this is the FRONT of the vehicle.
   ctx.fillStyle = "#67e8f9";
   ctx.strokeStyle = "#083344";
@@ -294,7 +324,7 @@ function drawWorld() {
     if (pose) drawCar(pose.x, pose.y, pose.a, pose.c, pose.n, false, pose.m || "compact");
   }
 
-  drawCar(car.x, car.y, car.a, colorFor(uid), me ? me.name : "You", true, car.model);
+  drawCar(car.x, car.y, car.a, car.paintIndex, me ? me.name : "You", true, car.model);
 }
 
 function renderRoster() {
@@ -328,16 +358,9 @@ function updateCar(dt) {
   const service = nearbyService(car.x, car.y);
   const challenge = nearbyChallenge(car.x, car.y);
   const crate = nearbyMissionCrate(car.x, car.y, mission);
-  carSelectWrap.classList.toggle("hidden", !(service && service.type === "repair"));
-  if (carSelect.value !== car.model) carSelect.value = car.model;
-  serviceButton.classList.toggle("hidden", !service);
-  serviceHintEl.classList.toggle("hidden", !service);
-  if (service) {
-    const action = "REPAIR";
-    serviceHintEl.textContent = service.name + " · Press E or tap " + action;
-    serviceButton.textContent = action;
-    serviceButton.dataset.service = service.type;
-  }
+  carSelectWrap.classList.add("hidden");
+  serviceButton.classList.toggle("hidden",!service);serviceHintEl.classList.toggle("hidden",!service);
+  if(service){const action=service.type==="shop"?"OPEN CAR SHOP":"REPAIR";serviceHintEl.textContent=service.name+" · Press E or tap "+action;serviceButton.textContent=action;serviceButton.dataset.service=service.type;}
   const missionOpen = challengePanel.classList.contains("hidden") === false;
   const canInteract = !!crate || !!challenge;
   const missionActive = mission && ["collecting", "return"].includes(mission.status);
@@ -377,9 +400,9 @@ function useNearbyService() {
   if (!running) return;
   const service = nearbyService(car.x, car.y);
   if (!service) return;
-  if (service.type === "repair") repairVehicle(car);
-  saveVehicleProfile();
-  updateCar(0.001);
+  if(service.type==="shop"){openCarShop();return;}
+  if(service.type==="repair")repairVehicle(car);
+  saveVehicleProfile();updateCar(0.001);
 }
 
 function missionStorageKey() {
@@ -568,13 +591,22 @@ function interactMission() {
   if (nearbyChallenge(car.x, car.y)) openMissionPanel();
 }
 
+function renderCarShop(){
+ if(!carShopCards||!carShopColors)return;carShopCards.innerHTML="";
+ Object.entries(CAR_MODELS).forEach(([key,model])=>{const card=document.createElement("button");card.type="button";card.className="vehicle-card"+(pendingModel===key?" selected":"");card.innerHTML='<span class="vehicle-icon"></span><strong></strong><small></small>';card.querySelector(".vehicle-icon").textContent=model.icon;card.querySelector("strong").textContent=model.label;card.querySelector("small").textContent=model.note;card.addEventListener("click",()=>{pendingModel=key;renderCarShop();});carShopCards.appendChild(card);});
+ carShopColors.innerHTML="";PAINT_COLORS.forEach((paint,index)=>{const sw=document.createElement("button");sw.type="button";sw.className="color-swatch"+(pendingPaint===index?" selected":"");sw.style.background=paint.value;sw.title=paint.name;sw.setAttribute("aria-label",paint.name+" paint");sw.addEventListener("click",()=>{pendingPaint=index;renderCarShop();});carShopColors.appendChild(sw);});
+ carShopSelection.textContent=CAR_MODELS[pendingModel].label+" · "+PAINT_COLORS[pendingPaint].name;
+}
+function openCarShop(){const s=nearbyService(car.x,car.y);if(!running||!s||s.type!=="shop")return;pendingModel=car.model;pendingPaint=car.paintIndex;renderCarShop();carShopPanel.classList.remove("hidden");clearControls();}
+function closeCarShop(){carShopPanel.classList.add("hidden");}
+function applyCarShopSelection(){if(!running||!CAR_MODELS[pendingModel]||!PAINT_COLORS[pendingPaint])return;car.model=pendingModel;car.paintIndex=pendingPaint;car.s=0;saveVehicleProfile();if(live){live.publish({x:car.x,y:car.y,a:car.a,s:car.s,m:car.model});live.publishNow();}closeCarShop();updateCar(.001);}
 function profileStorageKey() { return "gd_vehicle_profile_" + uid; }
 
 function saveVehicleProfile() {
   if (!uid) return;
   try {
     localStorage.setItem(profileStorageKey(), JSON.stringify({
-      condition: car.condition, model: car.model
+      condition: car.condition, model: car.model, paintIndex:car.paintIndex
     }));
   } catch (error) {}
 }
@@ -585,7 +617,8 @@ function loadVehicleProfile() {
     const saved = JSON.parse(localStorage.getItem(profileStorageKey()) || "null");
     if (!saved || typeof saved !== "object") return;
     if (Number.isFinite(saved.condition)) car.condition = Math.max(0, Math.min(100, saved.condition));
-    if (CAR_MODELS[saved.model]) car.model = saved.model;
+    if(CAR_MODELS[saved.model])car.model=saved.model;
+    if(Number.isInteger(saved.paintIndex))car.paintIndex=Math.max(0,Math.min(PAINT_COLORS.length-1,saved.paintIndex));
   } catch (error) {}
 }
 
@@ -819,13 +852,10 @@ async function start() {
     saveMissionState();
     renderMissionBuilder();
   });
-  carSelect.addEventListener("change", () => {
-    if (!CAR_MODELS[carSelect.value]) return;
-    car.model = carSelect.value;
-    saveVehicleProfile();
-    if (live) live.publish({ x: car.x, y: car.y, a: car.a, s: car.s, m: car.model });
-    if (live) live.publishNow();
-  });
+  $("carShopClose").addEventListener("click",closeCarShop);
+  $("carShopApply").addEventListener("click",applyCarShopSelection);
+  carShopPanel.addEventListener("click",event=>{if(event.target===carShopPanel)closeCarShop();});
+  renderCarShop();
 
   $("leaveButton").addEventListener("click", async () => {
     await finish("You left the track", "You can return using your teacher's QR code.");
@@ -880,6 +910,7 @@ async function start() {
       uid,
       serverNow,
       getName: () => me ? me.name : "Driver",
+      color: () => car.paintIndex,
       onChange: (cars) => {
         others.clear();
         cars.forEach((value, key) => others.set(key, value));
