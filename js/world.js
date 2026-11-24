@@ -41,7 +41,7 @@ const LOCATIONS = [
   { x: 1940, y: 1140, name: "CITY CENTER", color: "#facc15", symbol: "C" },
   { x: 970, y: 1420, name: "CAR WASH", color: "#7dd3fc", symbol: "W" },
   { x: 1940, y: 1420, name: "CITY DISPATCH", color: "#fb7185", symbol: "D" },
-  { x: 2670, y: 1140, name: "DEALERSHIP", color: "#c4b5fd", symbol: "D" }
+  { x: 2670, y: 1140, name: "CAR SHOP", type: "shop", color: "#c4b5fd", symbol: "S" }
 ];
 
 // Decorative greenery and small park-entry gates, kept clear of roads and services.
@@ -99,6 +99,10 @@ function drawTree(ctx, project, x, y) {
   ctx.stroke();
 }
 
+const STREETLIGHTS=[[620,390,0],[1280,390,0],[2210,390,0],[2920,390,0],[620,2180,0],[1280,2180,0],[2210,2180,0],[2920,2180,0],[820,1150,1],[1620,1150,1],[2480,1150,1],[3020,1150,1]];
+const GRASS_PATCHES=[[520,390,170,42],[1120,390,190,42],[2070,390,180,42],[2800,390,190,42],[520,2140,170,42],[1120,2140,190,42],[2070,2140,180,42],[2800,2140,190,42],[1450,520,120,170],[1450,1580,120,160],[1980,520,90,160],[1980,1600,90,150]];
+function drawStreetlight(ctx,project,x,y,vertical=false){const p=project(x,y),s=p.scale;ctx.save();ctx.strokeStyle="#334155";ctx.lineWidth=Math.max(2,4*s);ctx.beginPath();ctx.moveTo(p.x,p.y+7*s);ctx.lineTo(p.x,p.y-25*s);ctx.lineTo(p.x+(vertical?0:16*s),p.y-32*s);ctx.stroke();ctx.fillStyle="rgba(250,204,21,.16)";ctx.beginPath();ctx.arc(p.x+(vertical?0:16*s),p.y-32*s,13*s,0,Math.PI*2);ctx.fill();ctx.fillStyle="#fde68a";ctx.beginPath();ctx.arc(p.x+(vertical?0:16*s),p.y-32*s,4*s,0,Math.PI*2);ctx.fill();ctx.restore();}
+function drawParkedPoliceCar(ctx,project,x,y){const p=project(x,y),s=p.scale,w=48*s,h=25*s;ctx.save();ctx.translate(p.x,p.y);ctx.fillStyle="rgba(0,0,0,.3)";ctx.fillRect(-w/2+3*s,-h/2+4*s,w,h);ctx.fillStyle="#f8fafc";ctx.fillRect(-w/2,-h/2,w,h);ctx.fillStyle="#1e3a8a";ctx.fillRect(-w/2,-h/2,w*.32,h);ctx.fillRect(w*.18,-h/2,w*.32,h);ctx.fillStyle="#1e293b";ctx.fillRect(-w*.12,-h*.38,w*.42,h*.76);ctx.fillStyle="#ef4444";ctx.fillRect(-5*s,-h*.62,6*s,4*s);ctx.fillStyle="#3b82f6";ctx.fillRect(1*s,-h*.62,6*s,4*s);ctx.fillStyle="#0f172a";ctx.font="bold "+Math.max(5,7*s)+"px system-ui";ctx.textAlign="center";ctx.fillText("POLICE",0,h*.12);ctx.restore();}
 function drawParkGate(ctx, project, gate) {
   const p = project(gate.x, gate.y);
   const s = p.scale;
@@ -199,7 +203,10 @@ export function drawMap(ctx, project, width, height) {
     ctx.setLineDash([]);
   });
 
-  TREES.forEach(([x, y]) => drawTree(ctx, project, x, y));
+  GRASS_PATCHES.forEach(([x,y,w,h])=>{const p=project(x,y);ctx.fillStyle="rgba(134,239,172,.13)";ctx.fillRect(p.x,p.y,w*scale,h*scale);ctx.strokeStyle="rgba(187,247,208,.12)";ctx.lineWidth=Math.max(1,scale);ctx.strokeRect(p.x,p.y,w*scale,h*scale);});
+  STREETLIGHTS.forEach(([x,y,vertical])=>drawStreetlight(ctx,project,x,y,!!vertical));
+  TREES.forEach(([x,y])=>drawTree(ctx,project,x,y));
+  drawParkedPoliceCar(ctx,project,3050,1180);
   PARK_GATES.forEach((gate) => drawParkGate(ctx, project, gate));
 
   const crosswalks = [
