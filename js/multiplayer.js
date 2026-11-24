@@ -314,8 +314,9 @@ export function createLiveCars(options) {
 
   function publish(state) {
     if (stopped || !state) return;
+    // Keep only the latest pose here. The existing 100 ms scheduler handles
+    // network writes at SEND_MS/HEARTBEAT_MS, avoiding a tick call every frame.
     latest = normalizedState(state);
-    if (enabled) void tick(false);
   }
 
   function publishNow() {
