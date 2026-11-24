@@ -24,10 +24,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in js/*.js; do
+          while IFS= read -r -d '' file; do
             echo "Checking $file"
             node --input-type=module --check < "$file"
-          done
+          done < <(find js -type f -name '*.js' -print0)
       - name: Validate Firebase rules JSON
         run: node -e "JSON.parse(require('node:fs').readFileSync('database.rules.json', 'utf8')); console.log('database.rules.json is valid JSON')"
       - name: Check local HTML and JavaScript references
