@@ -183,6 +183,14 @@ export function drawMap(ctx, project, width, height) {
   ctx.strokeRect(topLeft.x, topLeft.y, WORLD.width * scale, WORLD.height * scale);
 }
 
+export function nearbyChallenge(x, y, radius = 175) {
+  const dx = x - 1940;
+  const dy = y - 1420;
+  return dx * dx + dy * dy <= radius * radius
+    ? { x: 1940, y: 1420, name: "CHALLENGE HUB", type: "challenge" }
+    : null;
+}
+
 export function nearbyService(x, y, radius = 165) {
   for (const location of LOCATIONS) {
     if (!location.type) continue;
