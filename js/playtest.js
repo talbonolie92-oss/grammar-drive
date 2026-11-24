@@ -30,7 +30,7 @@ import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChall
 import { createVehicle, updateVehicle, repairVehicle } from "./vehicle.js";
 import { createMission, nearbyMissionCrate, drawMissionMarkers } from "./missions.js";
 import { createGrammarChallenge } from "./grammar-challenges.js";
-import { initAudio, playSfx, updateEngineSound, stopEngineSound, toggleMuted, isMuted, setVolume, getVolume } from "./audio.js";
+import { initAudio, playSfx, updateEngineSound, stopEngineSound, toggleMuted, isMuted, setVolume, getVolume, toggleMusic, isMusicEnabled } from "./audio.js";
 
 const { auth, db } = studentFirebase();
 const serverNow = serverClock(db);
@@ -1272,6 +1272,7 @@ async function start() {
   scheduleMapCache();
   const soundButton = $("soundToggle");
   const soundVolume = $("soundVolume");
+  const musicButton = $("musicToggle");
   const refreshSoundButton = () => {
     if (soundButton) {
       soundButton.textContent = isMuted() ? "🔇 Sound Off" : "🔊 Sound On";
@@ -1287,6 +1288,19 @@ async function start() {
       toggleMuted();
       refreshSoundButton();
       if (!isMuted()) playSfx("click");
+    });
+  }
+  if (musicButton) {
+    const refreshMusicButton = () => {
+      musicButton.textContent = isMusicEnabled() ? "🎵 Music On" : "🎵 Music Off";
+      musicButton.setAttribute("aria-pressed", String(isMusicEnabled()));
+    };
+    refreshMusicButton();
+    musicButton.addEventListener("click", () => {
+      initAudio();
+      toggleMusic();
+      refreshMusicButton();
+      if (isMusicEnabled()) playSfx("click");
     });
   }
   if (soundVolume) {
