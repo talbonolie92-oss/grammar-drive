@@ -30,6 +30,7 @@ let stopSessionList = null;
 let loggingIn = false;
 
 const endRequested = {};
+const selectedDeleteIds = new Set();
 
 /* ---------- form setup ---------- */
 
@@ -220,53 +221,130 @@ function renderSessionList() {
   box.textContent = "";
 
   const list = sortedSessions();
+  for (const id of selectedDeleteIds) {
+    if (!sessions[id] || sessions[id].status === "running") selectedDeleteIds.delete(id);
+  }
 
   if (!list.length) {
-    box.appendChild(
-      el("p", {
-        className: "muted",
-        text: "No sessions yet."
-      })
-    );
+    box.appendChild(el("p", { className: "muted", text: "No sessions yet." }));
     return;
   }
+
+  const deletable = list.filter(([, session]) => session.status !== "running");
+  const allSelected = deletable.length > 0 && deletable.every(([id]) => selectedDeleteIds.has(id));
+
+  box.appendChild(el("div", { className: "row session-bulk-actions" }, [
+    el("button", {
+      type: "button",
+      className: "small secondary",
+      text: allSelected ? "Clear selection" : "Select all ended / waiting",
+      onclick: () => {
+        if (allSelected) selectedDeleteIds.clear();
+        else deletable.forEach(([id]) => selectedDeleteIds.add(id));
+        renderSessionList();
+      }
+    }),
+    el("button", {
+      type: "button",
+      className: "small danger",
+      text: "Delete selected (" + selectedDeleteIds.size + ")",
+      disabled: selectedDeleteIds.size === 0,
+      onclick: confirmBulkDelete
+    })
+  ]));
 
   list.forEach(([id, s]) => {
     const old = isOldFormat(s);
     const players = Object.keys(s.players || {}).length;
+    const checkbox = el("input", {
+      type: "checkbox",
+      checked: selectedDeleteIds.has(id),
+      disabled: s.status === "running",
+      "aria-label": "Select session for deletion",
+      onchange: (event) => {
+        if (event.target.checked) selectedDeleteIds.add(id);
+        else selectedDeleteIds.delete(id);
+        renderSessionList();
+      }
+    });
 
-    box.appendChild(
+    box.appendChild(el("div", { className: "session-entry" }, [
+      checkbox,
       el("button", {
         type: "button",
-        className: id === selectedId ? "selected" : "",
+        className: "session-entry-main " + (id === selectedId ? "selected" : ""),
         onclick: () => selectSession(id)
       }, [
         el("span", {
           className: "badge " + (old ? "old" : s.status),
           text: old ? "old" : s.status
         }),
-
         " ",
-
-        el("strong", {
-          text: old ? (s.sessionCode || "—") : s.code
-        }),
-
+        el("strong", { text: old ? (s.sessionCode || s.code || "—") : s.code }),
         el("div", {
           className: "small muted",
           text:
-            (
-              old
-                ? "Created with an earlier version"
-                : "Grade " + s.grade + " · " +
-                  players + " student" + (players === 1 ? "" : "s")
-            ) +
-            " · " +
-            (s.createdAt ? new Date(s.createdAt).toLocaleString() : "")
+            (old
+              ? "Earlier version · " + players + " student" + (players === 1 ? "" : "s")
+              : "Grade " + s.grade + " · " + players + " student" + (players === 1 ? "" : "s")) +
+            " · " + (s.createdAt ? new Date(s.createdAt).toLocaleString() : "")
         })
       ])
-    );
+    ]));
   });
+}
+
+function addSessionDeletePaths(updates, id, session) {
+  updates["sessions/" + id] = null;
+  updates["liveCars/" + id] = null;
+  const code = typeof session.code === "string"
+    ? session.code
+    : (typeof session.sessionCode === "string" ? session.sessionCode : "");
+  if (/^[A-HJ-NP-Z2-9]{6}$/.test(code)) updates["joinCodes/" + code] = null;
+}
+
+function confirmBulkDelete() {
+  const ids = [...selectedDeleteIds].filter(id =>
+    sessions[id] && sessions[id].status !== "running"
+  );
+  if (!ids.length) return;
+
+  openModal(
+    "Delete " + ids.length + " selected sessions?",
+    [
+      el("p", {
+        text: "This permanently deletes the selected waiting or ended sessions, student entries, saved results, and live-car data. Running games are excluded. This cannot be undone."
+      }),
+      el("p", {
+        className: "small muted",
+        text: "Download or copy any results you want to keep before deleting."
+      })
+    ],
+    "Delete selected permanently",
+    async () => {
+      const updates = {};
+      for (const id of ids) {
+        const current = sessions[id];
+        if (!current || current.teacherUid !== teacher.uid || current.status === "running") {
+          showMessage($("dashMessage"), "One or more selected sessions are no longer eligible for deletion.");
+          return false;
+        }
+        addSessionDeletePaths(updates, id, current);
+      }
+
+      try {
+        await update(ref(db), updates);
+        ids.forEach(id => selectedDeleteIds.delete(id));
+        if (ids.includes(selectedId)) selectedId = null;
+        showMessage($("dashMessage"), ids.length + " sessions deleted.", "success");
+        return true;
+      } catch (error) {
+        showMessage($("dashMessage"), "Could not delete the selected sessions: " + friendlyError(error));
+        return false;
+      }
+    },
+    true
+  );
 }
 
 function selectSession(id) {
@@ -558,7 +636,7 @@ function renderSession() {
     );
   }
 
-  if (!old && s.status !== "running") {
+  if (s.status !== "running") {
     controls.appendChild(
       el("button", {
         type: "button",
@@ -948,7 +1026,7 @@ function confirmEnd(id, s, cancel) {
 /* ---------- permanently delete an ended session ---------- */
 
 function confirmDeleteSession(id, session) {
-  if (!session || session.status === "running" || isOldFormat(session)) return;
+  if (!session || session.status === "running") return;
 
   openModal(
     "Permanently delete this game?",
@@ -970,11 +1048,10 @@ function confirmDeleteSession(id, session) {
       }
 
       try {
-        await update(ref(db), {
-          ["sessions/" + id]: null,
-          ["joinCodes/" + current.code]: null,
-          ["liveCars/" + id]: null
-        });
+        const updates = {};
+        addSessionDeletePaths(updates, id, current);
+        await update(ref(db), updates);
+        selectedDeleteIds.delete(id);
 
         if (selectedId === id) selectedId = null;
         showMessage($("dashMessage"), "Session and its saved results were deleted.", "success");
