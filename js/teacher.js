@@ -377,6 +377,131 @@ function playerRows(session) {
   }));
 }
 
+function accuracyPercent(row) {
+  return row.answered > 0 ? Math.round((row.correct / row.answered) * 100) : 0;
+}
+
+function createResultsOverview(rows) {
+  const ranked = rows.slice().sort((a, b) =>
+    b.score - a.score || b.correct - a.correct ||
+    accuracyPercent(b) - accuracyPercent(a) ||
+    b.answered - a.answered || (a.joinedAt || 0) - (b.joinedAt || 0)
+  );
+  const totalAnswered = rows.reduce((sum, row) => sum + row.answered, 0);
+  const totalCorrect = rows.reduce((sum, row) => sum + row.correct, 0);
+  const totalScore = rows.reduce((sum, row) => sum + row.score, 0);
+  const eligible = rows.filter(row => row.answered > 0);
+  const awards = [];
+
+  if (ranked.length && ranked[0].score > 0) {
+    awards.push({ title: "Grammar Master", icon: "🏆", row: ranked[0], detail: ranked[0].score + " points" });
+  }
+  if (eligible.length) {
+    const accuracy = eligible.slice().sort((a, b) =>
+      accuracyPercent(b) - accuracyPercent(a) || b.correct - a.correct || b.score - a.score
+    )[0];
+    awards.push({ title: "Accuracy Star", icon: "🎯", row: accuracy, detail: accuracyPercent(accuracy) + "% accuracy" });
+    const active = eligible.slice().sort((a, b) =>
+      b.answered - a.answered || b.correct - a.correct || b.score - a.score
+    )[0];
+    awards.push({ title: "Most Active Driver", icon: "🚗", row: active, detail: active.answered + " answers" });
+  }
+
+  return {
+    ranked,
+    totalAnswered,
+    totalCorrect,
+    averageScore: rows.length ? Math.round(totalScore / rows.length) : 0,
+    accuracy: totalAnswered ? Math.round((totalCorrect / totalAnswered) * 100) : 0,
+    awards
+  };
+}
+
+function renderResultsOverview(rows) {
+  const report = createResultsOverview(rows);
+  const section = el("section", { className: "panel results-report" }, [
+    el("div", { className: "row" }, [
+      el("div", {}, [
+        el("span", { className: "badge ended", text: "SESSION COMPLETE" }),
+        el("h2", { style: "margin:8px 0 2px", text: "Class performance report" }),
+        el("p", { className: "muted small", text: "Final standings and classroom performance summary." })
+      ]),
+      el("div", { className: "spacer" }),
+      el("button", {
+        type: "button",
+        className: "small secondary",
+        text: "Download CSV",
+        onclick: () => downloadResultsCSV(rows, report.ranked)
+      })
+    ]),
+    el("div", { className: "report-stats" }, [
+      ["Students", String(rows.length)],
+      ["Average score", String(report.averageScore)],
+      ["Overall accuracy", report.accuracy + "%"],
+      ["Answers submitted", String(report.totalAnswered)]
+    ].map(([label, value]) => el("div", { className: "report-stat" }, [
+      el("span", { className: "muted small", text: label }),
+      el("strong", { text: value })
+    ]))),
+    el("h3", { text: "🏁 Top 3 drivers" }),
+    renderPodium(report.ranked.slice(0, 3)),
+    el("h3", { text: "🏅 Class awards" }),
+    el("div", { className: "award-grid" }, report.awards.map(award =>
+      el("div", { className: "award-card" }, [
+        el("span", { className: "award-icon", text: award.icon }),
+        el("div", {}, [
+          el("strong", { text: award.title }),
+          el("div", { className: "small muted", text: award.row.name + " · " + award.row.classSection }),
+          el("div", { className: "small", text: award.detail })
+        ])
+      ])
+    ))
+  ]);
+  return section;
+}
+
+function renderPodium(top) {
+  const podium = el("div", { className: "podium" });
+  if (!top.length) {
+    podium.appendChild(el("p", { className: "muted", text: "No scores recorded for this session." }));
+    return podium;
+  }
+  const order = top.length >= 3 ? [top[1], top[0], top[2]] : top.slice();
+  order.forEach((row) => {
+    const rank = top.indexOf(row) + 1;
+    podium.appendChild(el("div", { className: "podium-place place-" + rank }, [
+      el("span", { className: "podium-medal", text: rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉" }),
+      el("strong", { text: row.name }),
+      el("span", { className: "small muted", text: row.classSection }),
+      el("strong", { className: "podium-score", text: row.score + " pts" }),
+      el("span", { className: "small muted", text: accuracyPercent(row) + "% accuracy" })
+    ]));
+  });
+  return podium;
+}
+
+function downloadResultsCSV(rows, ranked) {
+  const quote = value => '"' + String(value ?? "").replace(/"/g, '""') + '"';
+  const lines = [
+    ["Rank", "Name", "Class / Section", "Score", "Correct", "Answered", "Accuracy"].map(quote).join(",")
+  ];
+  ranked.forEach((row, index) => {
+    lines.push([
+      index + 1, row.name, row.classSection, row.score,
+      row.correct, row.answered, accuracyPercent(row) + "%"
+    ].map(quote).join(","));
+  });
+  const blob = new Blob(["\\uFEFF" + lines.join("\\r\\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "grammar-drive-results.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function renderSession() {
   const panel = $("sessionPanel");
   const s = selectedId ? sessions[selectedId] : null;
@@ -560,7 +685,8 @@ function renderSession() {
   const ordered = rows.slice().sort(
     s.status === "waiting"
       ? (a, b) => (a.joinedAt || 0) - (b.joinedAt || 0)
-      : (a, b) => b.score - a.score
+      : (a, b) => b.score - a.score || b.correct - a.correct ||
+        accuracyPercent(b) - accuracyPercent(a) || b.answered - a.answered
   );
 
   const tbody = el("tbody");
@@ -610,6 +736,8 @@ function renderSession() {
             : "–"
         }),
 
+        el("td", { text: r.answered ? accuracyPercent(r) + "%" : "–" }),
+
         el("td", { text: String(r.score) }),
 
         el("td", {
@@ -635,13 +763,17 @@ function renderSession() {
     );
   });
 
+  if (s.status === "ended" && rows.length) {
+    panel.appendChild(renderResultsOverview(ordered));
+  }
+
   panel.appendChild(
     el("section", { className: "panel" }, [
       el("div", { className: "row" }, [
         el("h2", {
           style: "margin:0",
           text:
-            (s.status === "ended" ? "Results" : "Lobby") +
+            (s.status === "ended" ? "Final student results" : "Lobby") +
             " (" + rows.length +
             " student" + (rows.length === 1 ? "" : "s") + ")"
         }),
@@ -670,6 +802,7 @@ function renderSession() {
                   "Class",
                   "Joined",
                   "Correct",
+                  "Accuracy",
                   "Score",
                   ""
                 ].map((h) => el("th", { text: h })))
@@ -993,6 +1126,7 @@ function copyResults(s, ordered) {
       "Class",
       "Correct",
       "Answered",
+      "Accuracy",
       "Score (provisional)"
     ].join("\t")
   ];
@@ -1004,6 +1138,7 @@ function copyResults(s, ordered) {
       r.classSection,
       r.correct,
       r.answered,
+      accuracyPercent(r) + "%",
       r.score
     ].join("\t"));
   });
