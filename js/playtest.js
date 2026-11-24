@@ -66,6 +66,7 @@ const missionExplanationEl = $("missionExplanation");
 const missionRewardEl = $("missionReward");
 const grammarPanel = $("grammarPanel");
 const grammarTypeEl = $("grammarType");
+const grammarBadge = $("grammarBadge");
 const grammarPromptEl = $("grammarPrompt");
 const grammarInstructionEl = $("grammarInstruction");
 const grammarOptionsEl = $("grammarOptions");
@@ -156,6 +157,9 @@ const RACE_ROUTE = [
 const race = { active: false, next: 0, startedAt: 0, lastHudAt: 0 };
 let grammarChallenge = null;
 let grammarBusy = false;
+let grammarContext = "none";
+let pendingMissionCrate = null;
+let pendingCrateAttemptRewarded = false;
 
 function showOverlay(title, message, showBack = false) {
   overlayTitle.textContent = title;
@@ -746,7 +750,9 @@ function loadMissionState() {
 }
 
 function openGrammarPanel() {
-  if (!running || !nearbyGrammarStop(car.x, car.y) || !grammarPanel) return;
+  if (!running || race.active || !nearbyGrammarStop(car.x, car.y) || !grammarPanel) return;
+  grammarContext = "roadside";
+  pendingMissionCrate = null;
   grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
   if (!grammarChallenge) return;
   grammarBusy = false;
@@ -760,14 +766,18 @@ function closeGrammarPanel() {
   if (grammarBusy) return;
   if (grammarPanel) grammarPanel.classList.add("hidden");
   grammarChallenge = null;
+  grammarContext = "none";
 }
 
 function renderGrammarChallenge() {
   if (!grammarChallenge) return;
   const challenge = grammarChallenge;
   grammarTypeEl.textContent = "GRADE " + codeInfo.grade + " · " + challenge.topic + " · " + challenge.mode.toUpperCase();
+  if (grammarBadge) grammarBadge.textContent = grammarContext === "mission-crate" ? "CARGO LOCK · REQUIRED GRAMMAR" : "ROADSIDE GRAMMAR";
   grammarPromptEl.textContent = challenge.prompt;
-  grammarInstructionEl.textContent = challenge.instruction;
+  grammarInstructionEl.textContent = grammarContext === "mission-crate"
+    ? "Answer correctly to unlock this cargo crate. Try a new question if you make a mistake."
+    : challenge.instruction;
   grammarFeedbackEl.className = "message hidden";
   grammarFeedbackEl.textContent = "";
   grammarExplanationEl.textContent = "";
@@ -843,8 +853,14 @@ async function submitGrammarChallenge() {
     const nextAnswered = (Number(progress.answered) || 0) + 1;
     await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
     me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
+    challenge.completedCorrectly = correct;
     if (correct) {
       await grantGrowthXp(20, "grammar-correct");
+    } else if (grammarContext === "mission-crate") {
+      if (!pendingCrateAttemptRewarded) {
+        pendingCrateAttemptRewarded = true;
+        await grantGrowthXp(5, "grammar-attempt");
+      }
     } else if (!challenge.xpAttemptRewarded) {
       challenge.xpAttemptRewarded = true;
       await grantGrowthXp(5, "grammar-attempt");
@@ -852,11 +868,14 @@ async function submitGrammarChallenge() {
 
     grammarFeedbackEl.className = correct ? "message success" : "message warn";
     grammarFeedbackEl.textContent = correct
-      ? "Correct! +15 points. Great driving, great grammar!"
+      ? (grammarContext === "mission-crate" ? "Correct! Cargo unlocked. +15 points." : "Correct! +15 points. Great driving, great grammar!")
       : "Not quite. No points this time, but here's the rule to remember.";
     grammarExplanationEl.textContent = challenge.explanation;
     playSfx(correct ? "correct" : "wrong");
     grammarCheckButton.classList.add("hidden");
+    grammarNextButton.textContent = grammarContext === "mission-crate"
+      ? (correct ? "Unlock Cargo →" : "Try Again →")
+      : "Next Challenge →";
     grammarNextButton.classList.remove("hidden");
     grammarUndoButton.classList.add("hidden");
   } catch (error) {
@@ -869,7 +888,17 @@ async function submitGrammarChallenge() {
 }
 
 function nextGrammarChallenge() {
-  if (!running) return;
+  if (!running || grammarBusy) return;
+  if (grammarContext === "mission-crate" && grammarChallenge && grammarChallenge.completedCorrectly) {
+    const crate = pendingMissionCrate;
+    grammarPanel.classList.add("hidden");
+    grammarChallenge = null;
+    grammarContext = "none";
+    pendingMissionCrate = null;
+    pendingCrateAttemptRewarded = false;
+    completeMissionCrate(crate);
+    return;
+  }
   grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
   renderGrammarChallenge();
 }
@@ -974,6 +1003,25 @@ function startMission() {
 }
 
 function collectMissionCrate(crate) {
+  if (!mission || mission.status !== "collecting" || !crate || grammarBusy) return;
+  if (mission.collected.includes(crate.index)) return;
+  pendingMissionCrate = crate;
+  grammarContext = "mission-crate";
+  grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
+  if (!grammarChallenge) {
+    grammarContext = "none";
+    pendingMissionCrate = null;
+    completeMissionCrate(crate);
+    return;
+  }
+  grammarBusy = false;
+  grammarPanel.classList.remove("hidden");
+  playSfx("mission");
+  clearControls();
+  renderGrammarChallenge();
+}
+
+function completeMissionCrate(crate) {
   if (!mission || mission.status !== "collecting" || !crate) return;
   if (mission.collected.includes(crate.index)) return;
   mission.collected.push(crate.index);
@@ -982,7 +1030,7 @@ function collectMissionCrate(crate) {
   mission.lastRecovered = recovered.text;
   if (mission.collected.length >= mission.fragments.length) mission.status = "return";
   saveMissionState();
-  challengeHintEl.textContent = "Recovered: " + recovered.text + " · " + mission.collected.length + "/" + mission.fragments.length;
+  challengeHintEl.textContent = "Grammar cleared · Recovered: " + recovered.text + " · " + mission.collected.length + "/" + mission.fragments.length;
   challengeHintEl.classList.remove("hidden");
   challengeButton.classList.add("hidden");
   updateCar(0.001);
