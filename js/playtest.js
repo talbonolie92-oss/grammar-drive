@@ -702,50 +702,60 @@ function onKeyUp(event) {
 function bindTouch(buttonId, keyName) {
   const button = $(buttonId);
   if (!button) return;
+
   let activePointer = null;
   const release = (event) => {
-    if (activePointer !== null && event && event.pointerId !== undefined && event.pointerId !== activePointer) return;
+    if (activePointer === null) return;
+    if (event && event.pointerId !== undefined && event.pointerId !== activePointer) return;
     activePointer = null;
     keys[keyName] = false;
     button.classList.remove("on");
   };
+
   button.addEventListener("pointerdown", (event) => {
-    if (activePointer !== null) return;
+    if (activePointer !== null || !running) return;
     event.preventDefault();
     activePointer = event.pointerId;
     keys[keyName] = true;
     button.classList.add("on");
     try { button.setPointerCapture(event.pointerId); } catch (error) {}
   });
+
   button.addEventListener("pointerup", release);
   button.addEventListener("pointercancel", release);
   button.addEventListener("lostpointercapture", release);
+  window.addEventListener("pointerup", release);
+  window.addEventListener("pointercancel", release);
   button.addEventListener("contextmenu", (event) => event.preventDefault());
 }
 
 function bindSteeringWheel() {
   const wheel = $("steeringWheel");
-  if (!wheel) return;
+  const knob = wheel ? wheel.querySelector(".wheel-center") : null;
+  if (!wheel || !knob) return;
+
   let pointerId = null;
-  let steerValue = 0;
+  const maxTravel = 34;
 
   const applySteering = (event) => {
     const rect = wheel.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
-    const radius = rect.width * 0.38;
-    // Horizontal drag behaves like an analog joystick:
-    // center = straight, left/right edge = progressively stronger steering.
-    const offset = Math.max(-1, Math.min(1, (event.clientX - centerX) / radius));
-    steerValue = Math.abs(offset) < 0.08 ? 0 : offset;
-    keys.steer = steerValue;
-    keys.left = steerValue < -0.08;
-    keys.right = steerValue > 0.08;
-    wheel.style.setProperty("--steer", String(steerValue));
-    wheel.style.transform = "rotate(" + (steerValue * 115) + "deg)";
-    wheel.classList.toggle("active", Math.abs(steerValue) > 0.08);
+    const raw = (event.clientX - centerX) / maxTravel;
+    const offset = Math.max(-1, Math.min(1, raw));
+    const deadZone = 0.10;
+    const steer = Math.abs(offset) < deadZone
+      ? 0
+      : Math.sign(offset) * ((Math.abs(offset) - deadZone) / (1 - deadZone));
+
+    keys.steer = steer;
+    keys.left = steer < -0.08;
+    keys.right = steer > 0.08;
+    knob.style.transform = "translate(calc(-50% + " + (offset * maxTravel) + "px), -50%)";
+    wheel.classList.toggle("active", Math.abs(steer) > 0.08);
   };
 
   wheel.addEventListener("pointerdown", (event) => {
+    if (!running || pointerId !== null) return;
     event.preventDefault();
     pointerId = event.pointerId;
     try { wheel.setPointerCapture(pointerId); } catch (error) {}
@@ -761,17 +771,18 @@ function bindSteeringWheel() {
   const release = (event) => {
     if (pointerId === null || (event && event.pointerId !== undefined && pointerId !== event.pointerId)) return;
     pointerId = null;
-    steerValue = 0;
     keys.steer = 0;
     keys.left = false;
     keys.right = false;
+    knob.style.transform = "translate(-50%, -50%)";
     wheel.classList.remove("active");
-    wheel.style.transform = "rotate(0deg)";
   };
+
   wheel.addEventListener("pointerup", release);
   wheel.addEventListener("pointercancel", release);
   wheel.addEventListener("lostpointercapture", release);
 }
+
 async function start() {
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
