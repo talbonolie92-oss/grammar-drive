@@ -105,7 +105,7 @@ const PAINT_COLORS=[
 ];
 car.model = "compact";
 car.paintIndex=5;
-const others = new Map();
+let others = new Map();
 
 let uid = null;
 let code = "";
@@ -1323,8 +1323,9 @@ async function start() {
       getName: () => me ? me.name : "Driver",
       color: () => car.paintIndex,
       onChange: (cars) => {
-        others.clear();
-        cars.forEach((value, key) => others.set(key, value));
+        // Reuse the multiplayer module's live Map instead of copying every
+        // remote-player update into a second Map on each Firebase event.
+        others = cars;
         renderRoster();
       },
       onStatus: (state, detail) => {
