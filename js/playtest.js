@@ -32,7 +32,7 @@ import { createRoadsideEvents, nearbyRoadsideEvent, drawRoadsideEvents } from ".
 import { createRoadLoot, nearbyRoadLoot, drawRoadLoot } from "./road-loot.js";
 import { createBridge, nearbyBridge, isBridgeBlocked, drawBridge } from "./bridge-events.js";
 import { createGrammarChallenge } from "./grammar-challenges.js";
-import { initAudio, playSfx, updateEngineSound, stopEngineSound, toggleMuted, isMuted, setVolume, getVolume } from "./audio.js";
+import { initAudio, playSfx, updateEngineSound, stopEngineSound, suspendAudio, resumeAudio, toggleMuted, isMuted, setVolume, getVolume } from "./audio.js";
 
 const { auth, db } = studentFirebase();
 const serverNow = serverClock(db);
@@ -1116,6 +1116,7 @@ function handleVisibilityChange() {
   if (document.hidden) {
     clearControls();
     updateEngineSound(0, false);
+    suspendAudio();
     if (live) live.setEnabled(false);
     if (statusTimer) {
       clearInterval(statusTimer);
@@ -1130,6 +1131,7 @@ function handleVisibilityChange() {
   }
 
   if (finished) return;
+  resumeAudio();
   if (statusTimer === 0 && codeInfo) {
     statusTimer = setInterval(applyStatus, 500);
   }
@@ -1176,6 +1178,7 @@ async function finish(title, message, showBack = true) {
   finished = true;
   running = false;
   stopEngineSound();
+  suspendAudio();
   cleanupListeners();
   if (live) {
     await live.stop(true);
