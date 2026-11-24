@@ -203,7 +203,9 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
   ctx.strokeStyle = isMine ? "#ffffff" : "#0f172a";
   ctx.lineWidth = Math.max(1.2, 1.8 * scale);
   ctx.beginPath();
-  if (modelKey === "sport") {
+  if (modelKey === "motorcycle" || modelKey === "bicycle") {
+    // Two-wheelers are drawn from their frame and wheels below, not a car body.
+  } else if (modelKey === "sport") {
     ctx.moveTo(-w * .5, -h * .25);
     ctx.lineTo(-w * .34, -h * .48);
     ctx.lineTo(w * .23, -h * .48);
