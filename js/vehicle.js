@@ -31,9 +31,10 @@ export function updateVehicle(car, keys, dt, world) {
   const acceleration = (onRoadBefore ? 390 : 230) * conditionFactor;
   const braking = 650;
 
+  // A full tank now lasts roughly 2 minutes of continuous acceleration.
   if (throttle > 0 && car.fuel > 0) {
     car.s += acceleration * dt;
-    car.fuel = clamp(car.fuel - 0.035 * dt, 0, 100);
+    car.fuel = clamp(car.fuel - 0.75 * dt, 0, 100);
   } else if (throttle < 0) {
     car.s -= braking * dt;
   } else {
@@ -57,11 +58,13 @@ export function updateVehicle(car, keys, dt, world) {
   const nextY = car.y + Math.sin(car.a) * car.s * dt;
   const hitX = world.collidesWithWorld(nextX, car.y, 19);
   const hitY = world.collidesWithWorld(car.x, nextY, 19);
-
   const hit = hitX || hitY;
+
   if (hit) {
-    if (!car.collided && Math.abs(car.s) > 35) {
-      car.condition = clamp(car.condition - Math.min(12, Math.abs(car.s) / 45), 0, 100);
+    if (!car.collided && Math.abs(car.s) > 20) {
+      const impactDamage = Math.min(25, Math.max(8, Math.abs(car.s) / 18));
+      car.condition = clamp(car.condition - impactDamage, 0, 100);
+      car.lastEvent = "collision";
     }
     car.collided = true;
     car.s *= -0.18;
@@ -83,10 +86,12 @@ export function refuelVehicle(car) {
   if (!car) return;
   car.fuel = 100;
   car.s = 0;
+  car.lastEvent = "refueled";
 }
 
 export function repairVehicle(car) {
   if (!car) return;
   car.condition = 100;
   car.s = 0;
+  car.lastEvent = "repaired";
 }
