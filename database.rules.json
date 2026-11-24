@@ -189,10 +189,10 @@
           ".write": "auth != null && ((auth.uid == $uid && (!newData.exists() || (root.child('sessions').child($sid).child('players').child($uid).exists() && root.child('sessions').child($sid).child('status').val() == 'running' && now <= root.child('sessions').child($sid).child('startedAt').val() + root.child('sessions').child($sid).child('durationMinutes').val() * 60000 + 10000))) || (!newData.exists() && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true))",
           ".validate": "newData.hasChildren(['x', 'y', 'a', 'c', 'n', 't', 'm', 'g'])",
           "x": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4000 && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't']) && newData.parent().child('t').val() == now"
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6500 && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't']) && newData.parent().child('t').val() == now"
           },
           "y": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4000 && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't']) && newData.parent().child('t').val() == now"
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6500 && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't']) && newData.parent().child('t').val() == now"
           },
           "a": {
             ".validate": "newData.isNumber() && newData.val() >= -10 && newData.val() <= 10 && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't']) && newData.parent().child('t').val() == now"
