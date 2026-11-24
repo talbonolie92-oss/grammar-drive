@@ -24,6 +24,8 @@ import {
   serverTimestamp
 } from "./firebase.js";
 
+import { liveCarsPath } from "./multiplayer.js";
+
 import {
   buildCreateSession,
   buildStartSession,
@@ -872,6 +874,80 @@ $("testForm").addEventListener("submit", async (event) => {
     );
 
     // ------------------------------------------------
+    // PHASE 3 — LIVE MULTIPLAYER CARS
+    // ------------------------------------------------
+
+    const livePath = liveCarsPath(S1.sid);
+    const carA = ref(A.db, livePath + "/" + ua);
+    const makeCar = (name, x = 100) => ({
+      x,
+      y: 100,
+      a: 0,
+      s: 0,
+      c: 1,
+      n: name,
+      t: serverTimestamp()
+    });
+
+    await allow(
+      "student A creates own live car while session is running",
+      () => set(carA, makeCar("Test Student A2"))
+    );
+    S1.liveCars = true;
+
+    await allow(
+      "student A reads the shared live-car list",
+      () => get(ref(A.db, livePath))
+    );
+
+    await allow(
+      "joined student B reads the shared live-car list",
+      () => get(ref(B.db, livePath))
+    );
+
+    await deny(
+      "non-member student C reads live cars",
+      () => get(ref(C.db, livePath))
+    );
+
+    await deny(
+      "student B writes student A's car",
+      () => set(ref(B.db, livePath + "/" + ua), makeCar("Test Student A2"))
+    );
+
+    await deny(
+      "student A uses a name that does not match the player record",
+      () => set(carA, makeCar("Fake Driver"))
+    );
+
+    await deny(
+      "student A sends an out-of-range car position",
+      () => set(carA, makeCar("Test Student A2", 5000))
+    );
+
+    await deny(
+      "teacher cannot create a live car",
+      () => set(ref(T.db, livePath + "/" + tUid), makeCar("Teacher"))
+    );
+
+    await deny(
+      "car update inside the 150 ms rate limit",
+      () => update(carA, { x: 101, n: "Test Student A2", t: serverTimestamp() })
+    );
+
+    await wait(220);
+
+    await allow(
+      "student A updates own car after the rate limit",
+      () => update(carA, { x: 102, n: "Test Student A2", t: serverTimestamp() })
+    );
+
+    await allow(
+      "teacher reads live cars for own session",
+      () => get(ref(T.db, livePath))
+    );
+
+    // ------------------------------------------------
     // END SESSION
     // ------------------------------------------------
 
@@ -1162,6 +1238,12 @@ $("testForm").addEventListener("submit", async (event) => {
 
     for (const item of created) {
       try {
+        // Remove test cars before the session is deleted; owner permission
+        // for deleting the liveCars subtree depends on the session record.
+        if (item.liveCars) {
+          await remove(ref(T.db, liveCarsPath(item.sid)));
+        }
+
         if (item.code) {
           await remove(
             ref(T.db, "joinCodes/" + item.code)
