@@ -23,15 +23,13 @@
     .pad button.on { background: linear-gradient(180deg, #2563eb, #1e40af); border-color: #93c5fd; transform: translateY(2px); }
     .pad button.forward { border-bottom: 4px solid #22c55e; }
     .pad button.backward { border-bottom: 4px solid #f59e0b; }
-    @media (max-width: 430px) { .pad button { width: 82px; height: 60px; font-size: 15px; } .pad-right { right: 10px; bottom: 14px; gap: 8px; }  .steering-joystick { width: 124px; height: 124px; left: 12px; bottom: 14px; } }
-    .steering-joystick { position: fixed; z-index: 6; left: 18px; bottom: 18px; width: 142px; height: 142px; border: 3px solid rgba(148,163,184,.8); border-radius: 50%; background: radial-gradient(circle, rgba(51,65,85,.72), rgba(15,23,42,.88)); box-shadow: 0 4px 18px rgba(0,0,0,.4), inset 0 0 0 8px rgba(15,23,42,.45); touch-action: none; user-select: none; -webkit-user-select: none; }
-    .steering-joystick.active { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(59,130,246,.2), 0 4px 18px rgba(0,0,0,.4), inset 0 0 0 8px rgba(15,23,42,.45); }
-    .steering-knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%; background: radial-gradient(circle at 32% 27%, #93c5fd, #3b82f6 48%, #1d4ed8 78%, #1e3a8a); border: 3px solid #dbeafe; box-shadow: 0 4px 12px rgba(0,0,0,.5), inset 0 2px 5px rgba(255,255,255,.45); transform: translate(-50%,-50%); pointer-events: none; will-change: transform; }
-    .fuel-warning { position: fixed; z-index: 8; left: 50%; top: 58px; transform: translateX(-50%); width: min(620px, calc(100vw - 24px)); padding: 10px 14px; border-radius: 12px; text-align: center; font-size: 13px; line-height: 1.35; font-weight: 900; color: #fff; background: rgba(127,29,29,.96); border: 2px solid #f87171; box-shadow: 0 5px 18px rgba(0,0,0,.4); pointer-events: none; }
-    .fuel-warning.low { background: rgba(120,53,15,.96); border-color: #fbbf24; }
-    .fuel-warning.critical { background: rgba(127,29,29,.97); border-color: #f87171; animation: fuelPulse 1s ease-in-out infinite alternate; }
-    @keyframes fuelPulse { from { box-shadow: 0 3px 12px rgba(239,68,68,.18); } to { box-shadow: 0 3px 22px rgba(239,68,68,.65); } }
-    @media (max-width: 430px) { .fuel-warning { top: 96px; font-size: 12px; padding: 8px 10px; } }
+    @media (max-width: 430px) { .pad button { width: 82px; height: 60px; font-size: 15px; } .pad-right { right: 10px; bottom: 14px; gap: 8px; }   .analog-stick-base { width: 116px; height: 116px; left: 12px; bottom: 14px; } }
+    .analog-stick-base { position: fixed; z-index: 6; left: 22px; bottom: 22px; width: 116px; height: 116px; border-radius: 50%; background: radial-gradient(circle at 50% 45%, #273449 0%, #111827 66%, #030712 100%); border: 2px solid #475569; box-shadow: 0 9px 20px rgba(0,0,0,.55), inset 0 4px 9px rgba(255,255,255,.08), inset 0 -7px 12px rgba(0,0,0,.65); touch-action: none; user-select: none; -webkit-user-select: none; }
+    .analog-stick-base::before { content: ""; position: absolute; inset: 13px; border-radius: 50%; border: 1px solid rgba(148,163,184,.22); box-shadow: inset 0 2px 7px rgba(0,0,0,.45); pointer-events: none; }
+    .analog-stick-base.active { border-color: #60a5fa; }
+    .analog-stick-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; border-radius: 50%; background: radial-gradient(circle at 33% 24%, #bfdbfe 0%, #60a5fa 24%, #2563eb 62%, #172554 100%); border: 2px solid #93c5fd; box-shadow: 0 6px 10px rgba(0,0,0,.65), inset 0 3px 5px rgba(255,255,255,.4), inset 0 -4px 7px rgba(0,0,0,.35); transform: translate(-50%,-50%); pointer-events: none; will-change: transform; }
+    to { box-shadow: 0 3px 22px rgba(239,68,68,.65); } }
+    @media (max-width: 430px) { }
     #overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(15, 23, 42, .82); text-align: center; padding: 20px; }
     #debug { position: fixed; z-index: 5; left: 8px; bottom: 100px; font-size: 12px; color: #cbd5e1; background: rgba(15, 23, 42, .7); padding: 6px 8px; border-radius: 8px; }
     @media (hover: hover) and (pointer: fine) { .pad { opacity: .5; } }
@@ -45,9 +43,7 @@
     <div class="pill" id="online">Online: –</div>
     <div class="pill" id="surface">ROAD</div>
     <div class="pill" id="speed">0 km/h</div>
-    <div class="pill" id="fuel">Fuel: 100%</div>
-    <div id="fuelWarning" class="fuel-warning hidden" role="status" aria-live="polite"></div>
-    <div class="pill" id="condition">Condition: 100%</div>
+        <div class="pill" id="condition">Condition: 100%</div>
     <div class="pill hidden" id="missionHud">Cargo: 0 / 4</div>
     <label id="carSelectWrap" class="pill hidden" style="margin:0;padding:4px 8px">Garage car
       <select id="carSelect" aria-label="Select vehicle" style="width:auto;padding:4px 6px;font-size:13px">
@@ -96,7 +92,7 @@
       </div>
     </section>
   </div>
-  <div id="steeringWheel" class="steering-joystick" role="application" aria-label="Steering joystick"><span id="steeringKnob" class="steering-knob"></span></div>
+  <div id="steeringJoystick" class="analog-stick-base" role="application" aria-label="Analog steering joystick"><span id="steeringKnob" class="analog-stick-knob"></span></div>
   <div class="hidden" aria-hidden="true"><button id="btnLeft" type="button">Left</button><button id="btnRight" type="button">Right</button></div>
   <div class="pad pad-right">
     <button id="btnBackward" class="backward" type="button" aria-label="Drive backward">▼ BACKWARD</button>
