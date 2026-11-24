@@ -3,70 +3,88 @@
 // js/world.js — Phase 4A map, roads, locations and collision geometry
 // --------------------------------------------------
 
-export const WORLD = Object.freeze({ width: 3600, height: 2600 });
+export const WORLD = Object.freeze({ width: 6000, height: 4400 });
 
 const ROADS = [
-  { x: 300, y: 230, w: 3000, h: 150, axis: "h" },
-  { x: 300, y: 2220, w: 3000, h: 150, axis: "h" },
-  { x: 230, y: 300, w: 150, h: 2000, axis: "v" },
-  { x: 3220, y: 300, w: 150, h: 2000, axis: "v" },
-  { x: 300, y: 1225, w: 3000, h: 150, axis: "h" },
-  { x: 1725, y: 300, w: 150, h: 2000, axis: "v" },
-  { x: 900, y: 300, w: 120, h: 2000, axis: "v" },
-  { x: 2580, y: 300, w: 120, h: 2000, axis: "v" }
+  { x: 200, y: 250, w: 5600, h: 150, axis: "h" },
+  { x: 200, y: 1250, w: 5600, h: 150, axis: "h" },
+  { x: 200, y: 2250, w: 5600, h: 150, axis: "h" },
+  { x: 200, y: 3250, w: 5600, h: 150, axis: "h" },
+  { x: 200, y: 4050, w: 5600, h: 150, axis: "h" },
+  { x: 200, y: 250, w: 150, h: 3950, axis: "v" },
+  { x: 1500, y: 250, w: 150, h: 3950, axis: "v" },
+  { x: 2800, y: 250, w: 150, h: 3950, axis: "v" },
+  { x: 4100, y: 250, w: 150, h: 3950, axis: "v" },
+  { x: 5400, y: 250, w: 150, h: 3950, axis: "v" }
 ];
 
 const BUILDINGS = [
-  { x: 470, y: 470, w: 330, h: 260, name: "CITY HALL", color: "#64748b" },
-  { x: 1040, y: 470, w: 390, h: 260, name: "APARTMENTS", color: "#78716c" },
-  { x: 2040, y: 470, w: 390, h: 260, name: "SHOPPING MALL", color: "#475569" },
-  { x: 2780, y: 470, w: 330, h: 260, name: "OFFICES", color: "#64748b" },
-  { x: 470, y: 790, w: 330, h: 280, name: "SCHOOL", color: "#a16207" },
-  { x: 1040, y: 790, w: 390, h: 280, name: "GARAGE", color: "#0e7490" },
-  { x: 2040, y: 790, w: 390, h: 280, name: "CAR DEALER", color: "#0369a1" },
-  { x: 2780, y: 790, w: 330, h: 280, name: "HOTEL", color: "#7c3aed" },
-  { x: 470, y: 1510, w: 330, h: 280, name: "CAR WASH", color: "#0284c7" },
-  { x: 1040, y: 1510, w: 390, h: 280, name: "SERVICE BAY", color: "#b45309" },
-  { x: 2040, y: 1510, w: 390, h: 280, name: "REST STOP", color: "#15803d" },
-  { x: 2780, y: 1510, w: 330, h: 280, name: "CITY DISPATCH", color: "#be123c" },
-  { x: 470, y: 1870, w: 330, h: 220, name: "WAREHOUSE", color: "#57534e" },
-  { x: 1040, y: 1870, w: 390, h: 220, name: "PARKING", color: "#475569" },
-  { x: 2040, y: 1870, w: 390, h: 220, name: "RACE CLUB", color: "#9f1239" },
-  { x: 2780, y: 1870, w: 330, h: 220, name: "AIRPORT OFFICE", color: "#475569" }
+  { x: 380, y: 450, w: 900, h: 650, name: "CITY HALL", color: "#64748b" },
+  { x: 1680, y: 450, w: 900, h: 650, name: "GRAND HOTEL", color: "#7c3aed" },
+  { x: 380, y: 1450, w: 900, h: 650, name: "COURTHOUSE", color: "#475569" },
+  { x: 1680, y: 1450, w: 900, h: 650, name: "CITY CENTER", color: "#0369a1" },
+  { x: 2980, y: 450, w: 900, h: 650, name: "HIGH SCHOOL", color: "#a16207" },
+  { x: 4280, y: 450, w: 900, h: 650, name: "UNIVERSITY", color: "#0e7490" },
+  { x: 2980, y: 1450, w: 900, h: 650, name: "CITY LIBRARY", color: "#15803d" },
+  { x: 4280, y: 1450, w: 900, h: 650, name: "SPORTS ARENA", color: "#7c3aed" },
+  { x: 380, y: 2450, w: 900, h: 650, name: "SHOPPING MALL", color: "#475569" },
+  { x: 1680, y: 2450, w: 900, h: 650, name: "FRESH MARKET", color: "#15803d" },
+  { x: 380, y: 3450, w: 900, h: 500, name: "CAR DEALER", color: "#0369a1" },
+  { x: 1680, y: 3450, w: 900, h: 500, name: "GARAGE", color: "#0e7490" },
+  { x: 2980, y: 2450, w: 900, h: 650, name: "WAREHOUSE", color: "#57534e" },
+  { x: 2980, y: 3450, w: 900, h: 500, name: "FACTORY", color: "#78716c" },
+  { x: 4280, y: 2450, w: 900, h: 650, name: "RACE CLUB", color: "#9f1239" },
+  { x: 4280, y: 3450, w: 900, h: 500, name: "COUNTRY CLUB", color: "#166534" }
 ];
 
-// Service markers are placed directly on drivable road surfaces.
+const DISTRICTS = [
+  { x: 350, y: 390, w: 2300, h: 1740, name: "DOWNTOWN CITY", labelX: 1500, labelY: 1180, fill: "rgba(59,130,246,.055)", edge: "rgba(147,197,253,.35)" },
+  { x: 2950, y: 390, w: 2300, h: 1740, name: "SCHOOL DISTRICT", labelX: 4100, labelY: 1180, fill: "rgba(245,158,11,.055)", edge: "rgba(253,230,138,.35)" },
+  { x: 350, y: 2390, w: 2300, h: 1640, name: "SHOPPING DISTRICT", labelX: 1500, labelY: 3180, fill: "rgba(236,72,153,.05)", edge: "rgba(249,168,212,.32)" },
+  { x: 2950, y: 2390, w: 1000, h: 1640, name: "INDUSTRIAL DISTRICT", labelX: 3450, labelY: 3180, fill: "rgba(148,163,184,.07)", edge: "rgba(203,213,225,.32)" },
+  { x: 4250, y: 2390, w: 1000, h: 1640, name: "COUNTRYSIDE & RACE ZONE", labelX: 4750, labelY: 3180, fill: "rgba(34,197,94,.06)", edge: "rgba(134,239,172,.35)" }
+];
+
+// Service markers// Service markers are placed directly on drivable road surfaces.
 const LOCATIONS = [
-  { x: 960, y: 1300, name: "GARAGE", type: "repair", color: "#38bdf8", symbol: "G" },
-  { x: 1940, y: 1140, name: "CITY CENTER", color: "#facc15", symbol: "C" },
-  { x: 970, y: 1420, name: "CAR WASH", color: "#7dd3fc", symbol: "W" },
-  { x: 1940, y: 1420, name: "CITY DISPATCH", color: "#fb7185", symbol: "D" },
-  { x: 2670, y: 1140, name: "CAR SHOP", type: "shop", color: "#c4b5fd", symbol: "S" }
+  { x: 1500, y: 1325, name: "GARAGE", type: "repair", color: "#38bdf8", symbol: "G" },
+  { x: 2800, y: 2325, name: "CITY CENTER", color: "#facc15", symbol: "C" },
+  { x: 1500, y: 2325, name: "CAR WASH", type: "repair", color: "#7dd3fc", symbol: "W" },
+  { x: 4100, y: 2325, name: "CITY DISPATCH", color: "#fb7185", symbol: "D" },
+  { x: 2800, y: 1325, name: "CAR SHOP", type: "shop", color: "#c4b5fd", symbol: "S" },
+  { x: 4750, y: 3325, name: "RACE CLUB", color: "#fb7185", symbol: "R" }
 ];
 
-// Roadside grammar stops turn exploration into short learning encounters.
+// Roadside grammar stops// Roadside grammar stops turn exploration into short learning encounters.
 const GRAMMAR_STOPS = [
-  { x: 1725, y: 1225, name: "GRAMMAR CHECKPOINT 1" },
-  { x: 2580, y: 1800, name: "GRAMMAR CHECKPOINT 2" },
-  { x: 900, y: 800, name: "GRAMMAR CHECKPOINT 3" },
-  { x: 3220, y: 1700, name: "GRAMMAR CHECKPOINT 4" }
+  { x: 1500, y: 325, name: "GRAMMAR CHECKPOINT 1" },
+  { x: 2800, y: 1325, name: "GRAMMAR CHECKPOINT 2" },
+  { x: 4100, y: 1325, name: "GRAMMAR CHECKPOINT 3" },
+  { x: 5400, y: 2325, name: "GRAMMAR CHECKPOINT 4" },
+  { x: 4100, y: 3325, name: "GRAMMAR CHECKPOINT 5" },
+  { x: 2800, y: 3325, name: "GRAMMAR CHECKPOINT 6" },
+  { x: 1500, y: 3325, name: "GRAMMAR CHECKPOINT 7" },
+  { x: 200, y: 2325, name: "GRAMMAR CHECKPOINT 8" }
 ];
 
-// Decorative greenery and small park-entry gates, kept clear of roads and services.
+// Decorative greenery// Decorative greenery and small park-entry gates, kept clear of roads and services.
 const TREES = [
-  [1510, 455], [1625, 520], [1515, 650], [1635, 760], [1510, 900], [1620, 1045],
-  [1510, 1515], [1630, 1600], [1515, 1745], [1625, 1850], [1510, 2025], [1635, 2110],
-  [1955, 500], [1950, 900], [1955, 1570], [1950, 2020],
-  [410, 430], [410, 1120], [410, 1460], [410, 2140],
-  [3150, 430], [3150, 1120], [3150, 1460], [3150, 2140]
+  [1360, 470], [1400, 700], [1360, 930], [1360, 1530], [1400, 1760], [1360, 1980],
+  [2660, 470], [2660, 900], [2660, 1530], [2660, 1950],
+  [3960, 470], [3960, 900], [3960, 1530], [3960, 1950],
+  [5260, 470], [5260, 900], [5260, 1530], [5260, 1950],
+  [480, 2380], [800, 2380], [1150, 2380], [1800, 2380], [2200, 2380],
+  [480, 4020], [800, 4020], [1150, 4020], [1800, 4020], [2200, 4020],
+  [3100, 2380], [3600, 2380], [3100, 4020], [3600, 4020],
+  [4400, 2380], [4900, 2380], [4400, 4020], [4900, 4020]
 ];
 
 const PARK_GATES = [
-  { x: 1450, y: 1135, width: 145, label: "CITY PARK" },
-  { x: 2110, y: 1445, width: 145, label: "GARDEN" }
+  { x: 1450, y: 2325, width: 145, label: "CITY PARK" },
+  { x: 4750, y: 2250, width: 145, label: "RACEWAY GATE" }
 ];
 
-function drawTree(ctx, project, x, y) {
+function drawTreefunction drawTree(ctx, project, x, y) {
   const p = project(x, y);
   const s = p.scale;
   const r = Math.max(3, 22 * s);
@@ -107,8 +125,19 @@ function drawTree(ctx, project, x, y) {
   ctx.stroke();
 }
 
-const STREETLIGHTS=[[620,390,0],[1280,390,0],[2210,390,0],[2920,390,0],[620,2180,0],[1280,2180,0],[2210,2180,0],[2920,2180,0],[820,1150,1],[1620,1150,1],[2480,1150,1],[3020,1150,1]];
-const GRASS_PATCHES=[[520,390,170,42],[1120,390,190,42],[2070,390,180,42],[2800,390,190,42],[520,2140,170,42],[1120,2140,190,42],[2070,2140,180,42],[2800,2140,190,42],[1450,520,120,170],[1450,1580,120,160],[1980,520,90,160],[1980,1600,90,150]];
+const STREETLIGHTS = [
+  [620,390,0],[1950,390,0],[3250,390,0],[4550,390,0],
+  [620,4190,0],[1950,4190,0],[3250,4190,0],[4550,4190,0],
+  [820,1170,1],[2120,1170,1],[3420,1170,1],[4720,1170,1],
+  [820,2170,1],[2120,2170,1],[3420,2170,1],[4720,2170,1],
+  [820,3170,1],[2120,3170,1],[3420,3170,1],[4720,3170,1]
+];
+const GRASS_PATCHES = [
+  [500,390,750,42],[1800,390,750,42],[3100,390,750,42],[4400,390,750,42],
+  [500,4190,750,42],[1800,4190,750,42],[3100,4190,750,42],[4400,4190,750,42],
+  [1360,500,90,580],[2660,500,90,580],[3960,500,90,580],[5260,500,90,580],
+  [1360,2500,90,500],[2660,2500,90,500],[3960,2500,90,500],[5260,2500,90,500]
+];
 function drawStreetlight(ctx,project,x,y,vertical=false){const p=project(x,y),s=p.scale;ctx.save();ctx.strokeStyle="#334155";ctx.lineWidth=Math.max(2,4*s);ctx.beginPath();ctx.moveTo(p.x,p.y+7*s);ctx.lineTo(p.x,p.y-25*s);ctx.lineTo(p.x+(vertical?0:16*s),p.y-32*s);ctx.stroke();ctx.fillStyle="rgba(250,204,21,.16)";ctx.beginPath();ctx.arc(p.x+(vertical?0:16*s),p.y-32*s,13*s,0,Math.PI*2);ctx.fill();ctx.fillStyle="#fde68a";ctx.beginPath();ctx.arc(p.x+(vertical?0:16*s),p.y-32*s,4*s,0,Math.PI*2);ctx.fill();ctx.restore();}
 function drawParkedPoliceCar(ctx,project,x,y){const p=project(x,y),s=p.scale,w=48*s,h=25*s;ctx.save();ctx.translate(p.x,p.y);ctx.fillStyle="rgba(0,0,0,.3)";ctx.fillRect(-w/2+3*s,-h/2+4*s,w,h);ctx.fillStyle="#f8fafc";ctx.fillRect(-w/2,-h/2,w,h);ctx.fillStyle="#1e3a8a";ctx.fillRect(-w/2,-h/2,w*.32,h);ctx.fillRect(w*.18,-h/2,w*.32,h);ctx.fillStyle="#1e293b";ctx.fillRect(-w*.12,-h*.38,w*.42,h*.76);ctx.fillStyle="#ef4444";ctx.fillRect(-5*s,-h*.62,6*s,4*s);ctx.fillStyle="#3b82f6";ctx.fillRect(1*s,-h*.62,6*s,4*s);ctx.fillStyle="#0f172a";ctx.font="bold "+Math.max(5,7*s)+"px system-ui";ctx.textAlign="center";ctx.fillText("POLICE",0,h*.12);ctx.restore();}
 function drawParkGate(ctx, project, gate) {
@@ -174,6 +203,23 @@ export function drawMap(ctx, project, width, height) {
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#287447";
   ctx.fillRect(0, 0, width, height);
+
+  DISTRICTS.forEach((district) => {
+    const p = project(district.x, district.y);
+    const label = project(district.labelX, district.labelY);
+    ctx.fillStyle = district.fill;
+    ctx.fillRect(p.x, p.y, district.w * p.scale, district.h * p.scale);
+    ctx.strokeStyle = district.edge;
+    ctx.lineWidth = Math.max(1, 2 * p.scale);
+    ctx.strokeRect(p.x, p.y, district.w * p.scale, district.h * p.scale);
+    ctx.fillStyle = "rgba(15,23,42,.55)";
+    ctx.fillRect(label.x - 170 * label.scale, label.y - 19 * label.scale, 340 * label.scale, 34 * label.scale);
+    ctx.fillStyle = "#f8fafc";
+    ctx.font = "900 " + Math.max(9, 19 * label.scale) + "px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(district.name, label.x, label.y);
+  });
 
   const origin = project(0, 0);
   const scale = origin.scale;
@@ -454,10 +500,10 @@ export function drawMap(ctx, project, width, height) {
 }
 
 export function nearbyChallenge(x, y, radius = 175) {
-  const dx = x - 1940;
-  const dy = y - 1420;
+  const dx = x - 2800;
+  const dy = y - 2325;
   return dx * dx + dy * dy <= radius * radius
-    ? { x: 1940, y: 1420, name: "CITY DISPATCH", type: "challenge" }
+    ? { x: 2800, y: 2325, name: "CITY CENTER", type: "challenge" }
     : null;
 }
 
