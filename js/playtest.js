@@ -843,7 +843,12 @@ async function submitGrammarChallenge() {
     const nextAnswered = (Number(progress.answered) || 0) + 1;
     await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
     me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
-    await grantGrowthXp(correct ? 20 : 5, correct ? "grammar-correct" : "grammar-attempt");
+    if (correct) {
+      await grantGrowthXp(20, "grammar-correct");
+    } else if (!challenge.xpAttemptRewarded) {
+      challenge.xpAttemptRewarded = true;
+      await grantGrowthXp(5, "grammar-attempt");
+    }
 
     grammarFeedbackEl.className = correct ? "message success" : "message warn";
     grammarFeedbackEl.textContent = correct
