@@ -225,6 +225,15 @@ function createMapCache() {
   }
 }
 
+function scheduleMapCache() {
+  const build = () => createMapCache();
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(build, { timeout: 1500 });
+  } else {
+    window.setTimeout(build, 250);
+  }
+}
+
 function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "compact") {
   const p = worldToScreen(x, y);
   const scale = p.scale;
@@ -1108,7 +1117,7 @@ function bindSteeringJoystick() {
 }
 async function start() {
   resizeCanvas();
-  createMapCache();
+  scheduleMapCache();
   const soundButton = $("soundToggle");
   const soundVolume = $("soundVolume");
   const refreshSoundButton = () => {
