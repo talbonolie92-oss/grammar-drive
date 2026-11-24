@@ -753,11 +753,14 @@ function collectRoadLoot() {
 }
 
 function checkRoadsideEncounter() {
-  if (!running || Math.abs(car.s) < 20 || grammarPanel.classList.contains("hidden") === false || challengePanel.classList.contains("hidden") === false || !carShopPanel.classList.contains("hidden")) return;
+  if (!running || grammarPanel.classList.contains("hidden") === false || challengePanel.classList.contains("hidden") === false || !carShopPanel.classList.contains("hidden")) return;
+  // A stopped vehicle may be resting against the broken bridge barrier, so
+  // bridge repair is checked before the moving-speed filter for roadside hazards.
   if (bridge && nearbyBridge(car.x, car.y, bridge) && performance.now() >= bridgeRetryAfter) {
     openGrammarPanel(false, null, true);
     return;
   }
+  if (Math.abs(car.s) < 20) return;
   const event = nearbyRoadsideEvent(car.x, car.y, roadsideEvents, clearedRoadsideEvents);
   if (event) openGrammarPanel(true, event.id);
 }
