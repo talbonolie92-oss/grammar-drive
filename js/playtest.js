@@ -661,14 +661,21 @@ function updateCar(dt) {
   const dispatch = nearbyDispatch(car.x, car.y);
   const grammarStop = nearbyGrammarStop(car.x, car.y);
   const crate = nearbyMissionCrate(car.x, car.y, mission);
+  const missionActive = mission && ["collecting", "return"].includes(mission.status);
   carSelectWrap.classList.add("hidden");
-  serviceButton.classList.toggle("hidden",!service);serviceHintEl.classList.toggle("hidden",!service);
-  if(service){const action=service.type==="shop"?"OPEN CAR SHOP":service.type==="race"?"START RACE":"REPAIR";serviceHintEl.textContent=service.name+" · Press E or tap "+action;serviceButton.textContent=action;serviceButton.dataset.service=service.type;}
+  const canUseService = !!service && !race.active && !(service.type === "race" && missionActive);
+  serviceButton.classList.toggle("hidden", !canUseService);
+  serviceHintEl.classList.toggle("hidden", !canUseService);
+  if (canUseService) {
+    const action = service.type === "shop" ? "OPEN CAR SHOP" : service.type === "race" ? "START RACE" : "REPAIR";
+    serviceHintEl.textContent = service.name + " · Press E or tap " + action;
+    serviceButton.textContent = action;
+    serviceButton.dataset.service = service.type;
+  }
   const missionOpen = challengePanel.classList.contains("hidden") === false;
   const grammarOpen = grammarPanel && !grammarPanel.classList.contains("hidden");
   const needsDispatch = mission && mission.status === "return";
-  const canInteract = !!crate || !!grammarStop || (needsDispatch ? !!dispatch : !!challenge);
-  const missionActive = mission && ["collecting", "return"].includes(mission.status);
+  const canInteract = !race.active && (!!crate || !!grammarStop || (needsDispatch ? !!dispatch : !!challenge));
   missionHudEl.classList.toggle("hidden", !missionActive);
   if (missionActive) {
     const target = mission.status === "return"
