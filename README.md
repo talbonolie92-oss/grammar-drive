@@ -17,7 +17,7 @@ js/common.js               Shared helpers + the ONE definition of the database l
 js/teacher.js              Dashboard logic
 js/student.js              Student join logic
 js/multiplayer.js          Shared live-car synchronization (Phase 3)
-js/playtest.js             Temporary multiplayer test track (Phase 3)
+js/playtest.js             Open-world driving, multiplayer, and mission gameplay
 play.html                  Temporary multiplayer test-track page
 js/selftest.js             Rules self-test logic (used by test.html)
 js/vendor/qrcode.js        QR code generator (MIT), no npm needed
@@ -109,12 +109,19 @@ Vehicle classes now have different driving characteristics as well as distinct s
 The car artwork now includes class-specific body and roof shapes, visible wheels, lights and trim. These changes preserve the existing multiplayer model field, local vehicle profile, fuel/condition services and collision recovery. Phase 4D requires real-device playtesting before it is marked complete.
 
 
-## Phase 5A — Grammar Challenge Hub (implementation in progress)
+## Phase 5B — City Dispatch mission prototype
 
-- The Challenge Hub is accessible when a student drives near its map marker; desktop uses **E**, and mobile uses the on-screen **Start Challenge** button.
-- Questions are selected from grade-specific banks for the teacher-selected topics: Question Forms, Yes/No Questions, Wh-Questions, and Tag Questions.
-- Each question has four choices and an explanation. Correct answers add 10 points; incorrect answers do not remove points.
-- Each student's browser tracks used questions for the session and cycles the bank only after the available pool is exhausted.
-- Progress is written to the existing student result record, so the teacher dashboard can show correct answers, answered count, and score.
-- **Scoring limitation:** under the chosen Firebase Spark/free-plan architecture, question checking is client-side and scores are provisional, not cheat-proof.
-- The public join-code record now carries the session grade and selected topics so student clients can load the correct question bank. The corresponding updated Firebase Rules must be published before new sessions can use the challenge feature.
+The original multiple-choice Challenge Hub has been replaced with the first open-world mission loop:
+
+1. Students drive to **City Dispatch** and receive a mission briefing.
+2. They start a city-wide recovery run and explore the map to locate glowing message crates.
+3. Each crate reveals one fragment of a grammar message. Students must physically drive to every marked stop and collect the cargo.
+4. After collecting all fragments, students return to City Dispatch.
+5. They rebuild the message by arranging the recovered phrase tiles in the correct order. This is an assembly activity, not a four-option quiz.
+6. A successful delivery awards 30 points and updates the existing student progress record.
+
+The first mission set covers all four teacher-selectable topics—Question Forms, Yes/No Questions, Wh-Questions, and Tag Questions—with grade-specific content for Grades 10–12. Mission progress is saved locally per student/session so collected cargo survives a page refresh on the same browser.
+
+**No Firebase Rules update is required for this prototype.** It writes the same student's existing progress record and stays within the current score/progress validation limits. Scoring remains provisional and client-side under the Firebase Spark/free-plan decision.
+
+This is the first gameplay slice, not the final mission catalogue. The next iterations can add different mission mechanics, map interactions, NPCs, vehicle rewards, and larger progression systems after real-device testing.
