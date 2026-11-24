@@ -558,7 +558,7 @@ function renderSession() {
     );
   }
 
-  if (!old && s.status === "ended") {
+  if (!old && s.status !== "running") {
     controls.appendChild(
       el("button", {
         type: "button",
@@ -948,23 +948,23 @@ function confirmEnd(id, s, cancel) {
 /* ---------- permanently delete an ended session ---------- */
 
 function confirmDeleteSession(id, session) {
-  if (!session || session.status !== "ended" || isOldFormat(session)) return;
+  if (!session || session.status === "running" || isOldFormat(session)) return;
 
   openModal(
     "Permanently delete this game?",
     [
       el("p", {
-        text: "This permanently removes the session, its student results, its QR join link, and its saved live-car data. This cannot be undone."
+        text: "This permanently removes the session, all student entries and results, its QR join link, and its saved live-car data. This cannot be undone."
       }),
       el("p", {
         className: "small muted",
-        text: "Only ended sessions can be deleted. Download or copy the results first if you need to keep a record."
+        text: "Waiting or ended sessions can be deleted. A running game must be ended first. Download or copy the results first if you need to keep a record."
       })
     ],
     "Delete permanently",
     async () => {
       const current = sessions[id];
-      if (!current || current.status !== "ended" || current.teacherUid !== teacher.uid) {
+      if (!current || current.status === "running" || current.teacherUid !== teacher.uid) {
         showMessage($("dashMessage"), "Only your own ended sessions can be deleted.");
         return false;
       }
