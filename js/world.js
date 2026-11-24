@@ -48,7 +48,7 @@ const DISTRICTS = [
 // Service markers are placed directly on drivable road surfaces.
 const LOCATIONS = [
   { x: 1500, y: 1325, name: "GARAGE", type: "repair", color: "#38bdf8", symbol: "G" },
-  { x: 2800, y: 2325, name: "CITY CENTER", color: "#facc15", symbol: "C" },
+  { x: 2800, y: 1775, name: "CITY CENTER", color: "#facc15", symbol: "C" },
   { x: 1500, y: 2325, name: "CAR WASH", type: "repair", color: "#7dd3fc", symbol: "W" },
   { x: 4100, y: 2325, name: "CITY DISPATCH", color: "#fb7185", symbol: "D" },
   { x: 1500, y: 3325, name: "CAR SHOP", type: "shop", color: "#c4b5fd", symbol: "S" },
@@ -501,9 +501,9 @@ export function drawMap(ctx, project, width, height) {
 
 export function nearbyChallenge(x, y, radius = 175) {
   const dx = x - 2800;
-  const dy = y - 2325;
+  const dy = y - 1775;
   return dx * dx + dy * dy <= radius * radius
-    ? { x: 2800, y: 2325, name: "CITY CENTER", type: "challenge" }
+    ? { x: 2800, y: 1775, name: "CITY CENTER", type: "challenge" }
     : null;
 }
 
