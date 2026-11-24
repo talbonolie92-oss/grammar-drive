@@ -6,9 +6,9 @@
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 const HANDLING = Object.freeze({
-  compact: { roadMax: 440, offRoadMax: 185, acceleration: 390, steering: 2.45, grip: 1, fuelUse: 0.75 },
-  sport:   { roadMax: 520, offRoadMax: 205, acceleration: 470, steering: 2.7,  grip: 1.08, fuelUse: 0.9 },
-  suv:     { roadMax: 385, offRoadMax: 225, acceleration: 330, steering: 2.05, grip: 0.86, fuelUse: 0.82 }
+  compact: { roadMax: 440, offRoadMax: 185, acceleration: 390, steering: 2.45, grip: 1, fuelUse: 0.10 },
+  sport:   { roadMax: 520, offRoadMax: 205, acceleration: 470, steering: 2.7,  grip: 1.08, fuelUse: 0.12 },
+  suv:     { roadMax: 385, offRoadMax: 225, acceleration: 330, steering: 2.05, grip: 0.86, fuelUse: 0.11 }
 });
 
 export function createVehicle(x, y, angle = 0) {
