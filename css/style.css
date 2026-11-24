@@ -177,3 +177,202 @@ tr.duplicate td { background: rgba(217, 119, 6, .15); }
   .podium-place { padding: 10px 4px; font-size: 12px; }
   .podium-place strong { overflow-wrap: anywhere; }
 }
+
+
+/* Session cleanup controls */
+.session-delete-note { color: #fca5a5; font-size: 12px; margin-top: 6px; }
+button.danger:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+
+/* =========================================================
+   Grammar Drive 2.0 — public home page
+   ========================================================= */
+.home-page {
+  min-height: 100vh;
+  color: #f8fafc;
+  background:
+    radial-gradient(ellipse at 78% 9%, rgba(37,99,235,.2), transparent 33rem),
+    linear-gradient(180deg, #10213f 0%, #0b1730 52%, #0f1d35 100%);
+  overflow-x: hidden;
+}
+.home-nav {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.home-brand { display:flex; align-items:center; gap:11px; color:#fff; text-decoration:none; }
+.brand-mark {
+  width:42px; height:42px; display:grid; place-items:center; border-radius:13px;
+  color:#10213f; background:linear-gradient(145deg,#fde68a,#fb923c);
+  font-weight:1000; letter-spacing:-1px; box-shadow:0 5px 0 #a64c20;
+}
+.home-brand strong { display:block; font-size:15px; letter-spacing:1.2px; }
+.home-brand small { display:block; margin-top:2px; color:#9fb8dc; font-size:9px; letter-spacing:2px; }
+.nav-teacher { color:#dbeafe; text-decoration:none; border:1px solid rgba(191,219,254,.28); border-radius:999px; padding:10px 16px; font-size:13px; font-weight:700; }
+.nav-teacher:hover { background:rgba(255,255,255,.08); }
+.home-hero {
+  width:min(1180px,calc(100% - 48px)); margin:0 auto; padding:48px 0 54px;
+  min-height:510px; display:grid; grid-template-columns:1fr 1.05fr; gap:36px; align-items:center;
+}
+.hero-copy { position:relative; z-index:2; }
+.eyebrow { display:inline-flex; align-items:center; gap:9px; color:#a9c7f5; font-size:11px; font-weight:900; letter-spacing:1.8px; text-transform:uppercase; }
+.eyebrow-dot,.caption-dot { width:8px; height:8px; border-radius:50%; background:#34d399; box-shadow:0 0 0 5px rgba(52,211,153,.13); }
+.hero-copy h1 { margin:18px 0 18px; color:#fff; font-size:clamp(42px,5.7vw,70px); line-height:.99; letter-spacing:-3.6px; }
+.hero-copy h1 span { color:#fbbf24; }
+.hero-lead { max-width:510px; color:#c0d0e8; font-size:17px; line-height:1.75; }
+.hero-actions { display:flex; flex-wrap:wrap; align-items:center; gap:13px; margin-top:28px; }
+.home-primary,.home-secondary { display:inline-flex; align-items:center; justify-content:center; gap:14px; min-height:50px; border-radius:13px; padding:0 20px; text-decoration:none; font-weight:900; }
+.home-primary { color:#17213a; background:linear-gradient(135deg,#fde68a,#fb923c); box-shadow:0 5px 0 #a64c20,0 14px 30px rgba(251,146,60,.17); }
+.home-primary:hover { transform:translateY(-2px); filter:brightness(1.04); }
+.home-secondary { color:#dbeafe; border:1px solid rgba(191,219,254,.25); }
+.hero-trust { display:flex; flex-wrap:wrap; gap:18px; margin-top:24px; color:#91a9ca; font-size:12px; }
+.hero-trust span::first-letter { color:#34d399; }
+.hero-art { position:relative; min-height:390px; border:1px solid rgba(191,219,254,.16); border-radius:30px; overflow:hidden; background:linear-gradient(150deg,#8bd5e8 0%,#b7e7df 53%,#d2edbd 100%); box-shadow:0 30px 70px rgba(0,0,0,.28); }
+.art-sun { position:absolute; width:76px; height:76px; top:34px; right:55px; border-radius:50%; background:#ffe28b; box-shadow:0 0 0 14px rgba(255,226,139,.2); }
+.art-cloud { position:absolute; height:17px; width:74px; border-radius:30px; background:rgba(255,255,255,.72); }
+.art-cloud::before,.art-cloud::after { content:""; position:absolute; bottom:4px; width:28px; height:28px; border-radius:50%; background:inherit; }
+.art-cloud::before { left:12px; }.art-cloud::after { right:10px; width:21px; height:21px; }
+.cloud-one { top:65px; left:12%; }.cloud-two { top:115px; right:18%; transform:scale(.7); }
+.art-city { position:absolute; inset:130px 0 0; background:linear-gradient(180deg,#8bd18b 0 48%,#5ebc81 48% 100%); }
+.art-building { position:absolute; bottom:95px; border:4px solid #fff4d6; border-bottom-width:7px; border-radius:8px 8px 3px 3px; box-shadow:8px 9px 0 rgba(37,73,79,.18); }
+.art-building::before { content:""; position:absolute; left:-8px; right:-8px; top:-13px; height:12px; border-radius:6px 6px 0 0; background:#f59e0b; }
+.art-building i { display:inline-block; width:13px; height:17px; margin:12px 5px 0; border-radius:3px; background:#bdeaff; border:2px solid rgba(24,65,86,.28); }
+.building-one { left:7%; width:105px; height:142px; background:#f28b67; }
+.building-two { left:34%; width:135px; height:190px; background:#6b91d9; }
+.building-two::before { background:#f9c65c; }
+.building-three { right:7%; width:110px; height:150px; background:#a58bd7; }
+.building-three::before { background:#60b8a2; }
+.art-road { position:absolute; bottom:-20px; left:-5%; width:110%; height:105px; background:#38485b; transform:rotate(-5deg); border-top:8px solid #e9e5d5; }
+.road-dashes { position:absolute; left:0; right:0; top:43px; border-top:5px dashed #f8d879; }
+.art-car { position:absolute; z-index:2; left:43%; bottom:37px; width:116px; height:48px; border:4px solid #fff; border-radius:19px 25px 13px 13px; background:linear-gradient(120deg,#fb5b50,#e63b54); transform:rotate(-5deg); box-shadow:0 9px 0 rgba(0,0,0,.18); }
+.car-window { position:absolute; left:28px; top:4px; width:46px; height:19px; border:3px solid #fff; border-radius:9px 11px 3px 3px; background:#a8e4ef; }
+.car-wheel { position:absolute; bottom:-12px; width:22px; height:22px; border:4px solid #fff; border-radius:50%; background:#273449; }
+.wheel-left { left:14px; }.wheel-right { right:14px; }
+.art-tree { position:absolute; z-index:1; bottom:82px; width:16px; height:58px; border-radius:8px; background:#98613c; }
+.art-tree::before { content:""; position:absolute; width:57px; height:57px; left:-20px; top:-40px; border-radius:50%; background:#258c68; box-shadow:12px 5px 0 #42a777,-8px 12px 0 #1d795e; }
+.tree-one { left:24%; }.tree-two { right:22%; transform:scale(.8); }
+.art-pin { position:absolute; z-index:3; right:17%; bottom:145px; width:39px; height:47px; display:grid; place-items:center; color:#fff; background:#f59e0b; border:3px solid #fff; border-radius:50% 50% 50% 8px; transform:rotate(-45deg); box-shadow:0 5px 12px rgba(0,0,0,.2); }
+.art-pin::first-letter { transform:rotate(45deg); }
+.art-sticker { position:absolute; z-index:4; padding:10px 14px; border:3px solid #fff; border-radius:12px; font-size:12px; font-weight:1000; box-shadow:0 7px 0 rgba(23,49,62,.18); transform:rotate(-8deg); }
+.sticker-one { top:28px; left:25px; color:#14334c; background:#fde68a; }
+.sticker-two { right:24px; bottom:34px; color:#fff; background:#1d9b75; transform:rotate(7deg); }
+.art-caption { position:absolute; z-index:4; left:22px; bottom:17px; display:flex; align-items:center; gap:9px; color:#e6fff3; font-size:9px; font-weight:900; letter-spacing:1.2px; text-shadow:0 1px 3px rgba(0,0,0,.4); }
+.home-feature-strip { width:min(1180px,calc(100% - 48px)); margin:0 auto; padding:20px; display:grid; grid-template-columns:repeat(4,1fr); gap:10px; border:1px solid rgba(191,219,254,.15); border-radius:20px; background:rgba(255,255,255,.045); }
+.home-feature-strip>div { display:grid; grid-template-columns:40px 1fr; column-gap:10px; align-items:center; padding:9px 12px; }
+.feature-icon { grid-row:span 2; display:grid; place-items:center; width:38px; height:38px; border-radius:12px; background:rgba(147,197,253,.12); font-size:20px; }
+.home-feature-strip strong { font-size:13px; }.home-feature-strip small { color:#8fa8c9; font-size:11px; }
+.home-how { width:min(1180px,calc(100% - 48px)); margin:0 auto; padding:86px 0 80px; }
+.section-heading { text-align:center; margin-bottom:32px; }.section-heading h2,.home-cta h2 { margin:12px 0 8px; font-size:clamp(28px,3vw,39px); letter-spacing:-1.2px; }.section-heading p,.home-cta p { color:#9fb3d0; }
+.how-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.how-card { position:relative; padding:25px; min-height:220px; border:1px solid rgba(191,219,254,.15); border-radius:19px; background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.025)); }
+.step-number { position:absolute; top:19px; right:22px; color:#5f789c; font-size:12px; font-weight:900; letter-spacing:1px; }
+.how-icon { font-size:27px; margin-bottom:18px; }.how-card h3 { margin-bottom:8px; font-size:17px; }.how-card p { color:#9fb3d0; font-size:13px; line-height:1.7; }
+.home-cta { width:min(1180px,calc(100% - 48px)); margin:0 auto 65px; padding:30px 36px; display:flex; justify-content:space-between; align-items:center; gap:24px; border:1px solid rgba(251,191,36,.28); border-radius:22px; background:linear-gradient(110deg,rgba(37,99,235,.18),rgba(245,158,11,.1)); }
+.home-cta h2 { margin-bottom:5px; }.home-cta p { margin-bottom:0; font-size:13px; }
+.home-footer { width:min(1180px,calc(100% - 48px)); margin:0 auto; padding:22px 0 30px; display:flex; justify-content:space-between; gap:16px; color:#6f86a6; border-top:1px solid rgba(191,219,254,.12); font-size:11px; }
+@media(max-width:900px) {
+  .home-hero { grid-template-columns:1fr; padding-top:34px; gap:30px; }
+  .hero-art { min-height:350px; }
+  .home-feature-strip { grid-template-columns:repeat(2,1fr); }
+}
+@media(max-width:600px) {
+  .home-nav,.home-hero,.home-feature-strip,.home-how,.home-cta,.home-footer { width:calc(100% - 30px); }
+  .home-nav { min-height:70px; }.home-brand strong { font-size:12px; }.home-brand small { font-size:8px; }
+  .nav-teacher { padding:9px 11px; font-size:11px; }
+  .home-hero { padding:30px 0 35px; }.hero-copy h1 { font-size:46px; letter-spacing:-2.6px; }.hero-lead { font-size:15px; }
+  .hero-art { min-height:285px; border-radius:22px; }.art-city { top:100px; }.art-building { transform:scale(.78); transform-origin:bottom; }
+  .art-car { left:38%; transform:scale(.8) rotate(-5deg); transform-origin:bottom left; }
+  .home-feature-strip { padding:10px; gap:3px; }.home-feature-strip>div { grid-template-columns:32px 1fr; padding:8px 5px; }.feature-icon { width:30px; height:30px; font-size:16px; }.home-feature-strip strong { font-size:11px; }.home-feature-strip small { font-size:9px; }
+  .home-how { padding:60px 0; }.how-grid { grid-template-columns:1fr; }.how-card { min-height:0; }
+  .home-cta { padding:24px; flex-direction:column; align-items:flex-start; }.home-cta .home-primary { width:100%; }
+  .home-footer { flex-direction:column; }
+}
+
+
+/* Grammar Drive 2.0 — roadside grammar challenge */
+.game-modal {
+  position:fixed; inset:0; z-index:28; display:grid; place-items:center;
+  padding:16px; background:rgba(2,8,23,.88); backdrop-filter:blur(8px);
+}
+.grammar-card {
+  width:min(650px,100%); max-height:90vh; overflow:auto; margin:0;
+  border:1px solid rgba(167,139,250,.42);
+  background:linear-gradient(150deg,#202c49,#111d35);
+  box-shadow:0 24px 80px rgba(0,0,0,.48);
+}
+.grammar-card h2 { margin:12px 0 8px; font-size:clamp(22px,4vw,30px); }
+.grammar-selection {
+  min-height:52px; display:flex; align-items:center; padding:12px 14px;
+  margin:16px 0 12px; border:1px dashed #8b5cf6; border-radius:12px;
+  background:rgba(124,58,237,.12); color:#f5f3ff; font-weight:800;
+  overflow-wrap:anywhere;
+}
+.grammar-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.grammar-option {
+  min-height:48px; padding:11px 13px; border:1px solid #475569;
+  background:#0f1a31; color:#e2e8f0; border-radius:11px; text-align:left;
+  white-space:normal; overflow-wrap:anywhere;
+}
+.grammar-option:hover:not(:disabled) { border-color:#a78bfa; background:#28214b; }
+.grammar-option.selected { border:2px solid #a78bfa; background:#3b2b68; }
+.grammar-option:disabled { opacity:.42; }
+.grammar-explanation { min-height:24px; color:#c4d2e8; font-size:14px; line-height:1.6; }
+.grammar-actions { margin-top:14px; }
+@media(max-width:560px) {
+  .game-modal { padding:10px; }
+  .grammar-card { padding:17px; }
+  .grammar-options { grid-template-columns:1fr; gap:8px; }
+  .grammar-option { min-height:44px; }
+}
+
+
+/* Grammar Drive 2.0 — consistent classroom UI polish */
+.dashboard-page { max-width:1240px; }
+.dashboard-page > .row:first-child { padding:10px 2px 18px; border-bottom:1px solid rgba(148,163,184,.18); }
+.dashboard-page .brand { font-size:30px; letter-spacing:-1px; }
+.dashboard-page .panel,.join-page .panel,.teacher-login-page .panel {
+  background:linear-gradient(155deg,rgba(35,50,77,.98),rgba(24,37,61,.98));
+  border-color:rgba(148,163,184,.22);
+  box-shadow:0 12px 34px rgba(0,0,0,.14);
+}
+.dashboard-page .panel h2,.join-page .panel h2 { letter-spacing:-.35px; }
+.dashboard-page .session-list button {
+  position:relative; padding:14px 15px; border-radius:12px;
+  transition:border-color .16s ease,background .16s ease,transform .16s ease;
+}
+.dashboard-page .session-list button:hover { border-color:#60a5fa; background:#172a49; transform:translateY(-1px); }
+.dashboard-page .session-list button.selected { background:#1d355a; border-color:#93c5fd; }
+.teacher-login-page .narrow { width:min(100%,460px); }
+.teacher-login-page .brand,.join-page .brand { font-size:34px; letter-spacing:-1px; }
+.teacher-login-page .panel,.join-page .panel { border-radius:18px; }
+.teacher-login-page input,.join-page input,.dashboard-page input,.dashboard-page select {
+  border-radius:10px; border-color:#526783; transition:border-color .16s ease,box-shadow .16s ease;
+}
+.teacher-login-page input:focus,.join-page input:focus,.dashboard-page input:focus,.dashboard-page select:focus {
+  outline:none; border-color:#60a5fa; box-shadow:0 0 0 3px rgba(96,165,250,.16);
+}
+button,.button { transition:filter .16s ease,transform .16s ease,box-shadow .16s ease; }
+button:active,.button:active { transform:translateY(1px); }
+.hud .pill {
+  backdrop-filter:blur(9px);
+  background:rgba(10,20,38,.88);
+  border-color:rgba(191,219,254,.24);
+  box-shadow:0 4px 14px rgba(0,0,0,.16);
+}
+.hud button { min-height:34px; padding:7px 11px; border:1px solid rgba(191,219,254,.25); }
+@media(max-width:640px) {
+  .dashboard-page { padding:14px; }
+  .dashboard-page .brand { font-size:25px; }
+  .dashboard-page .panel { padding:17px; }
+  .teacher-login-page .brand,.join-page .brand { font-size:30px; }
+}
+
+.sound-volume-wrap { display:flex; align-items:center; gap:6px; color:#cbd5e1; font-size:10px; font-weight:900; letter-spacing:.5px; }
+.sound-volume-wrap input { width:72px; padding:0; margin:0; accent-color:#60a5fa; }

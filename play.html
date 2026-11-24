@@ -70,6 +70,8 @@
       </select>
     </label>
     <div class="pill" id="timer">⏱ –</div>
+    <button id="soundToggle" class="small secondary" type="button" aria-pressed="true">🔊 Sound On</button>
+    <label class="pill sound-volume-wrap" style="margin:0"><span>VOL</span><input id="soundVolume" type="range" min="0" max="100" value="55" aria-label="Sound volume"></label>
     <div class="spacer"></div>
     <button id="leaveButton" class="small secondary" type="button">Leave</button>
   </div>
@@ -106,6 +108,29 @@
         <span id="missionReward" class="muted">Reward: 30 points</span>
         <span class="spacer"></span>
         <button id="missionAction" type="button">Start Mission</button>
+      </div>
+    </section>
+  </div>
+  <div id="grammarPanel" class="hidden game-modal">
+    <section class="panel grammar-card">
+      <div class="row">
+        <span class="badge running">ROADside GRAMMAR</span>
+        <span class="spacer"></span>
+        <button id="grammarClose" class="small secondary" type="button">Back to Road</button>
+      </div>
+      <p id="grammarType" class="muted small"></p>
+      <h2 id="grammarPrompt">Grammar checkpoint</h2>
+      <p id="grammarInstruction" class="muted"></p>
+      <p class="small muted">Correct answers earn +15 points. Read the explanation to remember the grammar rule.</p>
+      <div id="grammarSelection" class="grammar-selection">Choose your answer.</div>
+      <div id="grammarOptions" class="grammar-options"></div>
+      <div id="grammarFeedback" class="message hidden" aria-live="polite"></div>
+      <p id="grammarExplanation" class="grammar-explanation"></p>
+      <div class="row grammar-actions">
+        <button id="grammarUndo" class="small secondary hidden" type="button">Undo word</button>
+        <span class="spacer"></span>
+        <button id="grammarCheck" class="good" type="button">Check Answer</button>
+        <button id="grammarNext" class="good hidden" type="button">Next Challenge →</button>
       </div>
     </section>
   </div>

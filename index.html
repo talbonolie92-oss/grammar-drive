@@ -3,30 +3,79 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Grammar Drive | Open Road Challenge</title>
+  <meta name="theme-color" content="#10213f">
+  <meta name="description" content="Grammar Drive is a playful multiplayer learning adventure where students explore a city, drive together, and practice English grammar through interactive challenges.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Grammar Drive — Learn on the Open Road">
+  <meta property="og:description" content="Explore. Drive. Think. Learn English grammar through a multiplayer city adventure.">
+  <title>Grammar Drive | Learn on the Open Road</title>
   <link rel="stylesheet" href="./css/style.css">
 </head>
-<body>
-  <main class="center-page">
-    <div class="narrow">
-      <h1 class="brand">Grammar Drive</h1>
-      <p class="brand-sub">OPEN ROAD CHALLENGE</p>
+<body class="home-page">
+  <header class="home-nav">
+    <a class="home-brand" href="./index.html" aria-label="Grammar Drive home">
+      <span class="brand-mark">GD</span>
+      <span><strong>GRAMMAR DRIVE</strong><small>OPEN ROAD CHALLENGE</small></span>
+    </a>
+    <a class="nav-teacher" href="./teacher.html">Teacher Dashboard <span aria-hidden="true">↗</span></a>
+  </header>
 
-      <section class="panel">
-        <h2>Students</h2>
-        <p>Scan the QR code on your teacher's screen, or open the link your teacher shared.</p>
-        <p class="muted small">You only need your name and your class/section. No account, email or password.</p>
-      </section>
+  <main>
+    <section class="home-hero">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-dot"></span> A multiplayer English learning adventure</div>
+        <h1>Take the wheel.<br><span>Master the words.</span></h1>
+        <p class="hero-lead">A city full of roads, missions, and grammar challenges. Explore with your classmates, collect rewards, and learn English as you play.</p>
+        <div class="hero-actions">
+          <a class="home-primary" href="./teacher.html">Start a Classroom Game <span aria-hidden="true">→</span></a>
+          <a class="home-secondary" href="#how-to-play">How it works</a>
+        </div>
+        <div class="hero-trust"><span>✓ No student account needed</span><span>✓ Phone and desktop friendly</span></div>
+      </div>
+      <div class="hero-art" aria-label="Illustration of a colorful city driving adventure">
+        <div class="art-sun"></div>
+        <div class="art-cloud cloud-one"></div><div class="art-cloud cloud-two"></div>
+        <div class="art-city">
+          <div class="art-building building-one"><i></i><i></i><i></i><i></i></div>
+          <div class="art-building building-two"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="art-building building-three"><i></i><i></i><i></i><i></i></div>
+          <div class="art-tree tree-one"></div><div class="art-tree tree-two"></div>
+          <div class="art-road"><span class="road-dashes"></span></div>
+          <div class="art-car"><span class="car-window"></span><span class="car-wheel wheel-left"></span><span class="car-wheel wheel-right"></span></div>
+          <div class="art-pin">★</div>
+        </div>
+        <div class="art-sticker sticker-one">LEARN!</div>
+        <div class="art-sticker sticker-two">+30 XP</div>
+        <div class="art-caption"><span class="caption-dot"></span> YOUR NEXT ADVENTURE STARTS HERE</div>
+      </div>
+    </section>
 
-      <section class="panel">
-        <h2>Teachers</h2>
-        <p class="muted">Create a game session, show the QR code and run the lobby.</p>
-        <a class="button block" href="./teacher.html">Open Teacher Dashboard</a>
-        <p class="small muted" style="margin-top:14px">
-          System check: <a href="./test.html">connection and database rules test</a>
-        </p>
-      </section>
-    </div>
+    <section class="home-feature-strip" aria-label="Game highlights">
+      <div><span class="feature-icon">🚗</span><strong>Drive together</strong><small>See classmates exploring live</small></div>
+      <div><span class="feature-icon">🧩</span><strong>Learn by doing</strong><small>Grammar challenges in the city</small></div>
+      <div><span class="feature-icon">🏆</span><strong>Earn rewards</strong><small>Collect points and unlock rides</small></div>
+      <div><span class="feature-icon">📱</span><strong>Easy to join</strong><small>Scan a QR code and play</small></div>
+    </section>
+
+    <section class="home-how" id="how-to-play">
+      <div class="section-heading">
+        <span class="eyebrow">GET ON THE ROAD</span>
+        <h2>One city. Many ways to learn.</h2>
+        <p>Built for lively classroom sessions and independent exploration.</p>
+      </div>
+      <div class="how-grid">
+        <article class="how-card"><span class="step-number">01</span><div class="how-icon">🧑‍🏫</div><h3>Teacher creates a game</h3><p>Choose a grade, grammar topics, and session time. A unique QR code and link are ready to share.</p></article>
+        <article class="how-card"><span class="step-number">02</span><div class="how-icon">📲</div><h3>Students join in seconds</h3><p>Scan the classroom QR code, enter a name and class, then meet everyone in the lobby.</p></article>
+        <article class="how-card"><span class="step-number">03</span><div class="how-icon">🌆</div><h3>Explore, play, and learn</h3><p>Drive around the city, complete missions, practice grammar, earn rewards, and see the class results.</p></article>
+      </div>
+    </section>
+
+    <section class="home-cta">
+      <div><span class="eyebrow">READY WHEN YOU ARE</span><h2>Bring your classroom<br>to the open road.</h2><p>Create a session and invite your students to join the adventure.</p></div>
+      <a class="home-primary" href="./teacher.html">Open Teacher Dashboard <span aria-hidden="true">→</span></a>
+    </section>
   </main>
+
+  <footer class="home-footer"><span>© Grammar Drive · Open Road Challenge</span><span>Learn. Explore. Keep moving.</span></footer>
 </body>
 </html>

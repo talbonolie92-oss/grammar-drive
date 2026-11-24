@@ -558,6 +558,17 @@ function renderSession() {
     );
   }
 
+  if (!old && s.status !== "running") {
+    controls.appendChild(
+      el("button", {
+        type: "button",
+        className: "danger",
+        text: "Delete session",
+        onclick: () => confirmDeleteSession(selectedId, s)
+      })
+    );
+  }
+
   panel.appendChild(
     el("section", { className: "panel" }, [
       el("div", { className: "row" }, [
@@ -930,6 +941,49 @@ function confirmEnd(id, s, cancel) {
       }
     },
 
+    true
+  );
+}
+
+/* ---------- permanently delete an ended session ---------- */
+
+function confirmDeleteSession(id, session) {
+  if (!session || session.status === "running" || isOldFormat(session)) return;
+
+  openModal(
+    "Permanently delete this game?",
+    [
+      el("p", {
+        text: "This permanently removes the session, all student entries and results, its QR join link, and its saved live-car data. This cannot be undone."
+      }),
+      el("p", {
+        className: "small muted",
+        text: "Waiting or ended sessions can be deleted. A running game must be ended first. Download or copy the results first if you need to keep a record."
+      })
+    ],
+    "Delete permanently",
+    async () => {
+      const current = sessions[id];
+      if (!current || current.status === "running" || current.teacherUid !== teacher.uid) {
+        showMessage($("dashMessage"), "Only your own waiting or ended sessions can be deleted.");
+        return false;
+      }
+
+      try {
+        await update(ref(db), {
+          ["sessions/" + id]: null,
+          ["joinCodes/" + current.code]: null,
+          ["liveCars/" + id]: null
+        });
+
+        if (selectedId === id) selectedId = null;
+        showMessage($("dashMessage"), "Session and its saved results were deleted.", "success");
+        return true;
+      } catch (error) {
+        showMessage($("dashMessage"), "Could not delete this session: " + friendlyError(error));
+        return false;
+      }
+    },
     true
   );
 }

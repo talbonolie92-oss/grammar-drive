@@ -25,9 +25,11 @@ import {
 } from "./common.js";
 
 import { createLiveCars, CAR_COLORS, colorFor } from "./multiplayer.js";
-import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChallenge } from "./world.js";
+import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChallenge, nearbyGrammarStop } from "./world.js";
 import { createVehicle, updateVehicle, repairVehicle } from "./vehicle.js";
 import { createMission, nearbyMissionCrate, drawMissionMarkers } from "./missions.js";
+import { createGrammarChallenge } from "./grammar-challenges.js";
+import { initAudio, playSfx, updateEngineSound, stopEngineSound, toggleMuted, isMuted, setVolume, getVolume } from "./audio.js";
 
 const { auth, db } = studentFirebase();
 const serverNow = serverClock(db);
@@ -56,6 +58,17 @@ const missionWordBankEl = $("missionWordBank");
 const missionFeedbackEl = $("missionFeedback");
 const missionExplanationEl = $("missionExplanation");
 const missionRewardEl = $("missionReward");
+const grammarPanel = $("grammarPanel");
+const grammarTypeEl = $("grammarType");
+const grammarPromptEl = $("grammarPrompt");
+const grammarInstructionEl = $("grammarInstruction");
+const grammarOptionsEl = $("grammarOptions");
+const grammarSelectionEl = $("grammarSelection");
+const grammarFeedbackEl = $("grammarFeedback");
+const grammarExplanationEl = $("grammarExplanation");
+const grammarCheckButton = $("grammarCheck");
+const grammarNextButton = $("grammarNext");
+const grammarUndoButton = $("grammarUndo");
 const missionActionButton = $("missionAction");
 const missionSubmitButton = $("missionSubmit");
 const missionUndoButton = $("missionUndo");
@@ -113,6 +126,8 @@ let canvasHeight = 0;
 let pixelRatio = 1;
 let mission = null;
 let missionBusy = false;
+let grammarChallenge = null;
+let grammarBusy = false;
 
 function showOverlay(title, message, showBack = false) {
   overlayTitle.textContent = title;
@@ -361,12 +376,14 @@ function updateCar(dt) {
 
   const service = nearbyService(car.x, car.y);
   const challenge = nearbyChallenge(car.x, car.y);
+  const grammarStop = nearbyGrammarStop(car.x, car.y);
   const crate = nearbyMissionCrate(car.x, car.y, mission);
   carSelectWrap.classList.add("hidden");
   serviceButton.classList.toggle("hidden",!service);serviceHintEl.classList.toggle("hidden",!service);
   if(service){const action=service.type==="shop"?"OPEN CAR SHOP":"REPAIR";serviceHintEl.textContent=service.name+" · Press E or tap "+action;serviceButton.textContent=action;serviceButton.dataset.service=service.type;}
   const missionOpen = challengePanel.classList.contains("hidden") === false;
-  const canInteract = !!crate || !!challenge;
+  const grammarOpen = grammarPanel && !grammarPanel.classList.contains("hidden");
+  const canInteract = !!crate || !!challenge || !!grammarStop;
   const missionActive = mission && ["collecting", "return"].includes(mission.status);
   missionHudEl.classList.toggle("hidden", !missionActive);
   if (missionActive) {
@@ -387,11 +404,14 @@ function updateCar(dt) {
           " · Next " + direction + " · " + distance + "m";
     }
   }
-  challengeButton.classList.toggle("hidden", !canInteract || missionOpen || !running);
-  challengeHintEl.classList.toggle("hidden", !canInteract || missionOpen || !running);
+  challengeButton.classList.toggle("hidden", !canInteract || missionOpen || grammarOpen || !running);
+  challengeHintEl.classList.toggle("hidden", !canInteract || missionOpen || grammarOpen || !running);
   if (crate) {
     challengeButton.textContent = "Collect Cargo";
     challengeHintEl.textContent = "Message Crate " + (crate.index + 1) + " · Press E or tap Collect Cargo";
+  } else if (grammarStop) {
+    challengeButton.textContent = "Grammar Challenge";
+    challengeHintEl.textContent = grammarStop.name + " · Stop and answer a quick grammar challenge";
   } else if (challenge) {
     challengeButton.textContent = mission && mission.status === "return" ? "Return Message" : "Open Dispatch";
     challengeHintEl.textContent = mission && mission.status === "collecting"
@@ -405,7 +425,7 @@ function useNearbyService() {
   const service = nearbyService(car.x, car.y);
   if (!service) return;
   if(service.type==="shop"){openCarShop();return;}
-  if(service.type==="repair")repairVehicle(car);
+  if(service.type==="repair"){repairVehicle(car);playSfx("repair");}
   saveVehicleProfile();updateCar(0.001);
 }
 
@@ -432,17 +452,141 @@ function loadMissionState() {
   saveMissionState();
 }
 
+function openGrammarPanel() {
+  if (!running || !nearbyGrammarStop(car.x, car.y) || !grammarPanel) return;
+  grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
+  if (!grammarChallenge) return;
+  grammarBusy = false;
+  grammarPanel.classList.remove("hidden");
+  playSfx("click");
+  clearControls();
+  renderGrammarChallenge();
+}
+
+function closeGrammarPanel() {
+  if (grammarBusy) return;
+  if (grammarPanel) grammarPanel.classList.add("hidden");
+  grammarChallenge = null;
+}
+
+function renderGrammarChallenge() {
+  if (!grammarChallenge) return;
+  const challenge = grammarChallenge;
+  grammarTypeEl.textContent = "GRADE " + codeInfo.grade + " · " + challenge.topic + " · " + challenge.mode.toUpperCase();
+  grammarPromptEl.textContent = challenge.prompt;
+  grammarInstructionEl.textContent = challenge.instruction;
+  grammarFeedbackEl.className = "message hidden";
+  grammarFeedbackEl.textContent = "";
+  grammarExplanationEl.textContent = "";
+  grammarOptionsEl.textContent = "";
+  grammarSelectionEl.textContent = challenge.mode === "order"
+    ? (challenge.selectedWords.length ? challenge.selectedWords.join(" ") : "Your sentence will appear here.")
+    : "Choose one answer.";
+  grammarCheckButton.classList.remove("hidden");
+  grammarNextButton.classList.add("hidden");
+  grammarUndoButton.classList.toggle("hidden", challenge.mode !== "order");
+  grammarCheckButton.disabled = false;
+
+  const options = challenge.mode === "order" ? challenge.words : challenge.options;
+  options.forEach((option, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "grammar-option";
+    button.textContent = option;
+    if (challenge.mode === "order" && challenge.selectedWordIndexes.includes(index)) button.disabled = true;
+    if (challenge.mode !== "order" && challenge.selectedOption === option) button.classList.add("selected");
+    button.addEventListener("click", () => {
+      if (grammarBusy) return;
+      if (challenge.mode === "order") {
+        if (challenge.selectedWordIndexes.includes(index)) return;
+        challenge.selectedWordIndexes.push(index);
+        challenge.selectedWords.push(option);
+        grammarSelectionEl.textContent = challenge.selectedWords.join(" ");
+        button.disabled = true;
+      } else {
+        challenge.selectedOption = option;
+        grammarOptionsEl.querySelectorAll("button").forEach((item) => item.classList.remove("selected"));
+        button.classList.add("selected");
+      }
+    });
+    grammarOptionsEl.appendChild(button);
+  });
+}
+
+async function submitGrammarChallenge() {
+  if (!running || !grammarChallenge || grammarBusy) return;
+  const challenge = grammarChallenge;
+  let answered = false;
+  if (challenge.mode === "order") {
+    answered = challenge.selectedWords.length === challenge.answer.length;
+  } else {
+    answered = !!challenge.selectedOption;
+  }
+  if (!answered) {
+    grammarFeedbackEl.className = "message warn";
+    grammarFeedbackEl.textContent = challenge.mode === "order"
+      ? "Tap all the words to build your sentence first."
+      : "Choose an answer before checking.";
+    return;
+  }
+
+  const correct = challenge.mode === "order"
+    ? challenge.selectedWords.every((word, index) => word === challenge.answer[index])
+    : challenge.selectedOption === challenge.answer;
+
+  grammarBusy = true;
+  grammarCheckButton.disabled = true;
+  const progress = me && me.progress
+    ? me.progress
+    : { score: 0, correct: 0, answered: 0, updatedAt: 0 };
+  const waitMs = Math.max(0, 2050 - (serverNow() - (Number(progress.updatedAt) || 0)));
+
+  try {
+    if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
+    if (!running || finished) return;
+
+    const nextScore = (Number(progress.score) || 0) + (correct ? 15 : 0);
+    const nextCorrect = (Number(progress.correct) || 0) + (correct ? 1 : 0);
+    const nextAnswered = (Number(progress.answered) || 0) + 1;
+    await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
+    me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
+
+    grammarFeedbackEl.className = correct ? "message success" : "message warn";
+    grammarFeedbackEl.textContent = correct
+      ? "Correct! +15 points. Great driving, great grammar!"
+      : "Not quite. No points this time, but here's the rule to remember.";
+    grammarExplanationEl.textContent = challenge.explanation;
+    playSfx(correct ? "correct" : "wrong");
+    grammarCheckButton.classList.add("hidden");
+    grammarNextButton.classList.remove("hidden");
+    grammarUndoButton.classList.add("hidden");
+  } catch (error) {
+    grammarFeedbackEl.className = "message error";
+    grammarFeedbackEl.textContent = "Your answer could not be saved: " + friendlyError(error) + " Please try again.";
+    grammarCheckButton.disabled = false;
+  } finally {
+    grammarBusy = false;
+  }
+}
+
+function nextGrammarChallenge() {
+  if (!running) return;
+  grammarChallenge = createGrammarChallenge(codeInfo.grade, codeInfo.topics);
+  renderGrammarChallenge();
+}
+
 function openMissionPanel() {
   if (!running || !nearbyChallenge(car.x, car.y) || challengePanel.classList.contains("hidden") === false) return;
   if (!mission) loadMissionState();
   challengePanel.classList.remove("hidden");
+  playSfx("click");
   clearControls();
   renderMissionPanel();
 }
 
 function closeMissionPanel() {
+  if (missionBusy) return;
   challengePanel.classList.add("hidden");
-  missionBusy = false;
 }
 
 function renderMissionPanel() {
@@ -520,6 +664,7 @@ function renderMissionBuilder() {
 function startMission() {
   if (!mission || mission.status !== "available") return;
   mission.status = "collecting";
+  playSfx("mission");
   saveMissionState();
   challengePanel.classList.add("hidden");
   updateCar(0.001);
@@ -529,6 +674,7 @@ function collectMissionCrate(crate) {
   if (!mission || mission.status !== "collecting" || !crate) return;
   if (mission.collected.includes(crate.index)) return;
   mission.collected.push(crate.index);
+  playSfx("collect");
   const recovered = mission.fragments[crate.index];
   mission.lastRecovered = recovered.text;
   if (mission.collected.length >= mission.fragments.length) mission.status = "return";
@@ -546,6 +692,7 @@ async function deliverMission() {
   if (!correctOrder) {
     missionFeedbackEl.className = "message warn";
     missionFeedbackEl.textContent = "The message is not in the right order yet. Rearrange the fragments and try again.";
+    playSfx("wrong");
     return;
   }
 
@@ -567,6 +714,7 @@ async function deliverMission() {
     await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
     me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
     mission.status = "complete";
+    playSfx("reward");
     economy.coins += 30;
     saveVehicleProfile();
     updateWalletDisplay();
@@ -589,10 +737,14 @@ function startAnotherMission() {
 }
 
 function interactMission() {
-  if (!running || challengePanel.classList.contains("hidden") === false) return;
+  if (!running || challengePanel.classList.contains("hidden") === false || (grammarPanel && !grammarPanel.classList.contains("hidden"))) return;
   const crate = nearbyMissionCrate(car.x, car.y, mission);
   if (crate) {
     collectMissionCrate(crate);
+    return;
+  }
+  if (nearbyGrammarStop(car.x, car.y)) {
+    openGrammarPanel();
     return;
   }
   if (nearbyChallenge(car.x, car.y)) openMissionPanel();
@@ -633,7 +785,7 @@ function renderCarShop(){
  carShopApply.textContent=owned?"Use this vehicle":(economy.coins>=price?"Buy for "+price+" coins":"Need "+(price-economy.coins)+" more coins");
  carShopApply.disabled=!owned&&economy.coins<price;
 }
-function openCarShop(){const s=nearbyService(car.x,car.y);if(!running||!s||s.type!=="shop")return;pendingModel=car.model;pendingPaint=car.paintIndex;renderCarShop();carShopPanel.classList.remove("hidden");clearControls();}
+function openCarShop(){const s=nearbyService(car.x,car.y);if(!running||!s||s.type!=="shop")return;pendingModel=car.model;pendingPaint=car.paintIndex;renderCarShop();carShopPanel.classList.remove("hidden");playSfx("click");clearControls();}
 function closeCarShop(){carShopPanel.classList.add("hidden");}
 function applyCarShopSelection(){
  if(!running||!CAR_MODELS[pendingModel]||!PAINT_COLORS[pendingPaint])return;
@@ -679,7 +831,13 @@ function frame(timestamp) {
   const dt = Math.min(0.05, lastFrame ? (timestamp - lastFrame) / 1000 : 0);
   lastFrame = timestamp;
 
-  if (running) {
+  const modalOpen =
+    challengePanel.classList.contains("hidden") === false ||
+    (grammarPanel && grammarPanel.classList.contains("hidden") === false) ||
+    carShopPanel.classList.contains("hidden") === false;
+
+  if (running && !modalOpen) {
+    updateEngineSound(car.s, keys.gas);
     updateCar(dt);
     if (live) live.publish({ x: car.x, y: car.y, a: car.a, s: car.s, m: car.model });
     if (timestamp - lastSave > 1000) {
@@ -691,6 +849,8 @@ function frame(timestamp) {
         saveVehicleProfile();
       } catch (error) {}
     }
+  } else {
+    updateEngineSound(0, false);
   }
 
   drawWorld();
@@ -729,6 +889,7 @@ async function finish(title, message, showBack = true) {
   if (finished) return;
   finished = true;
   running = false;
+  stopEngineSound();
   cleanupListeners();
   if (live) {
     await live.stop(true);
@@ -771,6 +932,18 @@ function applyStatus() {
 
 function onKeyDown(event) {
   const key = event.key.toLowerCase();
+  if (grammarPanel && !grammarPanel.classList.contains("hidden")) {
+    if (key === "escape") closeGrammarPanel();
+    return;
+  }
+  if (!challengePanel.classList.contains("hidden")) {
+    if (key === "escape") closeMissionPanel();
+    return;
+  }
+  if (!carShopPanel.classList.contains("hidden")) {
+    if (key === "escape") closeCarShop();
+    return;
+  }
   if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) event.preventDefault();
   if (key === "arrowleft" || key === "a") { keys.left = true; keys.steer = -1; }
   if (key === "arrowright" || key === "d") { keys.right = true; keys.steer = 1; }
@@ -882,6 +1055,32 @@ function bindSteeringJoystick() {
 }
 async function start() {
   resizeCanvas();
+  const soundButton = $("soundToggle");
+  const soundVolume = $("soundVolume");
+  const refreshSoundButton = () => {
+    if (soundButton) {
+      soundButton.textContent = isMuted() ? "🔇 Sound Off" : "🔊 Sound On";
+      soundButton.setAttribute("aria-pressed", String(!isMuted()));
+    }
+  };
+  document.addEventListener("pointerdown", initAudio, { once: true });
+  document.addEventListener("keydown", initAudio, { once: true });
+  if (soundButton) {
+    refreshSoundButton();
+    soundButton.addEventListener("click", () => {
+      initAudio();
+      toggleMuted();
+      refreshSoundButton();
+      if (!isMuted()) playSfx("click");
+    });
+  }
+  if (soundVolume) {
+    soundVolume.value = String(Math.round(getVolume() * 100));
+    soundVolume.addEventListener("input", () => {
+      initAudio();
+      setVolume(Number(soundVolume.value) / 100);
+    });
+  }
   window.addEventListener("resize", resizeCanvas);
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
@@ -892,6 +1091,15 @@ async function start() {
   serviceButton.addEventListener("click", useNearbyService);
   challengeButton.addEventListener("click", interactMission);
   $("missionClose").addEventListener("click", closeMissionPanel);
+  $("grammarClose").addEventListener("click", closeGrammarPanel);
+  grammarCheckButton.addEventListener("click", () => void submitGrammarChallenge());
+  grammarNextButton.addEventListener("click", nextGrammarChallenge);
+  grammarUndoButton.addEventListener("click", () => {
+    if (!grammarChallenge || grammarBusy || grammarChallenge.mode !== "order") return;
+    grammarChallenge.selectedWordIndexes.pop();
+    grammarChallenge.selectedWords.pop();
+    renderGrammarChallenge();
+  });
   missionActionButton.addEventListener("click", () => {
     if (!mission) return;
     if (mission.status === "available") startMission();
