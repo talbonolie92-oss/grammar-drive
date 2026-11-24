@@ -767,16 +767,27 @@ function bindSteeringWheel() {
   let pointerId = null;
   let previousAngle = 0;
   let wheelRotation = 0;
+
   const normalizeDelta = (delta) => {
     while (delta > 180) delta -= 360;
     while (delta < -180) delta += 360;
     return delta;
   };
+
   const pointerAngle = (event) => {
     const rect = wheel.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
     return Math.atan2(event.clientY - cy, event.clientX - cx) * 180 / Math.PI;
+  };
+
+  const applySteering = () => {
+    // The wheel itself can rotate through complete 360-degree turns.
+    // Vehicle steering reaches full lock smoothly, without limiting wheel rotation.
+    keys.steer = Math.max(-1, Math.min(1, wheelRotation / 135));
+    keys.left = keys.steer < -0.02;
+    keys.right = keys.steer > 0.02;
+    wheel.style.transform = "rotate(" + wheelRotation + "deg)";
   };
 
   wheel.addEventListener("pointerdown", (event) => {
@@ -792,20 +803,16 @@ function bindSteeringWheel() {
   wheel.addEventListener("pointermove", (event) => {
     if (pointerId !== event.pointerId) return;
     event.preventDefault();
+
     const nextAngle = pointerAngle(event);
     wheelRotation += normalizeDelta(nextAngle - previousAngle);
     previousAngle = nextAngle;
-
-    // 360-degree steering range: 180° left lock to 180° right lock.
-    const limitedRotation = Math.max(-180, Math.min(180, wheelRotation));
-    keys.steer = limitedRotation / 180;
-    keys.left = keys.steer < -0.02;
-    keys.right = keys.steer > 0.02;
-    wheel.style.transform = "rotate(" + limitedRotation + "deg)";
+    applySteering();
   });
 
   const release = (event) => {
     if (pointerId === null || (event && event.pointerId !== undefined && pointerId !== event.pointerId)) return;
+
     pointerId = null;
     wheelRotation = 0;
     keys.steer = 0;
