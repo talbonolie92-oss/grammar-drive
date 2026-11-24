@@ -70,7 +70,12 @@ The 30-student target is still not verified at classroom scale. Test with a smal
 
 ## Phase 4A status
 
-The first open-road build adds a larger 2D city map, named locations, road/off-road handling, basic steering and acceleration, and building/world-boundary collisions. It reuses the tested Phase 3 multiplayer synchronization. This is an initial driving foundation; fuel, vehicle condition, repairs, upgrades, and the full game world remain future Phase 4 work.
+The first open-road build adds a larger 2D city map, named locations, road/off-road handling, basic steering and acceleration, and building/world-boundary collisions. It reuses the tested Phase 3 multiplayer synchronization. The user has confirmed that the initial driving build works on their devices.
+
+## Phase 4B status
+
+The vehicle HUD now displays speed, fuel, and condition. Fuel decreases while accelerating; running out of fuel prevents further acceleration. Collisions can reduce vehicle condition, and a damaged vehicle has reduced performance. Drivers can refuel at the fuel stop and repair at the garage using **E** on desktop or the on-screen service button on mobile. These new vehicle systems still require user testing on real devices.
+
 
 ## Existing data
 Nothing is deleted. Sessions made with the earlier version:
