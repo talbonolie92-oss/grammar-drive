@@ -298,10 +298,10 @@ function addSessionDeletePaths(updates, id, session) {
   updates["sessions/" + id] = null;
   updates["liveCars/" + id] = null;
   updates["publicResults/" + id] = null;
-  const code = typeof session.code === "string"
-    ? session.code
-    : (typeof session.sessionCode === "string" ? session.sessionCode : "");
-  if (/^[A-HJ-NP-Z2-9]{6}$/.test(code)) updates["joinCodes/" + code] = null;
+  const code = [session.code, session.sessionCode].find(value =>
+    typeof value === "string" && /^[A-HJ-NP-Z2-9]{6}$/.test(value)
+  );
+  if (code) updates["joinCodes/" + code] = null;
 }
 
 function confirmBulkDelete() {
