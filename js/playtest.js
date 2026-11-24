@@ -952,7 +952,7 @@ function frame(timestamp) {
   if (running && !modalOpen) {
     updateEngineSound(car.s, keys.gas);
     updateCar(dt);
-    if (live) live.publish({ x: car.x, y: car.y, a: car.a, s: car.s, m: car.model });
+    if (live) live.publish(car);
     if (timestamp - lastSave > 1000) {
       lastSave = timestamp;
       try {
