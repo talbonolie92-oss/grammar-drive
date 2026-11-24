@@ -321,7 +321,8 @@ export function createLiveCars(options) {
   function publish(state) {
     if (stopped || !state) return;
     latest = normalizedState(state);
-    if (enabled) void tick(false);
+    // The 250ms sync timer handles regular uploads. Avoid invoking tick()
+    // from every animation frame; publish only refreshes the latest pose.
   }
 
   function publishNow() {
