@@ -333,9 +333,20 @@ function updateCar(dt) {
   const missionActive = mission && ["collecting", "return"].includes(mission.status);
   missionHudEl.classList.toggle("hidden", !missionActive);
   if (missionActive) {
-    missionHudEl.textContent = mission.status === "return"
-      ? "Cargo complete · Return to Dispatch"
-      : "Cargo: " + mission.collected.length + " / " + mission.fragments.length;
+    const target = mission.status === "return"
+      ? { x: 1940, y: 1420 }
+      : mission.stops.find((stop, index) => !mission.collected.includes(index));
+    if (target) {
+      const dx = target.x - car.x;
+      const dy = target.y - car.y;
+      const angle = (Math.atan2(-dy, dx) * 180 / Math.PI + 360) % 360;
+      const directions = ["E", "NE", "N", "NW", "W", "SW", "S", "SE"];
+      const direction = directions[Math.round(angle / 45) % 8];
+      const distance = Math.round(Math.hypot(dx, dy));
+      missionHudEl.textContent = mission.status === "return"
+        ? "Cargo complete · Dispatch " + direction + " · " + distance + "m"
+        : "Cargo " + mission.collected.length + "/" + mission.fragments.length + " · Next crate " + direction + " · " + distance + "m";
+    }
   }
   challengeButton.classList.toggle("hidden", !canInteract || missionOpen || !running);
   challengeHintEl.classList.toggle("hidden", !canInteract || missionOpen || !running);
