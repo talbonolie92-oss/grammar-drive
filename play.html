@@ -36,6 +36,7 @@
     <div class="pill" id="speed">0 km/h</div>
     <div class="pill" id="fuel">Fuel: 100%</div>
     <div class="pill" id="condition">Condition: 100%</div>
+    <div class="pill hidden" id="missionHud">Cargo: 0 / 4</div>
     <label id="carSelectWrap" class="pill hidden" style="margin:0;padding:4px 8px">Garage car
       <select id="carSelect" aria-label="Select vehicle" style="width:auto;padding:4px 6px;font-size:13px">
         <option value="compact">Compact</option>
@@ -53,7 +54,7 @@
   <div id="serviceHint" class="pill hidden" style="position:fixed;z-index:6;left:50%;bottom:100px;transform:translateX(-50%);text-align:center">Press E to use service</div>
   <button id="serviceButton" class="small hidden" type="button" style="position:fixed;z-index:7;left:50%;bottom:52px;transform:translateX(-50%)">Use Service</button>
   <div id="challengeHint" class="pill hidden" style="position:fixed;z-index:6;left:50%;bottom:100px;transform:translateX(-50%);text-align:center">Challenge Hub · Press E or tap Challenge</div>
-  <button id="challengeButton" class="small good hidden" type="button" style="position:fixed;z-index:7;left:50%;bottom:52px;transform:translateX(-50%)">Start Challenge</button>
+  <button id="challengeButton" class="small good hidden" type="button" style="position:fixed;z-index:7;left:50%;bottom:52px;transform:translateX(-50%)">Interact</button>
 
   <div id="challengePanel" class="hidden" style="position:fixed;inset:0;z-index:20;background:rgba(2,6,23,.88);display:grid;place-items:center;padding:16px">
     <section class="panel" style="width:min(620px,100%);max-height:90vh;overflow:auto;margin:0">
