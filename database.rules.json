@@ -187,7 +187,7 @@
         ".write": "auth != null && !newData.exists() && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true",
         "$uid": {
           ".write": "auth != null && ((auth.uid == $uid && (!newData.exists() || (root.child('sessions').child($sid).child('players').child($uid).exists() && root.child('sessions').child($sid).child('status').val() == 'running' && now <= root.child('sessions').child($sid).child('startedAt').val() + root.child('sessions').child($sid).child('durationMinutes').val() * 60000 + 10000))) || (!newData.exists() && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true))",
-          ".validate": "newData.hasChildren(['x', 'y', 'a', 'c', 'n', 't', 'm', 'g'])",
+          ".validate": "newData.hasChildren(['x', 'y', 'a', 'c', 'n', 't', 'm'])",
           "x": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6500 && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't']) && newData.parent().child('t').val() == now"
           },
@@ -201,7 +201,7 @@
             ".validate": "newData.isNumber() && newData.val() >= -1500 && newData.val() <= 1500 && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't']) && newData.parent().child('t').val() == now"
           },
           "m": {
-            ".validate": "newData.isString() && (newData.val() == 'compact' || newData.val() == 'sport' || newData.val() == 'suv' || newData.val() == 'truck' || newData.val() == 'motorcycle' || newData.val() == 'bicycle' || newData.val() == 'jeep' || newData.val() == 'police') && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't', 'm', 'g']) && newData.parent().child('t').val() == now"
+            ".validate": "newData.isString() && (newData.val() == 'compact' || newData.val() == 'sport' || newData.val() == 'suv' || newData.val() == 'truck' || newData.val() == 'motorcycle' || newData.val() == 'bicycle' || newData.val() == 'jeep' || newData.val() == 'police') && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't', 'm']) && newData.parent().child('t').val() == now"
           },
           "c": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9 && newData.val() % 1 == 0 && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't']) && newData.parent().child('t').val() == now"
@@ -216,7 +216,7 @@
             ".validate": false
           },
           "g": {
-            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 1 && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't', 'm', 'g']) && newData.parent().child('t').val() == now"
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 1 && newData.parent().hasChildren(['x', 'y', 'a', 'c', 'n', 't', 'm']) && newData.parent().child('t').val() == now"
           }
         }
       }
