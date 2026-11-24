@@ -831,7 +831,12 @@ function frame(timestamp) {
   const dt = Math.min(0.05, lastFrame ? (timestamp - lastFrame) / 1000 : 0);
   lastFrame = timestamp;
 
-  if (running) {
+  const modalOpen =
+    challengePanel.classList.contains("hidden") === false ||
+    (grammarPanel && grammarPanel.classList.contains("hidden") === false) ||
+    carShopPanel.classList.contains("hidden") === false;
+
+  if (running && !modalOpen) {
     updateEngineSound(car.s, keys.gas);
     updateCar(dt);
     if (live) live.publish({ x: car.x, y: car.y, a: car.a, s: car.s, m: car.model });
@@ -844,6 +849,8 @@ function frame(timestamp) {
         saveVehicleProfile();
       } catch (error) {}
     }
+  } else {
+    updateEngineSound(0, false);
   }
 
   drawWorld();
