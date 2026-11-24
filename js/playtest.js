@@ -701,6 +701,7 @@ function onKeyUp(event) {
 
 function bindTouch(buttonId, keyName) {
   const button = $(buttonId);
+  if (!button) return;
   const down = (event) => {
     event.preventDefault();
     keys[keyName] = true;
