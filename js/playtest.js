@@ -702,8 +702,8 @@ function updateCar(dt) {
   challengeButton.classList.toggle("hidden", !canInteract || missionOpen || grammarOpen || !running);
   challengeHintEl.classList.toggle("hidden", !canInteract || missionOpen || grammarOpen || !running);
   if (crate) {
-    challengeButton.textContent = "Collect Cargo";
-    challengeHintEl.textContent = "Message Crate " + (crate.index + 1) + " · Press E or tap Collect Cargo";
+    challengeButton.textContent = "Unlock Cargo";
+    challengeHintEl.textContent = "Message Crate " + (crate.index + 1) + " · Solve a grammar challenge to unlock this cargo";
   } else if (grammarStop) {
     challengeButton.textContent = "Grammar Challenge";
     challengeHintEl.textContent = grammarStop.name + " · Stop and answer a quick grammar challenge";
@@ -940,7 +940,7 @@ function renderMissionPanel() {
     missionActionButton.textContent = "Start Mission";
     missionActionButton.classList.remove("hidden");
   } else if (mission.status === "collecting") {
-    missionBriefingEl.textContent = "Your mission is active. Close the mission board, drive across the districts to each glowing cargo marker, and press E or Collect Cargo at each stop. Return to City Dispatch when all cargo is recovered.";
+    missionBriefingEl.textContent = "Your mission is active. Drive to each glowing cargo marker. Every crate is locked by a grammar challenge; answer correctly to collect it. Return to City Dispatch when all cargo is recovered.";
     missionActionButton.classList.add("hidden");
   } else if (mission.status === "return") {
     missionBriefingEl.textContent = "All cargo recovered. Return to City Dispatch and arrange the fragments to reconstruct the original message.";
