@@ -617,6 +617,8 @@ function renderGrammarChallenge() {
     ? (challenge.selectedWords.length ? challenge.selectedWords.join(" ") : "Your sentence will appear here.")
     : "Choose one answer.";
   grammarCheckButton.classList.remove("hidden");
+  grammarCheckButton.disabled = false;
+  grammarNextButton.textContent = grammarBridgeMode ? "Try Another Question" : "Next Challenge →";
   grammarNextButton.classList.add("hidden");
   grammarUndoButton.classList.toggle("hidden", challenge.mode !== "order");
   grammarCheckButton.disabled = false;
