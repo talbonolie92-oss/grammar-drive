@@ -950,10 +950,11 @@ $("testForm").addEventListener("submit", async (event) => {
       () => update(carA, { x: 102, n: "Test Student A2", t: serverTimestamp() })
     );
 
-    await allow(
+    const carBCreated = await allow(
       "student B creates own live car",
       () => set(ref(B.db, livePath + "/" + ub), makeCar("Test Student B"))
     );
+    S1.liveCars = S1.liveCars || carBCreated;
 
     await allow(
       "teacher reads live cars for own session",
