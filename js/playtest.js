@@ -1348,7 +1348,7 @@ async function start() {
     if (!auth.currentUser) await signInAnonymously(auth);
     uid = auth.currentUser.uid;
     loadVehicleProfile();
-    void loadGrowthProfile();
+    await loadGrowthProfile();
 
     const codeSnap = await get(ref(db, paths.joinCode(code)));
     if (!codeSnap.exists()) throw new Error("This game link is no longer valid.");
