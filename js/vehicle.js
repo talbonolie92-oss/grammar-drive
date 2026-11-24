@@ -1,15 +1,22 @@
 // --------------------------------------------------
 // Grammar Drive: Open Road Challenge
-// js/vehicle.js — Phase 4A/4B driving physics and vehicle condition
+// js/vehicle.js — Phase 4A/4B/4D driving physics and vehicle condition
 // --------------------------------------------------
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+const HANDLING = Object.freeze({
+  compact: { roadMax: 440, offRoadMax: 185, acceleration: 390, steering: 2.45, grip: 1, fuelUse: 0.75 },
+  sport:   { roadMax: 520, offRoadMax: 205, acceleration: 470, steering: 2.7,  grip: 1.08, fuelUse: 0.9 },
+  suv:     { roadMax: 385, offRoadMax: 225, acceleration: 330, steering: 2.05, grip: 0.86, fuelUse: 0.82 }
+});
 
 export function createVehicle(x, y, angle = 0) {
   return {
     x, y, a: angle, s: 0,
     fuel: 100,
     condition: 100,
+    model: "compact",
     collided: false,
     onRoad: true,
     safeX: x,
@@ -20,6 +27,7 @@ export function createVehicle(x, y, angle = 0) {
 export function updateVehicle(car, keys, dt, world) {
   if (!car || !world || dt <= 0) return;
 
+  const handling = HANDLING[car.model] || HANDLING.compact;
   const onRoadBefore = world.isOnRoad(car.x, car.y);
   const steer = (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
   const throttle = (keys.gas ? 1 : 0) - (keys.brake ? 1 : 0);
@@ -27,16 +35,15 @@ export function updateVehicle(car, keys, dt, world) {
   const conditionFactor = car.condition < 35
     ? 0.55 + (car.condition / 35) * 0.25
     : 1;
-  const roadMax = 440 * conditionFactor;
-  const offRoadMax = 185 * conditionFactor;
+  const roadMax = handling.roadMax * conditionFactor;
+  const offRoadMax = handling.offRoadMax * conditionFactor;
   const maxSpeed = onRoadBefore ? roadMax : offRoadMax;
-  const acceleration = (onRoadBefore ? 390 : 230) * conditionFactor;
+  const acceleration = (onRoadBefore ? handling.acceleration : handling.acceleration * 0.59) * conditionFactor;
   const braking = 650;
 
-  // A full tank now lasts roughly 2 minutes of continuous acceleration.
   if (throttle > 0 && car.fuel > 0) {
     car.s += acceleration * dt;
-    car.fuel = clamp(car.fuel - 0.75 * dt, 0, 100);
+    car.fuel = clamp(car.fuel - handling.fuelUse * dt, 0, 100);
   } else if (throttle < 0) {
     car.s -= braking * dt;
   } else {
@@ -52,13 +59,13 @@ export function updateVehicle(car, keys, dt, world) {
 
   if (steer && Math.abs(car.s) > 3) {
     const speedFactor = clamp(Math.abs(car.s) / 120, 0.18, 1);
-    const grip = onRoadBefore ? 1 : 0.55;
-    car.a += steer * Math.sign(car.s) * speedFactor * grip * 2.45 * dt;
+    const grip = (onRoadBefore ? 1 : 0.55) * handling.grip;
+    car.a += steer * Math.sign(car.s) * speedFactor * grip * handling.steering * dt;
   }
 
   const nextX = car.x + Math.cos(car.a) * car.s * dt;
   const nextY = car.y + Math.sin(car.a) * car.s * dt;
-  const hit = world.collidesWithWorld(nextX, nextY, 19);
+  const hit = world.collidesWithWorld(nextX, nextY, car.model === "suv" ? 21 : 19);
 
   if (hit) {
     if (!car.collided && Math.abs(car.s) > 20) {
@@ -66,7 +73,6 @@ export function updateVehicle(car, keys, dt, world) {
       car.condition = clamp(car.condition - impactDamage, 0, 100);
       car.lastEvent = "collision";
     }
-    // Restore the last safe position so the car cannot become embedded.
     car.x = Number.isFinite(car.safeX) ? car.safeX : car.x;
     car.y = Number.isFinite(car.safeY) ? car.safeY : car.y;
     car.collided = true;
