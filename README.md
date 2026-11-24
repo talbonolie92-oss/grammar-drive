@@ -64,7 +64,7 @@ All times are set by the Firebase server clock, never by the device.
 
 ## Phase 3 release status
 
-**Phase 3 multiplayer foundation: tested successfully on real devices.** The matching Phase 3 Firebase Rules have been published. The automatic rules self-test passed all required checks; the optional time-limit test, 150 ms timing check, and second-teacher isolation check were skipped for the reasons shown in the test report. A teacher laptop and two student phones also passed the real-device multiplayer test: shared car movement, refresh/reconnect, teacher rename, disconnect cleanup, and session end.
+**Phase 3 multiplayer foundation: tested successfully on real devices.** The matching multiplayer Firebase Rules have been published. The automatic rules self-test passed all required checks; the optional time-limit test, 150 ms timing check, and second-teacher isolation check were skipped for the reasons shown in the test report. A teacher laptop and two student phones also passed the real-device multiplayer test: shared car movement, refresh/reconnect, teacher rename, disconnect cleanup, and session end.
 
 The 30-student target is still not verified at classroom scale. Test with a small group first and monitor performance before using a full class.
 
@@ -95,5 +95,15 @@ You can delete old test data by hand in the console whenever you like.
 - Compact, Sport, and SUV have distinct body/cabin silhouettes.
 - Collision handling restores the last safe position instead of leaving a car embedded in a building. Invalid saved positions are rejected on reload.
 - Vehicle profile and position are saved on page exit as well as during play.
-- **Firebase Rules update required:** the checked-in `database.rules.json` now requires and validates the `m` model field on live-car records. These rules have NOT been published. Until the updated rules are manually published, model synchronization writes may be rejected by Firebase.
+- **Firebase Rules:** the updated `database.rules.json` requiring and validating the `m` model field has been published. The user confirmed that Compact, Sport, and SUV appearance now synchronizes correctly between two real student devices.
 - Fuel, condition, and position persistence remain per anonymous Firebase UID and browser storage. Different student gadgets have different anonymous UIDs, so private fuel/condition values do not mirror between different students; each student's own values should persist on refresh on the same gadget/browser.
+
+
+## Phase 4D status
+
+Vehicle classes now have different driving characteristics as well as distinct silhouettes:
+- **Compact:** balanced acceleration, speed, steering and fuel use.
+- **Sport:** highest top speed and acceleration, sharper steering, and higher fuel use.
+- **SUV:** slower road speed and acceleration, steadier steering, and better off-road speed.
+
+The car artwork now includes class-specific body and roof shapes, visible wheels, lights and trim. These changes preserve the existing multiplayer model field, local vehicle profile, fuel/condition services and collision recovery. Phase 4D requires real-device playtesting before it is marked complete.
