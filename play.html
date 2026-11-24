@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Grammar Drive | Test Track</title>
+  <link rel="stylesheet" href="./css/style.css">
+  <style>
+    /* Test-track only styles (temporary environment for Phase 3) */
+    html, body { height: 100%; overflow: hidden; }
+    #track { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #14532d; touch-action: none; }
+    .hud { position: fixed; z-index: 5; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .hud-top { top: 8px; left: 8px; right: 8px; }
+    .pill { background: rgba(15, 23, 42, .85); border: 1px solid #334155; border-radius: 10px; padding: 6px 10px; font-weight: bold; font-size: 14px; }
+    .light { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #94a3b8; margin-right: 6px; vertical-align: middle; }
+    .light.online { background: #22c55e; } .light.offline { background: #ef4444; } .light.connecting { background: #eab308; }
+    #roster { position: fixed; z-index: 5; top: 52px; right: 8px; max-width: 46vw; background: rgba(15, 23, 42, .85); border: 1px solid #334155; border-radius: 10px; padding: 8px 10px; font-size: 13px; }
+    #roster div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #roster .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+    .pad { position: fixed; z-index: 6; bottom: 14px; display: flex; gap: 10px; }
+    .pad-left { left: 12px; } .pad-right { right: 12px; }
+    .pad button { width: 72px; height: 72px; border-radius: 18px; font-size: 28px; background: rgba(15, 23, 42, .6); border: 2px solid rgba(255, 255, 255, .3); touch-action: none; user-select: none; -webkit-user-select: none; }
+    .pad button.on { background: rgba(37, 99, 235, .8); }
+    #overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(15, 23, 42, .82); text-align: center; padding: 20px; }
+    #debug { position: fixed; z-index: 5; left: 8px; bottom: 100px; font-size: 12px; color: #cbd5e1; background: rgba(15, 23, 42, .7); padding: 6px 8px; border-radius: 8px; }
+    @media (hover: hover) and (pointer: fine) { .pad { opacity: .5; } }
+  </style>
+</head>
+<body>
+  <canvas id="track"></canvas>
+
+  <div class="hud hud-top">
+    <div class="pill"><span id="light" class="light connecting"></span><span id="connText">Connecting…</span></div>
+    <div class="pill" id="online">Online: –</div>
+    <div class="pill" id="timer">⏱ –</div>
+    <div class="spacer"></div>
+    <button id="leaveButton" class="small secondary" type="button">Leave</button>
+  </div>
+  <div id="roster" class="hidden"></div>
+  <div id="debug" class="hidden"></div>
+
+  <div class="pad pad-left"><button id="btnLeft" type="button" aria-label="Steer left">◀</button><button id="btnRight" type="button" aria-label="Steer right">▶</button></div>
+  <div class="pad pad-right"><button id="btnBrake" type="button" aria-label="Brake">▼</button><button id="btnGas" type="button" aria-label="Accelerate">▲</button></div>
+
+  <div id="overlay">
+    <div class="panel" style="max-width:420px">
+      <h2 id="overlayTitle">Connecting…</h2>
+      <p id="overlayText" class="muted"></p>
+      <a id="overlayLink" class="button block hidden" href="./student.html">Back</a>
+    </div>
+  </div>
+
+  <script type="module" src="./js/playtest.js"></script>
+</body>
+</html>
