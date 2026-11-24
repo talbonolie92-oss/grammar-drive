@@ -1348,6 +1348,13 @@ async function start() {
       }
     );
 
+    // Build the static city cache while the loading overlay is still visible.
+    // This prevents the first playable animation frame from doing the entire
+    // map render and briefly freezing steering on slower mobile devices.
+    overlayTitle.textContent = "Preparing the track…";
+    overlayText.textContent = "Loading the city map. Please wait a moment.";
+    prepareStaticMap();
+
     statusTimer = setInterval(applyStatus, 500);
     renderRoster();
     hideOverlay();
