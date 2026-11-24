@@ -103,6 +103,7 @@ const growthHud = $("growthHud");
 let growthProfile = { xp: 0, missionsCompleted: 0, grammarCorrect: 0 };
 let lastGrowthHud = 0;
 let lastMiniMap = 0;
+let lastPublish = 0;
 const CAR_MODELS = {
   compact:{label:"Compact",icon:"🚗",note:"Easy handling",width:36,height:20},
   sport:{label:"Sports Car",icon:"🏎️",note:"Fast and agile",width:43,height:18},
@@ -1222,7 +1223,10 @@ function frame(timestamp) {
   if (running && !modalOpen) {
     updateEngineSound(car.s, keys.gas);
     updateCar(dt);
-    if (live) live.publish({ x: car.x, y: car.y, a: car.a, s: car.s, m: car.model, g: car.growthScale });
+    if (live && timestamp - lastPublish >= 50) {
+      lastPublish = timestamp;
+      live.publish({ x: car.x, y: car.y, a: car.a, s: car.s, m: car.model, g: car.growthScale });
+    }
     if (timestamp - lastSave > 1000) {
       lastSave = timestamp;
       try {
