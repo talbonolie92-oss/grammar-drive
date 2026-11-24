@@ -218,7 +218,7 @@ export function drawMap(ctx, project, width, height) {
     ctx.font = "900 " + Math.max(9, 19 * label.scale) + "px system-ui";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(district.name, label.x, label.y);
+    ctx.fillText(district.name, label.x, label.y, 330 * label.scale);
   });
 
   const origin = project(0, 0);
