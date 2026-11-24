@@ -1,6 +1,8 @@
 # Grammar Drive 3.0 — Firebase setup
 
-**Do not apply this until the 3.0 release is approved.** The development branch is not live, and these changes have not been published to Firebase.
+**Do not apply this yet.** The development branch is not live, and these changes have not been published to Firebase.
+
+**Important rollout order:** the currently live `main` code expects `phase1-v1`, while this 3.0 branch expects `phase1-v2`. Changing the Firebase value too early will make the currently live app stop at its rules-version check. Before testing, we must coordinate a short compatibility release, then publish the updated Firebase Rules and `phase1-v2` value, and only then publish the 3.0 app. I will not change Firebase or publish GitHub Pages without your approval.
 
 ## 1. Realtime Database Rules
 
