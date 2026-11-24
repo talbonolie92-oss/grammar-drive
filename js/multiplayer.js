@@ -108,7 +108,8 @@ export function createLiveCars(options) {
     const a = wrapAngle(Number(state.a) || 0);
     const s = clamp(Number(state.s) || 0, -1500, 1500);
     const model = ["compact", "sport", "suv", "truck", "motorcycle", "bicycle", "jeep", "police"].includes(state.m) ? state.m : "compact";
-    return { x, y, a, s, m: model };
+    const growth = clamp(Number(state.g) || 0.5, 0.5, 1);
+    return { x, y, a, s, m: model, g: growth };
   }
 
   function currentName() {
@@ -128,6 +129,7 @@ export function createLiveCars(options) {
       a: p.a,
       s: p.s,
       m: p.m,
+      g: p.g,
       c: currentColor(),
       n: currentName(),
       t: serverTimestamp()
@@ -205,6 +207,7 @@ export function createLiveCars(options) {
       a: Number(value.a) || 0,
       s: Number(value.s) || 0,
       m: ["compact", "sport", "suv", "truck", "motorcycle", "bicycle", "jeep", "police"].includes(value.m) ? value.m : "compact",
+      g: clamp(Number(value.g) || 0.5, 0.5, 1),
       c: Number.isInteger(value.c) ? value.c : colorFor(carUid),
       n: String(value.n || "Driver"),
       t: Number(value.t) || serverNow()
@@ -351,7 +354,8 @@ export function createLiveCars(options) {
         x: before.x + (after.x - before.x) * ratio,
         y: before.y + (after.y - before.y) * ratio,
         a: wrapAngle(before.a + angleDelta(before.a, after.a) * ratio),
-        s: before.s + (after.s - before.s) * ratio
+        s: before.s + (after.s - before.s) * ratio,
+        g: before.g + (after.g - before.g) * ratio
       };
     }
 
