@@ -1,0 +1,536 @@
+// --------------------------------------------------
+// Grammar Drive: Open Road Challenge
+// js/playtest.js — Phase 3 real multiplayer test track
+// --------------------------------------------------
+
+import {
+  studentFirebase,
+  authReady,
+  signInAnonymously,
+  ref,
+  get,
+  onValue
+} from "./firebase.js";
+
+import {
+  CODE_PATTERN,
+  paths,
+  $,
+  serverClock,
+  endsAt,
+  formatClock,
+  friendlyError
+} from "./common.js";
+
+import { createLiveCars, CAR_COLORS } from "./multiplayer.js";
+
+const { auth, db } = studentFirebase();
+const serverNow = serverClock(db);
+
+const canvas = $("track");
+const ctx = canvas.getContext("2d");
+const light = $("light");
+const connText = $("connText");
+const onlineEl = $("online");
+const timerEl = $("timer");
+const rosterEl = $("roster");
+const debugEl = $("debug");
+const overlay = $("overlay");
+const overlayTitle = $("overlayTitle");
+const overlayText = $("overlayText");
+const overlayLink = $("overlayLink");
+
+const WORLD = { width: 2400, height: 1600 };
+const keys = { left: false, right: false, gas: false, brake: false };
+const car = { x: 1200, y: 800, a: 0, s: 0 };
+const others = new Map();
+
+let uid = null;
+let code = "";
+let sessionId = null;
+let me = null;
+let codeInfo = null;
+let live = null;
+let running = false;
+let finished = false;
+let rafId = 0;
+let statusTimer = 0;
+let lastFrame = 0;
+let lastSave = 0;
+let stopCode = null;
+let stopMe = null;
+let canvasWidth = 0;
+let canvasHeight = 0;
+let pixelRatio = 1;
+
+function showOverlay(title, message, showBack = false) {
+  overlayTitle.textContent = title;
+  overlayText.textContent = message;
+  overlay.style.display = "grid";
+  overlayLink.classList.toggle("hidden", !showBack);
+  overlayLink.href = "./student.html?code=" + encodeURIComponent(code);
+}
+
+function hideOverlay() {
+  overlay.style.display = "none";
+}
+
+function setLight(state, detail = "") {
+  light.className = "light " + (
+    state === "online" ? "online" :
+    state === "offline" || state === "refused" || state === "cleanup-registration-failed" ? "offline" :
+    "connecting"
+  );
+
+  const labels = {
+    online: "Connected",
+    offline: "Offline",
+    reconnecting: "Reconnecting…",
+    "registering-cleanup": "Securing connection…",
+    "cleanup-registration-failed": "Connection setup failed",
+    refused: "Sync paused",
+    connecting: "Connecting…"
+  };
+
+  connText.textContent = detail
+    ? (labels[state] || state) + " · " + detail
+    : (labels[state] || state);
+}
+
+function resizeCanvas() {
+  pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  canvasWidth = window.innerWidth;
+  canvasHeight = window.innerHeight;
+  canvas.width = Math.round(canvasWidth * pixelRatio);
+  canvas.height = Math.round(canvasHeight * pixelRatio);
+  canvas.style.width = canvasWidth + "px";
+  canvas.style.height = canvasHeight + "px";
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+}
+
+function worldToScreen(x, y) {
+  const scale = Math.min(canvasWidth / WORLD.width, canvasHeight / WORLD.height);
+  const viewW = canvasWidth / scale;
+  const viewH = canvasHeight / scale;
+  const camX = Math.max(0, Math.min(WORLD.width - viewW, car.x - viewW / 2));
+  const camY = Math.max(0, Math.min(WORLD.height - viewH, car.y - viewH / 2));
+  return {
+    x: (x - camX) * scale,
+    y: (y - camY) * scale,
+    scale
+  };
+}
+
+function drawCar(x, y, angle, colorIndex, name, isMine = false) {
+  const p = worldToScreen(x, y);
+  const scale = p.scale;
+  const w = 34 * scale;
+  const h = 19 * scale;
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(angle);
+  ctx.fillStyle = "rgba(0,0,0,.3)";
+  ctx.fillRect(-w / 2 + 2, -h / 2 + 3, w, h);
+  ctx.fillStyle = CAR_COLORS[colorIndex] || "#3b82f6";
+  ctx.strokeStyle = isMine ? "#ffffff" : "#0f172a";
+  ctx.lineWidth = Math.max(1.5, 2 * scale);
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, -h / 2, w, h, Math.max(3, 5 * scale));
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,.8)";
+  ctx.fillRect(-w * .08, -h * .34, w * .42, h * .68);
+  ctx.fillStyle = "#111827";
+  ctx.fillRect(w * .27, -h * .34, w * .13, h * .68);
+  ctx.restore();
+
+  ctx.font = "bold 12px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(15,23,42,.9)";
+  ctx.strokeText(name || "Driver", p.x, p.y - h / 2 - 5);
+  ctx.fillStyle = isMine ? "#ffffff" : "#f8fafc";
+  ctx.fillText(name || "Driver", p.x, p.y - h / 2 - 5);
+}
+
+function drawWorld() {
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  const p = worldToScreen(0, 0);
+  const scale = p.scale;
+
+  ctx.fillStyle = "#166534";
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  const grid = 100 * scale;
+  ctx.strokeStyle = "rgba(187,247,208,.10)";
+  ctx.lineWidth = 1;
+  for (let x = (p.x % grid); x < canvasWidth; x += grid) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvasHeight); ctx.stroke();
+  }
+  for (let y = (p.y % grid); y < canvasHeight; y += grid) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvasWidth, y); ctx.stroke();
+  }
+
+  // Simple closed test circuit and a cross-road.
+  const road = [
+    [250, 250], [2150, 250], [2150, 1350], [250, 1350], [250, 250]
+  ];
+  ctx.strokeStyle = "#475569";
+  ctx.lineWidth = 150 * scale;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  road.forEach(([x, y], i) => {
+    const q = worldToScreen(x, y);
+    if (!i) ctx.moveTo(q.x, q.y); else ctx.lineTo(q.x, q.y);
+  });
+  ctx.stroke();
+
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 3 * scale;
+  ctx.setLineDash([24 * scale, 20 * scale]);
+  ctx.beginPath();
+  road.forEach(([x, y], i) => {
+    const q = worldToScreen(x, y);
+    if (!i) ctx.moveTo(q.x, q.y); else ctx.lineTo(q.x, q.y);
+  });
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const crossA = worldToScreen(1200, 250);
+  const crossB = worldToScreen(1200, 1350);
+  ctx.strokeStyle = "#475569";
+  ctx.lineWidth = 130 * scale;
+  ctx.beginPath(); ctx.moveTo(crossA.x, crossA.y); ctx.lineTo(crossB.x, crossB.y); ctx.stroke();
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 3 * scale;
+  ctx.setLineDash([24 * scale, 20 * scale]);
+  ctx.beginPath(); ctx.moveTo(crossA.x, crossA.y); ctx.lineTo(crossB.x, crossB.y); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // World boundary.
+  const topLeft = worldToScreen(0, 0);
+  ctx.strokeStyle = "#86efac";
+  ctx.lineWidth = 5;
+  ctx.strokeRect(topLeft.x, topLeft.y, WORLD.width * scale, WORLD.height * scale);
+
+  for (const [id, item] of others) {
+    const pose = live ? live.pose(id) : item;
+    if (pose) drawCar(pose.x, pose.y, pose.a, pose.c, pose.n, false);
+  }
+
+  drawCar(car.x, car.y, car.a, live ? live.stats.color : 5, me ? me.name : "You", true);
+}
+
+function renderRoster() {
+  const rows = [];
+  if (me) rows.push({ uid, name: me.name, color: 5, mine: true });
+  for (const [id, value] of others) {
+    rows.push({ uid: id, name: value.n || "Driver", color: value.c, mine: false });
+  }
+  rows.sort((a, b) => a.name.localeCompare(b.name));
+  rosterEl.innerHTML = "";
+  rosterEl.classList.toggle("hidden", rows.length === 0);
+  rows.slice(0, 30).forEach((entry) => {
+    const row = document.createElement("div");
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    dot.style.background = CAR_COLORS[entry.color] || "#94a3b8";
+    row.append(dot, document.createTextNode(entry.name + (entry.mine ? " (You)" : "")));
+    rosterEl.appendChild(row);
+  });
+  onlineEl.textContent = "Online: " + rows.length;
+}
+
+function updateCar(dt) {
+  const steer = (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
+  const throttle = (keys.gas ? 1 : 0) - (keys.brake ? 1 : 0);
+
+  if (throttle > 0) car.s += 480 * dt;
+  else if (throttle < 0) car.s -= 620 * dt;
+  else car.s *= Math.pow(0.985, dt * 60);
+
+  car.s = Math.max(-240, Math.min(520, car.s));
+  if (Math.abs(car.s) < 2) car.s = 0;
+
+  if (steer && Math.abs(car.s) > 4) {
+    car.a += steer * Math.sign(car.s) * Math.min(1, Math.abs(car.s) / 160) * 2.3 * dt;
+  }
+
+  car.x += Math.cos(car.a) * car.s * dt;
+  car.y += Math.sin(car.a) * car.s * dt;
+
+  const margin = 30;
+  if (car.x < margin || car.x > WORLD.width - margin) {
+    car.x = Math.max(margin, Math.min(WORLD.width - margin, car.x));
+    car.s *= -0.25;
+  }
+  if (car.y < margin || car.y > WORLD.height - margin) {
+    car.y = Math.max(margin, Math.min(WORLD.height - margin, car.y));
+    car.s *= -0.25;
+  }
+}
+
+function frame(timestamp) {
+  if (finished) return;
+  const dt = Math.min(0.05, lastFrame ? (timestamp - lastFrame) / 1000 : 0);
+  lastFrame = timestamp;
+
+  if (running) {
+    updateCar(dt);
+    if (live) live.publish({ x: car.x, y: car.y, a: car.a, s: car.s });
+    if (timestamp - lastSave > 1000) {
+      lastSave = timestamp;
+      try {
+        sessionStorage.setItem("gd_track_" + code, JSON.stringify({
+          x: car.x, y: car.y, a: car.a
+        }));
+      } catch (error) {}
+    }
+  }
+
+  drawWorld();
+  rafId = requestAnimationFrame(frame);
+}
+
+function clearControls() {
+  Object.keys(keys).forEach((key) => { keys[key] = false; });
+  document.querySelectorAll(".pad button").forEach((button) => button.classList.remove("on"));
+}
+
+function cleanupListeners() {
+  if (statusTimer) {
+    clearInterval(statusTimer);
+    statusTimer = 0;
+  }
+  if (stopCode) {
+    stopCode();
+    stopCode = null;
+  }
+  if (stopMe) {
+    stopMe();
+    stopMe = null;
+  }
+  if (rafId) {
+    cancelAnimationFrame(rafId);
+    rafId = 0;
+  }
+  window.removeEventListener("resize", resizeCanvas);
+  window.removeEventListener("keydown", onKeyDown);
+  window.removeEventListener("keyup", onKeyUp);
+  clearControls();
+}
+
+async function finish(title, message, showBack = true) {
+  if (finished) return;
+  finished = true;
+  running = false;
+  cleanupListeners();
+  if (live) {
+    await live.stop(true);
+    live = null;
+  }
+  showOverlay(title, message, showBack);
+}
+
+function applyStatus() {
+  if (!codeInfo || finished) return;
+
+  const status = codeInfo.status;
+  const end = endsAt(codeInfo);
+  const timeLeft = end === null ? null : end - serverNow();
+
+  if (status === "ended") {
+    void finish("Game Over", "Your teacher has ended the session. Thanks for playing!");
+    return;
+  }
+
+  if (status === "running" && timeLeft !== null && timeLeft <= 0) {
+    void finish("Time's Up!", "The session time has finished. Thanks for playing!");
+    return;
+  }
+
+  if (status === "running") {
+    running = true;
+    if (live) live.setEnabled(true);
+    hideOverlay();
+    timerEl.textContent = timeLeft === null ? "⏱ Running" : "⏱ " + formatClock(timeLeft);
+  } else {
+    running = false;
+    if (live) live.setEnabled(false);
+    timerEl.textContent = "⏱ Waiting";
+    showOverlay("Waiting for your teacher", "Your car is ready. The track opens when the teacher starts the session.", false);
+  }
+}
+
+function onKeyDown(event) {
+  const key = event.key.toLowerCase();
+  if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) event.preventDefault();
+  if (key === "arrowleft" || key === "a") keys.left = true;
+  if (key === "arrowright" || key === "d") keys.right = true;
+  if (key === "arrowup" || key === "w") keys.gas = true;
+  if (key === "arrowdown" || key === "s" || key === " ") keys.brake = true;
+}
+
+function onKeyUp(event) {
+  const key = event.key.toLowerCase();
+  if (key === "arrowleft" || key === "a") keys.left = false;
+  if (key === "arrowright" || key === "d") keys.right = false;
+  if (key === "arrowup" || key === "w") keys.gas = false;
+  if (key === "arrowdown" || key === "s" || key === " ") keys.brake = false;
+}
+
+function bindTouch(buttonId, keyName) {
+  const button = $(buttonId);
+  const down = (event) => {
+    event.preventDefault();
+    keys[keyName] = true;
+    button.classList.add("on");
+    if (button.setPointerCapture && event.pointerId !== undefined) {
+      try { button.setPointerCapture(event.pointerId); } catch (error) {}
+    }
+  };
+  const up = (event) => {
+    event.preventDefault();
+    keys[keyName] = false;
+    button.classList.remove("on");
+  };
+  button.addEventListener("pointerdown", down);
+  ["pointerup", "pointercancel", "lostpointercapture", "pointerleave"].forEach((name) => {
+    button.addEventListener(name, up);
+  });
+}
+
+async function start() {
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
+  window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("keyup", onKeyUp);
+
+  bindTouch("btnLeft", "left");
+  bindTouch("btnRight", "right");
+  bindTouch("btnGas", "gas");
+  bindTouch("btnBrake", "brake");
+
+  $("leaveButton").addEventListener("click", async () => {
+    await finish("You left the track", "You can return using your teacher's QR code.");
+    window.location.href = "./student.html?code=" + encodeURIComponent(code);
+  });
+
+  code = (new URLSearchParams(window.location.search).get("code") || "").trim().toUpperCase();
+  if (!CODE_PATTERN.test(code)) {
+    showOverlay("Scan your teacher's QR code", "This track needs the link from your teacher's QR code.", true);
+    return;
+  }
+
+  try {
+    await authReady(auth);
+    if (!auth.currentUser) await signInAnonymously(auth);
+    uid = auth.currentUser.uid;
+
+    const codeSnap = await get(ref(db, paths.joinCode(code)));
+    if (!codeSnap.exists()) throw new Error("This game link is no longer valid.");
+    codeInfo = codeSnap.val();
+    sessionId = codeInfo.sessionId;
+
+    if (!sessionId) throw new Error("The session information is incomplete.");
+
+    const playerSnap = await get(ref(db, paths.player(sessionId, uid)));
+    if (!playerSnap.exists()) throw new Error("Your student entry was not found. Please join again from the QR code.");
+    me = playerSnap.val();
+
+    try {
+      const saved = JSON.parse(sessionStorage.getItem("gd_track_" + code) || "null");
+      if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+        car.x = Math.max(30, Math.min(WORLD.width - 30, saved.x));
+        car.y = Math.max(30, Math.min(WORLD.height - 30, saved.y));
+        car.a = Number(saved.a) || 0;
+      } else {
+        car.x += (Math.random() - .5) * 100;
+        car.y += (Math.random() - .5) * 100;
+      }
+    } catch (error) {}
+
+    live = createLiveCars({
+      db,
+      sessionId,
+      uid,
+      serverNow,
+      getName: () => me ? me.name : "Driver",
+      onChange: (cars) => {
+        others.clear();
+        cars.forEach((value, key) => others.set(key, value));
+        renderRoster();
+      },
+      onStatus: (state, detail) => setLight(state, detail)
+    });
+
+    live.publish({ x: car.x, y: car.y, a: car.a, s: 0 });
+    live.start();
+    live.setEnabled(codeInfo.status === "running");
+
+    stopMe = onValue(
+      ref(db, paths.player(sessionId, uid)),
+      (snap) => {
+        if (!snap.exists()) {
+          void finish("Entry removed", "Your teacher removed your player entry. Please ask your teacher for help.");
+          return;
+        }
+        me = snap.val();
+        renderRoster();
+      },
+      (error) => {
+        setLight("refused", friendlyError(error));
+      }
+    );
+
+    stopCode = onValue(
+      ref(db, paths.joinCode(code)),
+      (snap) => {
+        if (!snap.exists()) {
+          void finish("Game closed", "This session is no longer available.");
+          return;
+        }
+        codeInfo = snap.val();
+        applyStatus();
+      },
+      (error) => {
+        setLight("refused", friendlyError(error));
+      }
+    );
+
+    statusTimer = setInterval(applyStatus, 500);
+    renderRoster();
+    hideOverlay();
+    rafId = requestAnimationFrame(frame);
+    applyStatus();
+  } catch (error) {
+    showOverlay("Could not enter the track", friendlyError(error), true);
+  }
+}
+
+window.addEventListener("pagehide", () => {
+  cleanupListeners();
+  if (live) {
+    void live.stop(true);
+    live = null;
+  }
+});
+
+window.GD_TRACK = {
+  status() {
+    return {
+      uid,
+      sessionId,
+      status: codeInfo && codeInfo.status,
+      running,
+      connected: live ? live.connected : false,
+      stats: live ? { ...live.stats } : null,
+      otherCars: others.size
+    };
+  }
+};
+
+start();
