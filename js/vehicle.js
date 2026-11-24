@@ -6,9 +6,9 @@
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 const HANDLING = Object.freeze({
-  compact: { roadMax: 440, offRoadMax: 185, acceleration: 390, steering: 2.45, grip: 1, fuelUse: 0.10 },
-  sport:   { roadMax: 520, offRoadMax: 205, acceleration: 470, steering: 2.7,  grip: 1.08, fuelUse: 0.12 },
-  suv:     { roadMax: 385, offRoadMax: 225, acceleration: 330, steering: 2.05, grip: 0.86, fuelUse: 0.11 }
+  compact: { roadMax: 440, offRoadMax: 185, acceleration: 390, steering: 2.45, grip: 1 },
+  sport:   { roadMax: 520, offRoadMax: 205, acceleration: 470, steering: 2.7,  grip: 1.08 },
+  suv:     { roadMax: 385, offRoadMax: 225, acceleration: 330, steering: 2.05, grip: 0.86 }
 });
 
 export function createVehicle(x, y, angle = 0) {
@@ -51,15 +51,10 @@ export function updateVehicle(car, keys, dt, world) {
   } else if (keys.reverse) {
     if (car.s > 0) car.s = Math.max(0, car.s - braking * dt);
     else car.s -= reverseAcceleration * conditionFactor * dt;
-  } else if (keys.gas && car.fuel > 0) {
+  } else if (keys.gas) {
     car.s += acceleration * dt;
-    car.fuel = clamp(car.fuel - handling.fuelUse * dt, 0, 100);
   } else {
     car.s *= Math.pow(onRoadBefore ? 0.986 : 0.955, dt * 60);
-  }
-
-  if (car.fuel <= 0 && keys.gas) {
-    car.s *= Math.pow(0.965, dt * 60);
   }
 
   car.s = clamp(car.s, -reverseMax, maxSpeed);
@@ -95,7 +90,6 @@ export function updateVehicle(car, keys, dt, world) {
 
   car.onRoad = world.isOnRoad(car.x, car.y);
   if (!car.onRoad) car.s *= Math.pow(0.992, dt * 60);
-  car.fuel = clamp(car.fuel, 0, 100);
   car.condition = clamp(car.condition, 0, 100);
 }
 
