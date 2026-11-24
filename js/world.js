@@ -21,27 +21,25 @@ const BUILDINGS = [
   { x: 1040, y: 470, w: 390, h: 260, name: "APARTMENTS", color: "#78716c" },
   { x: 2040, y: 470, w: 390, h: 260, name: "SHOPPING MALL", color: "#475569" },
   { x: 2780, y: 470, w: 330, h: 260, name: "OFFICES", color: "#64748b" },
-
   { x: 470, y: 790, w: 330, h: 280, name: "SCHOOL", color: "#a16207" },
   { x: 1040, y: 790, w: 390, h: 280, name: "GARAGE", color: "#0e7490" },
   { x: 2040, y: 790, w: 390, h: 280, name: "CAR DEALER", color: "#0369a1" },
   { x: 2780, y: 790, w: 330, h: 280, name: "HOTEL", color: "#7c3aed" },
-
   { x: 470, y: 1510, w: 330, h: 280, name: "CAR WASH", color: "#0284c7" },
   { x: 1040, y: 1510, w: 390, h: 280, name: "SERVICE BAY", color: "#b45309" },
   { x: 2040, y: 1510, w: 390, h: 280, name: "FUEL STOP", color: "#15803d" },
   { x: 2780, y: 1510, w: 330, h: 280, name: "CHALLENGE HUB", color: "#be123c" },
-
   { x: 470, y: 1870, w: 330, h: 220, name: "WAREHOUSE", color: "#57534e" },
   { x: 1040, y: 1870, w: 390, h: 220, name: "PARKING", color: "#475569" },
   { x: 2040, y: 1870, w: 390, h: 220, name: "RACE CLUB", color: "#9f1239" },
   { x: 2780, y: 1870, w: 330, h: 220, name: "AIRPORT OFFICE", color: "#475569" }
 ];
 
+// Service markers are placed directly on drivable road surfaces.
 const LOCATIONS = [
-  { x: 970, y: 1140, name: "GARAGE", type: "repair", color: "#38bdf8", symbol: "G" },
+  { x: 960, y: 1300, name: "GARAGE", type: "repair", color: "#38bdf8", symbol: "G" },
   { x: 1940, y: 1140, name: "CITY CENTER", color: "#facc15", symbol: "C" },
-  { x: 2670, y: 1420, name: "FUEL STOP", type: "fuel", color: "#4ade80", symbol: "F" },
+  { x: 2640, y: 1420, name: "FUEL STOP", type: "fuel", color: "#4ade80", symbol: "F" },
   { x: 970, y: 1420, name: "CAR WASH", color: "#7dd3fc", symbol: "W" },
   { x: 1940, y: 1420, name: "CHALLENGE HUB", color: "#fb7185", symbol: "?" },
   { x: 2670, y: 1140, name: "DEALERSHIP", color: "#c4b5fd", symbol: "D" }
@@ -85,7 +83,6 @@ export function drawMap(ctx, project, width, height) {
   const origin = project(0, 0);
   const scale = origin.scale;
 
-  // Grass texture and subtle city blocks.
   ctx.strokeStyle = "rgba(220,252,231,.09)";
   ctx.lineWidth = 1;
   const grid = 100 * scale;
@@ -98,7 +95,6 @@ export function drawMap(ctx, project, width, height) {
     }
   }
 
-  // Roads.
   ROADS.forEach((road) => {
     const p = project(road.x, road.y);
     ctx.fillStyle = "#334155";
@@ -120,7 +116,6 @@ export function drawMap(ctx, project, width, height) {
     ctx.setLineDash([]);
   });
 
-  // Crosswalks at the main intersections.
   const crosswalks = [
     { x: 1650, y: 1190, w: 12, h: 220 },
     { x: 1870, y: 1190, w: 12, h: 220 },
@@ -134,7 +129,6 @@ export function drawMap(ctx, project, width, height) {
     }
   });
 
-  // Buildings with shadows, roofs and labels.
   BUILDINGS.forEach((b) => {
     const p = project(b.x, b.y);
     const bw = b.w * scale;
@@ -158,7 +152,6 @@ export function drawMap(ctx, project, width, height) {
     }
   });
 
-  // Location markers.
   LOCATIONS.forEach((loc) => {
     const p = project(loc.x, loc.y);
     const r = Math.max(7, 17 * scale);
@@ -184,14 +177,13 @@ export function drawMap(ctx, project, width, height) {
     }
   });
 
-  // World perimeter.
   const topLeft = project(0, 0);
   ctx.strokeStyle = "#bbf7d0";
   ctx.lineWidth = 5;
   ctx.strokeRect(topLeft.x, topLeft.y, WORLD.width * scale, WORLD.height * scale);
 }
 
-export function nearbyService(x, y, radius = 105) {
+export function nearbyService(x, y, radius = 165) {
   for (const location of LOCATIONS) {
     if (!location.type) continue;
     const dx = x - location.x;
