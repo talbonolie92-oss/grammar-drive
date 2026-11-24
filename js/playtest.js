@@ -144,40 +144,103 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
   const model = CAR_MODELS[modelKey] || CAR_MODELS.compact;
   const w = Math.max(24, model.width * scale);
   const h = Math.max(14, model.height * scale);
+  const line = Math.max(1, 1.6 * scale);
 
   ctx.save();
   ctx.translate(p.x, p.y);
   ctx.rotate(angle);
-  ctx.fillStyle = "rgba(0,0,0,.3)";
-  ctx.fillRect(-w / 2 + 2, -h / 2 + 3, w, h);
+
+  // Ground shadow and four visible tires.
+  ctx.fillStyle = "rgba(0,0,0,.32)";
+  ctx.beginPath();
+  ctx.ellipse(1, 3 * scale, w * .55, h * .72, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#111827";
+  const tireW = Math.max(4, w * (modelKey === "suv" ? .17 : .14));
+  const tireH = Math.max(3, h * .27);
+  [-1, 1].forEach((side) => {
+    ctx.fillRect(-w * .29, side * (h * .39) - tireH / 2, tireW, tireH);
+    ctx.fillRect(w * .25, side * (h * .39) - tireH / 2, tireW, tireH);
+  });
+
+  // Body silhouette: low wedge for Sport, tall squared body for SUV,
+  // rounded hatchback for Compact.
   ctx.fillStyle = model.color;
   ctx.strokeStyle = isMine ? "#ffffff" : "#0f172a";
-  ctx.lineWidth = Math.max(1.5, 2 * scale);
+  ctx.lineWidth = Math.max(1.2, 1.8 * scale);
   ctx.beginPath();
   if (modelKey === "sport") {
-    ctx.moveTo(-w * .5, -h * .34);
-    ctx.lineTo(-w * .28, -h * .5);
-    ctx.lineTo(w * .28, -h * .5);
-    ctx.lineTo(w * .5, -h * .25);
-    ctx.lineTo(w * .5, h * .34);
-    ctx.lineTo(-w * .5, h * .34);
+    ctx.moveTo(-w * .5, -h * .25);
+    ctx.lineTo(-w * .34, -h * .48);
+    ctx.lineTo(w * .23, -h * .48);
+    ctx.lineTo(w * .5, -h * .28);
+    ctx.lineTo(w * .5, h * .28);
+    ctx.lineTo(w * .23, h * .48);
+    ctx.lineTo(-w * .34, h * .48);
     ctx.closePath();
+  } else if (modelKey === "suv") {
+    ctx.roundRect(-w * .5, -h * .5, w, h, Math.max(2, 3 * scale));
   } else {
-    ctx.roundRect(-w / 2, -h / 2, w, h, modelKey === "suv" ? Math.max(2, 3 * scale) : Math.max(3, 6 * scale));
+    ctx.roundRect(-w * .5, -h * .46, w, h * .92, Math.max(3, 6 * scale));
   }
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = modelKey === "suv" ? "#cbd5e1" : "rgba(255,255,255,.82)";
-  const cabinW = modelKey === "sport" ? w * .42 : modelKey === "suv" ? w * .48 : w * .40;
-  const cabinH = modelKey === "sport" ? h * .48 : modelKey === "suv" ? h * .68 : h * .58;
-  ctx.fillRect(-w * .12, -cabinH / 2, cabinW, cabinH);
-  if (modelKey === "suv") {
-    ctx.strokeStyle = "#334155";
-    ctx.lineWidth = Math.max(1, scale * 1.5);
-    ctx.strokeRect(-w * .16, -h * .43, w * .55, h * .86);
+
+  // Roof/cabin proportions differ clearly by vehicle class.
+  if (modelKey === "sport") {
+    ctx.fillStyle = "#172554";
+    ctx.beginPath();
+    ctx.moveTo(-w * .18, -h * .34);
+    ctx.lineTo(-w * .04, -h * .43);
+    ctx.lineTo(w * .19, -h * .34);
+    ctx.lineTo(w * .27, h * .34);
+    ctx.lineTo(-w * .16, h * .34);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "rgba(191,219,254,.85)";
+    ctx.fillRect(-w * .08, -h * .29, w * .25, h * .58);
+    // Rear spoiler.
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(-w * .47, -h * .53, w * .18, h * 1.06);
+  } else if (modelKey === "suv") {
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(-w * .19, -h * .38, w * .48, h * .76);
+    ctx.fillStyle = "rgba(191,219,254,.9)";
+    ctx.fillRect(-w * .13, -h * .31, w * .17, h * .62);
+    ctx.fillRect(w * .08, -h * .31, w * .15, h * .62);
+    ctx.strokeStyle = "rgba(15,23,42,.8)";
+    ctx.lineWidth = line;
+    ctx.strokeRect(-w * .2, -h * .4, w * .5, h * .8);
+    // Roof rails.
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.beginPath();
+    ctx.moveTo(-w * .15, -h * .47);
+    ctx.lineTo(w * .27, -h * .47);
+    ctx.moveTo(-w * .15, h * .47);
+    ctx.lineTo(w * .27, h * .47);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(-w * .16, -h * .34, w * .42, h * .68);
+    ctx.fillStyle = "rgba(191,219,254,.9)";
+    ctx.fillRect(-w * .1, -h * .27, w * .3, h * .54);
+    ctx.strokeStyle = "rgba(15,23,42,.7)";
+    ctx.lineWidth = line;
+    ctx.beginPath();
+    ctx.moveTo(w * .06, -h * .28);
+    ctx.lineTo(w * .06, h * .28);
+    ctx.stroke();
   }
-  ctx.fillStyle = "#111827";
-  ctx.fillRect(w * .31, -h * .34, w * .12, h * .68);
+
+  // Front lights, rear lights and bumpers make orientation readable.
+  ctx.fillStyle = "#fef3c7";
+  ctx.fillRect(w * .42, -h * .32, w * .07, h * .2);
+  ctx.fillRect(w * .42, h * .12, w * .07, h * .2);
+  ctx.fillStyle = "#f87171";
+  ctx.fillRect(-w * .49, -h * .3, w * .06, h * .2);
+  ctx.fillRect(-w * .49, h * .1, w * .06, h * .2);
+  ctx.fillStyle = "rgba(15,23,42,.75)";
+  ctx.fillRect(w * .43, -h * .42, w * .07, h * .84);
   ctx.restore();
 
   ctx.font = "bold 12px system-ui, sans-serif";
@@ -189,7 +252,6 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
   ctx.fillStyle = isMine ? "#ffffff" : "#f8fafc";
   ctx.fillText(name || "Driver", p.x, p.y - h / 2 - 5);
 }
-
 function drawWorld() {
   drawMap(ctx, worldToScreen, canvasWidth, canvasHeight);
 
