@@ -987,6 +987,13 @@ $("testForm").addEventListener("submit", async (event) => {
       () => remove(carA)
     );
 
+    if (S1.liveCars) {
+      await allow(
+        "teacher can remove the live-car collection for own session",
+        () => remove(ref(T.db, livePath))
+      );
+    }
+
     await deny(
       "ended to running",
       () =>
