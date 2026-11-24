@@ -31,7 +31,7 @@ const BUILDINGS = [
   { x: 1680, y: 2450, w: 900, h: 650, name: "FRESH MARKET", color: "#15803d" },
   { x: 380, y: 3450, w: 900, h: 500, name: "CAR DEALER", color: "#0369a1" },
   { x: 1680, y: 3450, w: 900, h: 500, name: "GARAGE", color: "#0e7490" },
-  { x: 2980, y: 2450, w: 900, h: 650, name: "WAREHOUSE", color: "#57534e" },
+  { x: 2980, y: 2450, w: 900, h: 650, name: "CITY DISPATCH", color: "#57534e" },
   { x: 2980, y: 3450, w: 900, h: 500, name: "FACTORY", color: "#78716c" },
   { x: 4280, y: 2450, w: 900, h: 650, name: "RACE CLUB", color: "#9f1239" },
   { x: 4280, y: 3450, w: 900, h: 500, name: "COUNTRY CLUB", color: "#166534" }
