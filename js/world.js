@@ -45,7 +45,7 @@ const DISTRICTS = [
   { x: 4250, y: 2390, w: 1000, h: 1640, name: "COUNTRYSIDE & RACE ZONE", labelX: 4750, labelY: 3180, fill: "rgba(34,197,94,.06)", edge: "rgba(134,239,172,.35)" }
 ];
 
-// Service markers// Service markers are placed directly on drivable road surfaces.
+// Service markers are placed directly on drivable road surfaces.
 const LOCATIONS = [
   { x: 1500, y: 1325, name: "GARAGE", type: "repair", color: "#38bdf8", symbol: "G" },
   { x: 2800, y: 2325, name: "CITY CENTER", color: "#facc15", symbol: "C" },
@@ -55,7 +55,7 @@ const LOCATIONS = [
   { x: 4750, y: 3325, name: "RACE CLUB", type: "race", color: "#fb7185", symbol: "R" }
 ];
 
-// Roadside grammar stops// Roadside grammar stops turn exploration into short learning encounters.
+// Roadside grammar stops turn exploration into short learning encounters.
 const GRAMMAR_STOPS = [
   { x: 1500, y: 325, name: "GRAMMAR CHECKPOINT 1" },
   { x: 2800, y: 1325, name: "GRAMMAR CHECKPOINT 2" },
@@ -67,7 +67,7 @@ const GRAMMAR_STOPS = [
   { x: 200, y: 2325, name: "GRAMMAR CHECKPOINT 8" }
 ];
 
-// Decorative greenery// Decorative greenery and small park-entry gates, kept clear of roads and services.
+// Decorative greenery and small park-entry gates, kept clear of roads and services.
 const TREES = [
   [1360, 470], [1400, 700], [1360, 930], [1360, 1530], [1400, 1760], [1360, 1980],
   [2660, 470], [2660, 900], [2660, 1530], [2660, 1950],
@@ -84,7 +84,7 @@ const PARK_GATES = [
   { x: 4750, y: 2250, width: 145, label: "RACEWAY GATE" }
 ];
 
-function drawTreefunction drawTree(ctx, project, x, y) {
+function drawTree(ctx, project, x, y) {
   const p = project(x, y);
   const s = p.scale;
   const r = Math.max(3, 22 * s);
