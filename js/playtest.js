@@ -203,21 +203,31 @@ function worldToScreen(x, y) {
 let staticMapCanvas = null;
 let staticMapReady = false;
 let staticMapFailed = false;
+let staticMapScale = 1;
 
 function prepareStaticMap() {
   if (staticMapReady || staticMapFailed) return;
   try {
+    // Match cache detail to the game's world-to-screen scale. Small mobile
+    // viewports do not need a full-resolution 3600x2600 backing canvas.
+    // Desktop keeps full detail; mobile cache memory drops substantially.
+    const cameraScale = getCamera().scale;
+    staticMapScale = Math.min(1, Math.max(0.65, cameraScale));
     const mapCanvas = document.createElement("canvas");
-    mapCanvas.width = WORLD.width;
-    mapCanvas.height = WORLD.height;
+    mapCanvas.width = Math.ceil(WORLD.width * staticMapScale);
+    mapCanvas.height = Math.ceil(WORLD.height * staticMapScale);
     const mapContext = mapCanvas.getContext("2d", { alpha: false });
     if (!mapContext) throw new Error("2D canvas unavailable");
 
     drawMap(
       mapContext,
-      (x, y) => ({ x, y, scale: 1 }),
-      WORLD.width,
-      WORLD.height
+      (x, y) => ({
+        x: x * staticMapScale,
+        y: y * staticMapScale,
+        scale: staticMapScale
+      }),
+      mapCanvas.width,
+      mapCanvas.height
     );
 
     staticMapCanvas = mapCanvas;
@@ -384,10 +394,10 @@ function drawWorld() {
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     ctx.drawImage(
       staticMapCanvas,
-      camera.camX,
-      camera.camY,
-      camera.viewW,
-      camera.viewH,
+      camera.camX * staticMapScale,
+      camera.camY * staticMapScale,
+      camera.viewW * staticMapScale,
+      camera.viewH * staticMapScale,
       0,
       0,
       canvasWidth,
