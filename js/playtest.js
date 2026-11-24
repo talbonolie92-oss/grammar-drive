@@ -101,6 +101,7 @@ car.growthScale = 0.5;
 car.targetGrowthScale = 0.5;
 const growthHud = $("growthHud");
 let growthProfile = { xp: 0, missionsCompleted: 0, grammarCorrect: 0 };
+let growthSaveQueue = Promise.resolve();
 let lastGrowthHud = 0;
 let lastMiniMap = 0;
 let lastPublish = 0;
@@ -1158,13 +1159,17 @@ async function grantGrowthXp(amount, reason) {
   } catch (error) {}
   updateGrowthHud();
 
+  const payload = {
+    xp: growthProfile.xp,
+    missionsCompleted: growthProfile.missionsCompleted,
+    grammarCorrect: growthProfile.grammarCorrect,
+    updatedAt: serverTimestamp()
+  };
+  growthSaveQueue = growthSaveQueue
+    .catch(() => {})
+    .then(() => update(ref(db, "vehicleProfiles/" + uid), payload));
   try {
-    await update(ref(db, "vehicleProfiles/" + uid), {
-      xp: growthProfile.xp,
-      missionsCompleted: growthProfile.missionsCompleted,
-      grammarCorrect: growthProfile.grammarCorrect,
-      updatedAt: serverTimestamp()
-    });
+    await growthSaveQueue;
   } catch (error) {
     // Keep local XP if database profile access is not available.
   }
