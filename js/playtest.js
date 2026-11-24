@@ -694,6 +694,9 @@ async function submitGrammarChallenge() {
     if (grammarBridgeMode && correct && bridge && !bridge.repaired) {
       bridge.repaired = true;
       saveBridgeState();
+      // Mirror the repair flag in the loot record so either saved record can
+      // restore the bridge if the other localStorage entry is damaged.
+      saveLootState();
       economy.coins += 25;
       saveVehicleProfile();
       updateWalletDisplay();
@@ -759,7 +762,11 @@ function saveRoadsideState() {
 function saveLootState() {
   if (!uid || !sessionId) return;
   try {
-    localStorage.setItem("gd_loot_" + sessionId + "_" + uid, JSON.stringify([...collectedRoadLoot]));
+    localStorage.setItem("gd_loot_" + sessionId + "_" + uid, JSON.stringify({
+      version: 1,
+      collected: [...collectedRoadLoot],
+      bridge: bridge ? { id: bridge.id, repaired: !!bridge.repaired } : null
+    }));
   } catch (error) {}
 }
 
@@ -1427,11 +1434,18 @@ async function start() {
     // Restore each part independently. A damaged or outdated value in one
     // localStorage key must not prevent the other progress from loading.
     const savedBridge = readLocalState("gd_bridge_" + sessionId + "_" + uid);
-    if (
-      savedBridge &&
-      savedBridge.repaired === true &&
-      (!savedBridge.bridgeId || savedBridge.bridgeId === bridge.id)
-    ) {
+    const savedLootState = readLocalState("gd_loot_" + sessionId + "_" + uid, []);
+    const lootBridge = savedLootState && !Array.isArray(savedLootState)
+      ? savedLootState.bridge
+      : null;
+    const bridgeMatches = (saved) =>
+      !!saved &&
+      saved.repaired === true &&
+      (!saved.bridgeId && !saved.id || saved.bridgeId === bridge.id || saved.id === bridge.id);
+
+    // The bridge flag is mirrored in two records. This makes repair recovery
+    // resilient if one localStorage value is malformed or lost.
+    if (bridgeMatches(savedBridge) || bridgeMatches(lootBridge)) {
       bridge.repaired = true;
     }
 
@@ -1443,14 +1457,15 @@ async function start() {
       });
     }
 
-    const savedLoot = readLocalState("gd_loot_" + sessionId + "_" + uid, []);
-    if (Array.isArray(savedLoot)) {
-      const validLootIds = new Set(roadLoot.map((item) => item.id));
-      if (bridge.repaired) validLootIds.add("bridge-chest");
-      savedLoot.forEach((id) => {
-        if (validLootIds.has(id)) collectedRoadLoot.add(id);
-      });
-    }
+    // Accept the original array format as well as the newer structured record.
+    const savedLoot = Array.isArray(savedLootState)
+      ? savedLootState
+      : (savedLootState && Array.isArray(savedLootState.collected) ? savedLootState.collected : []);
+    const validLootIds = new Set(roadLoot.map((item) => item.id));
+    if (bridge.repaired) validLootIds.add("bridge-chest");
+    savedLoot.forEach((id) => {
+      if (validLootIds.has(id)) collectedRoadLoot.add(id);
+    });
 
     // A repaired bridge keeps its reward chest available until collected.
     if (bridge.repaired && !collectedRoadLoot.has("bridge-chest")) {
