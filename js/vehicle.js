@@ -6,9 +6,14 @@
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 const HANDLING = Object.freeze({
-  compact: { roadMax: 440, offRoadMax: 185, acceleration: 390, steering: 1.15, grip: 1 },
-  sport:   { roadMax: 520, offRoadMax: 205, acceleration: 470, steering: 1.25, grip: 1.08 },
-  suv:     { roadMax: 385, offRoadMax: 225, acceleration: 330, steering: 0.95, grip: 0.86 }
+ compact:{roadMax:440,offRoadMax:185,acceleration:390,steering:1.15,grip:1,radius:19},
+ sport:{roadMax:520,offRoadMax:205,acceleration:470,steering:1.25,grip:1.08,radius:19},
+ suv:{roadMax:385,offRoadMax:225,acceleration:330,steering:.95,grip:.86,radius:21},
+ truck:{roadMax:330,offRoadMax:205,acceleration:260,steering:.72,grip:.78,radius:24},
+ motorcycle:{roadMax:500,offRoadMax:145,acceleration:430,steering:1.42,grip:.82,radius:14},
+ bicycle:{roadMax:175,offRoadMax:115,acceleration:125,steering:1.05,grip:.9,radius:12},
+ jeep:{roadMax:390,offRoadMax:265,acceleration:340,steering:.92,grip:.9,radius:21},
+ police:{roadMax:470,offRoadMax:185,acceleration:420,steering:1.18,grip:1.02,radius:20}
 });
 
 export function createVehicle(x, y, angle = 0) {
@@ -47,8 +52,8 @@ export function updateVehicle(car, keys, dt, world) {
   const maxSpeed = onRoadBefore ? roadMax : offRoadMax;
   const acceleration = (onRoadBefore ? handling.acceleration : handling.acceleration * 0.59) * conditionFactor;
   const braking = 900;
-  const reverseAcceleration = 300;
-  const reverseMax = 150;
+  const reverseAcceleration = car.model === "bicycle" ? 75 : 300;
+  const reverseMax = car.model === "bicycle" ? 45 : 150;
 
   // Brake slows the vehicle to a stop. Reverse is a separate control.
   if (keys.brake) {
@@ -74,7 +79,7 @@ export function updateVehicle(car, keys, dt, world) {
 
   const nextX = car.x + Math.cos(car.a) * car.s * dt;
   const nextY = car.y + Math.sin(car.a) * car.s * dt;
-  const hit = world.collidesWithWorld(nextX, nextY, car.model === "suv" ? 21 : 19);
+  const hit = world.collidesWithWorld(nextX, nextY, handling.radius || 19);
 
   if (hit) {
     if (!car.collided && Math.abs(car.s) > 20) {
