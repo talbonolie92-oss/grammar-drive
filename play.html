@@ -37,6 +37,17 @@
     @media (max-width: 430px) { .pad button { width: 82px; height: 60px; font-size: 15px; } .pad-right { right: 10px; bottom: 14px; gap: 8px; } .steering-wheel-control { width: 128px; height: 128px; left: 10px; bottom: 12px; } .analog-track { left: 24px; right: 24px; } }
     #overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(15, 23, 42, .82); text-align: center; padding: 20px; }
     #debug { position: fixed; z-index: 5; left: 8px; bottom: 100px; font-size: 12px; color: #cbd5e1; background: rgba(15, 23, 42, .7); padding: 6px 8px; border-radius: 8px; }
+
+    .car-shop{width:min(760px,100%);max-height:90vh;overflow:auto;padding:20px;border-radius:20px;border:1px solid #475569;background:linear-gradient(145deg,#1e293b,#0f172a);box-shadow:0 24px 70px rgba(0,0,0,.6)}
+    .car-shop-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0}
+    .vehicle-card{min-width:0;padding:12px 8px;border:1px solid #475569;border-radius:14px;background:linear-gradient(155deg,#334155,#172033);color:#e2e8f0;text-align:center;cursor:pointer;transition:transform .15s,border-color .15s,background .15s}
+    .vehicle-card:hover{transform:translateY(-2px);border-color:#93c5fd}.vehicle-card.selected{border:2px solid #60a5fa;background:linear-gradient(155deg,#1e40af,#172554);box-shadow:0 0 0 2px rgba(96,165,250,.18)}
+    .vehicle-card .vehicle-icon{display:block;font-size:30px;margin-bottom:4px}.vehicle-card strong{display:block;font-size:13px}.vehicle-card small{color:#cbd5e1;font-size:11px}
+    .car-shop-colors{padding:12px;margin:8px 0 14px;border-radius:12px;background:rgba(2,6,23,.5);border:1px solid #334155}
+    .color-swatches{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}.color-swatch{width:30px;height:30px;padding:0;border-radius:50%;border:3px solid rgba(255,255,255,.35);box-shadow:0 2px 6px rgba(0,0,0,.35)}
+    .color-swatch.selected{outline:3px solid #fff;outline-offset:2px}
+    @media(max-width:600px){.car-shop{padding:14px}.car-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.vehicle-card{padding:10px 6px}}
+
     @media (hover: hover) and (pointer: fine) { .pad { opacity: .5; } }
   </style>
 </head>
@@ -97,6 +108,11 @@
       </div>
     </section>
   </div>
+  <div id="carShopPanel" class="hidden" style="position:fixed;inset:0;z-index:25;background:rgba(2,6,23,.88);display:grid;place-items:center;padding:14px"><section class="car-shop">
+  <div class="row"><div><span class="badge running">CITY MOTOR SHOP</span><h2 style="margin:8px 0 2px">Choose your ride</h2><p class="muted small" style="margin:0">Pick a vehicle and paint color. Your choice appears to other drivers.</p></div><span class="spacer"></span><button id="carShopClose" class="small secondary" type="button">Close</button></div>
+  <div id="carShopCards" class="car-shop-grid"></div><div class="car-shop-colors"><strong>Paint color</strong><div id="carShopColors" class="color-swatches"></div></div>
+  <div class="row"><span id="carShopSelection" class="muted small">Selected ride</span><span class="spacer"></span><button id="carShopApply" class="good" type="button">Use this vehicle</button></div>
+  </section></div>
   <div id="steeringJoystick" class="steering-wheel-control" role="application" aria-label="Left and right analog steering control">
     <div class="steering-wheel-rim"><span class="wheel-spoke wheel-spoke-top"></span><span class="wheel-spoke wheel-spoke-left"></span><span class="wheel-spoke wheel-spoke-right"></span><span class="wheel-hub"></span></div>
     <div class="analog-track"><span class="analog-track-center"></span><span id="steeringKnob" class="analog-stick-knob"></span></div>
