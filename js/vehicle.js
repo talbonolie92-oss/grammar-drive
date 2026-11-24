@@ -29,7 +29,9 @@ export function updateVehicle(car, keys, dt, world) {
 
   const handling = HANDLING[car.model] || HANDLING.compact;
   const onRoadBefore = world.isOnRoad(car.x, car.y);
-  const steer = Number.isFinite(keys.steer) && keys.steer !== 0\n    ? clamp(keys.steer, -1, 1)\n    : (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
+  const steer = Number.isFinite(keys.steer) && keys.steer !== 0
+    ? clamp(keys.steer, -1, 1)
+    : (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
 
   const conditionFactor = car.condition < 35
     ? 0.55 + (car.condition / 35) * 0.25
@@ -64,7 +66,7 @@ export function updateVehicle(car, keys, dt, world) {
   if (Math.abs(car.s) < 1.5) car.s = 0;
 
   if (steer && Math.abs(car.s) > 3) {
-    const speedFactor = clamp(Math.abs(car.s) / 120, 0.18, 1);
+    const speedFactor = clamp(Math.abs(car.s) / 100, 0.32, 1);
     const grip = (onRoadBefore ? 1 : 0.55) * handling.grip;
     car.a += steer * Math.sign(car.s) * speedFactor * grip * handling.steering * dt;
   }
