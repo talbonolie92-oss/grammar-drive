@@ -1030,7 +1030,7 @@ function applyStatus() {
 
   if (status === "running") {
     running = true;
-    if (live) live.setEnabled(true);
+    if (live) live.setEnabled(!document.hidden);
     renderRoster();
     hideOverlay();
     timerEl.textContent = timeLeft === null ? "⏱ Running" : "⏱ " + formatClock(timeLeft);
