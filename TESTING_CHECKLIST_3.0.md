@@ -6,6 +6,7 @@ Run this only after the 3.0 code is approved, GitHub Pages is intentionally publ
 - [ ] Open the teacher dashboard and sign in.
 - [ ] Create a Grade 10, 11, and 12 session.
 - [ ] Open the student QR/link; join using name and class/section only.
+- [ ] Confirm a start-up grammar check appears before the student can drive; try to close or bypass it and confirm the road stays locked until a correct answer.
 - [ ] Confirm the city loads without repeated loading during normal driving.
 - [ ] Drive through all five districts; confirm roads, buildings, collisions, and map boundaries.
 - [ ] Confirm the minimap tracks the local car, other players, and mission/race markers.
