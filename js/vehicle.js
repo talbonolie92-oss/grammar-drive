@@ -30,7 +30,6 @@ export function updateVehicle(car, keys, dt, world) {
   const handling = HANDLING[car.model] || HANDLING.compact;
   const onRoadBefore = world.isOnRoad(car.x, car.y);
   const steer = (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
-  const throttle = (keys.gas ? 1 : 0) - (keys.brake ? 1 : 0);
 
   const conditionFactor = car.condition < 35
     ? 0.55 + (car.condition / 35) * 0.25
@@ -39,22 +38,29 @@ export function updateVehicle(car, keys, dt, world) {
   const offRoadMax = handling.offRoadMax * conditionFactor;
   const maxSpeed = onRoadBefore ? roadMax : offRoadMax;
   const acceleration = (onRoadBefore ? handling.acceleration : handling.acceleration * 0.59) * conditionFactor;
-  const braking = 650;
+  const braking = 900;
+  const reverseAcceleration = 300;
+  const reverseMax = 150;
 
-  if (throttle > 0 && car.fuel > 0) {
+  // Brake slows the vehicle to a stop. Reverse is a separate control.
+  if (keys.brake) {
+    if (car.s > 0) car.s = Math.max(0, car.s - braking * dt);
+    else if (car.s < 0) car.s = Math.min(0, car.s + braking * dt);
+  } else if (keys.reverse) {
+    if (car.s > 0) car.s = Math.max(0, car.s - braking * dt);
+    else car.s -= reverseAcceleration * conditionFactor * dt;
+  } else if (keys.gas && car.fuel > 0) {
     car.s += acceleration * dt;
     car.fuel = clamp(car.fuel - handling.fuelUse * dt, 0, 100);
-  } else if (throttle < 0) {
-    car.s -= braking * dt;
   } else {
     car.s *= Math.pow(onRoadBefore ? 0.986 : 0.955, dt * 60);
   }
 
-  if (car.fuel <= 0 && throttle > 0) {
+  if (car.fuel <= 0 && keys.gas) {
     car.s *= Math.pow(0.965, dt * 60);
   }
 
-  car.s = clamp(car.s, -Math.min(180, maxSpeed * 0.45), maxSpeed);
+  car.s = clamp(car.s, -reverseMax, maxSpeed);
   if (Math.abs(car.s) < 1.5) car.s = 0;
 
   if (steer && Math.abs(car.s) > 3) {
