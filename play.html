@@ -55,7 +55,7 @@
   <canvas id="track"></canvas>
 
   <div class="hud hud-top">
-    <div class="pill"><span id="light" class="light connecting"></span><span id="connText">Connecting…</span></div>
+    <div class="pill hud-connection" aria-hidden="true"><span id="light" class="light connecting"></span><span id="connText">Connecting…</span></div>
     <div class="pill hidden" id="online">Online: –</div>
     <div class="pill hidden" id="surface">ROAD</div>
     <div class="pill" id="speed">0 km/h</div>
@@ -70,8 +70,8 @@
       </select>
     </label>
     <div class="pill" id="timer">⏱ –</div>
-    <button id="soundToggle" class="small secondary" type="button" aria-pressed="true">🔊 Sound On</button>
-    <label class="pill sound-volume-wrap" style="margin:0"><span>VOL</span><input id="soundVolume" type="range" min="0" max="100" value="75" aria-label="Sound volume"></label>
+    <button id="soundToggle" class="small secondary sound-icon-button" type="button" aria-label="Toggle sound" title="Toggle sound" aria-pressed="true">🔊</button>
+    <label class="pill sound-volume-wrap" style="margin:0" aria-label="Sound level"><input id="soundVolume" type="range" min="0" max="100" value="75" aria-label="Sound volume"></label>
     <div class="spacer"></div>
     <button id="leaveButton" class="small secondary" type="button">Leave</button>
   </div>
