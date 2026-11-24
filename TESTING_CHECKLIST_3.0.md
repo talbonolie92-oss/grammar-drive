@@ -33,6 +33,8 @@ Run this only after the 3.0 code is approved, GitHub Pages is intentionally publ
 ## C. Results and teacher controls
 - [ ] End a running game manually; confirm students see final standings and their own rank.
 - [ ] Let a second game reach zero time; confirm the automatic end also saves and displays standings.
+- [ ] Submit an answer immediately before the timer ends; confirm the final standings include that latest answer.
+- [ ] End a session with no joined students; confirm the teacher dashboard reports the empty session cleanly and students are not left waiting for a nonexistent leaderboard.
 - [ ] Confirm the teacher report and CSV still work.
 - [ ] Select and bulk-delete multiple waiting/ended sessions.
 - [ ] Delete one legacy-format session.
