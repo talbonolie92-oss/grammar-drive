@@ -107,7 +107,8 @@ export function createLiveCars(options) {
     const y = clamp(Number(state.y) || 0, 0, MP.WORLD_MAX);
     const a = wrapAngle(Number(state.a) || 0);
     const s = clamp(Number(state.s) || 0, -1500, 1500);
-    return { x, y, a, s };
+    const model = ["compact", "sport", "suv"].includes(state.m) ? state.m : "compact";
+    return { x, y, a, s, m: model };
   }
 
   function currentName() {
@@ -126,6 +127,7 @@ export function createLiveCars(options) {
       y: p.y,
       a: p.a,
       s: p.s,
+      m: p.m,
       c: currentColor(),
       n: currentName(),
       t: serverTimestamp()
@@ -139,6 +141,7 @@ export function createLiveCars(options) {
       y: p.y,
       a: p.a,
       s: p.s,
+      m: p.m,
       // Keep the display name synchronized with teacher renames.
       n: currentName(),
       t: serverTimestamp()
@@ -200,6 +203,7 @@ export function createLiveCars(options) {
       y: Number(value.y) || 0,
       a: Number(value.a) || 0,
       s: Number(value.s) || 0,
+      m: ["compact", "sport", "suv"].includes(value.m) ? value.m : "compact",
       c: Number.isInteger(value.c) ? value.c : colorFor(carUid),
       n: String(value.n || "Driver"),
       t: Number(value.t) || serverNow()
