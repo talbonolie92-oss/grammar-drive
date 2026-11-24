@@ -61,8 +61,10 @@ const missionSubmitButton = $("missionSubmit");
 const missionUndoButton = $("missionUndo");
 const carSelect = $("carSelect");
 const carSelectWrap = $("carSelectWrap");
-const carShopPanel=$("carShopPanel"),carShopCards=$("carShopCards"),carShopColors=$("carShopColors"),carShopSelection=$("carShopSelection");
+const carShopPanel=$("carShopPanel"),carShopCards=$("carShopCards"),carShopColors=$("carShopColors"),carShopSelection=$("carShopSelection"),carShopWallet=$("carShopWallet"),coinsHud=$("coinsHud"),carShopApply=$("carShopApply");
 let pendingModel="compact",pendingPaint=5;
+const VEHICLE_PRICES={compact:0,bicycle:150,motorcycle:300,suv:450,jeep:500,truck:600,sport:650,police:1200};
+const economy={coins:500,ownedModels:["compact"]};
 const timerEl = $("timer");
 const rosterEl = $("roster");
 const debugEl = $("debug");
@@ -455,7 +457,7 @@ function renderMissionPanel() {
   missionPuzzleEl.classList.toggle("hidden", mission.status !== "return");
   missionSubmitButton.disabled = missionBusy;
   missionUndoButton.disabled = missionBusy;
-  missionRewardEl.textContent = "Mission reward: 30 points";
+  missionRewardEl.textContent = "Mission reward: +30 points · +30 coins";
 
   if (mission.status === "available") {
     missionBriefingEl.textContent += " Drive to each glowing crate marker, collect all message fragments, then return here.";
@@ -565,6 +567,9 @@ async function deliverMission() {
     await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
     me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
     mission.status = "complete";
+    economy.coins += 30;
+    saveVehicleProfile();
+    updateWalletDisplay();
     saveMissionState();
     renderMissionPanel();
   } catch (error) {
@@ -593,35 +598,80 @@ function interactMission() {
   if (nearbyChallenge(car.x, car.y)) openMissionPanel();
 }
 
+function ownsVehicle(key){return economy.ownedModels.includes(key);}
+function updateWalletDisplay(){
+ if(coinsHud)coinsHud.textContent="🪙 "+economy.coins;
+ if(carShopWallet)carShopWallet.textContent="Wallet · "+economy.coins+" coins";
+}
 function renderCarShop(){
- if(!carShopCards||!carShopColors)return;carShopCards.innerHTML="";
- Object.entries(CAR_MODELS).forEach(([key,model])=>{const card=document.createElement("button");card.type="button";card.className="vehicle-card"+(pendingModel===key?" selected":"");card.innerHTML='<span class="vehicle-icon"></span><strong></strong><small></small>';card.querySelector(".vehicle-icon").textContent=model.icon;card.querySelector("strong").textContent=model.label;card.querySelector("small").textContent=model.note;card.addEventListener("click",()=>{pendingModel=key;renderCarShop();});carShopCards.appendChild(card);});
- carShopColors.innerHTML="";PAINT_COLORS.forEach((paint,index)=>{const sw=document.createElement("button");sw.type="button";sw.className="color-swatch"+(pendingPaint===index?" selected":"");sw.style.background=paint.value;sw.title=paint.name;sw.setAttribute("aria-label",paint.name+" paint");sw.addEventListener("click",()=>{pendingPaint=index;renderCarShop();});carShopColors.appendChild(sw);});
- carShopSelection.textContent=CAR_MODELS[pendingModel].label+" · "+PAINT_COLORS[pendingPaint].name;
+ if(!carShopCards||!carShopColors)return;
+ updateWalletDisplay();
+ carShopCards.innerHTML="";
+ Object.entries(CAR_MODELS).forEach(([key,model])=>{
+  const card=document.createElement("button");card.type="button";
+  const owned=ownsVehicle(key),price=VEHICLE_PRICES[key]||0;
+  card.className="vehicle-card"+(pendingModel===key?" selected":"")+(owned?" owned":" locked");
+  card.innerHTML='<span class="vehicle-icon"></span><strong></strong><small></small><em></em>';
+  card.querySelector(".vehicle-icon").textContent=model.icon;
+  card.querySelector("strong").textContent=model.label;
+  card.querySelector("small").textContent=model.note;
+  card.querySelector("em").textContent=owned?"✓ OWNED":("🔒 "+price+" coins");
+  card.addEventListener("click",()=>{pendingModel=key;renderCarShop();});
+  carShopCards.appendChild(card);
+ });
+ carShopColors.innerHTML="";
+ PAINT_COLORS.forEach((paint,index)=>{
+  const sw=document.createElement("button");sw.type="button";
+  sw.className="color-swatch"+(pendingPaint===index?" selected":"");
+  sw.style.background=paint.value;sw.title=paint.name;
+  sw.setAttribute("aria-label",paint.name+" paint");
+  sw.addEventListener("click",()=>{pendingPaint=index;renderCarShop();});
+  carShopColors.appendChild(sw);
+ });
+ const price=VEHICLE_PRICES[pendingModel]||0,owned=ownsVehicle(pendingModel);
+ carShopSelection.textContent=CAR_MODELS[pendingModel].label+" · "+PAINT_COLORS[pendingPaint].name+" · "+(owned?"Ready to use":price+" coins");
+ carShopApply.textContent=owned?"Use this vehicle":(economy.coins>=price?"Buy for "+price+" coins":"Need "+(price-economy.coins)+" more coins");
+ carShopApply.disabled=!owned&&economy.coins<price;
 }
 function openCarShop(){const s=nearbyService(car.x,car.y);if(!running||!s||s.type!=="shop")return;pendingModel=car.model;pendingPaint=car.paintIndex;renderCarShop();carShopPanel.classList.remove("hidden");clearControls();}
 function closeCarShop(){carShopPanel.classList.add("hidden");}
-function applyCarShopSelection(){if(!running||!CAR_MODELS[pendingModel]||!PAINT_COLORS[pendingPaint])return;car.model=pendingModel;car.paintIndex=pendingPaint;car.s=0;saveVehicleProfile();if(live){live.publish({x:car.x,y:car.y,a:car.a,s:car.s,m:car.model});live.publishNow();}closeCarShop();updateCar(.001);}
+function applyCarShopSelection(){
+ if(!running||!CAR_MODELS[pendingModel]||!PAINT_COLORS[pendingPaint])return;
+ if(!ownsVehicle(pendingModel)){
+  const price=VEHICLE_PRICES[pendingModel]||0;
+  if(economy.coins<price)return;
+  economy.coins-=price;
+  economy.ownedModels.push(pendingModel);
+ }
+ car.model=pendingModel;car.paintIndex=pendingPaint;car.s=0;
+ saveVehicleProfile();updateWalletDisplay();
+ if(live){live.publish({x:car.x,y:car.y,a:car.a,s:car.s,m:car.model});live.publishNow();}
+ closeCarShop();updateCar(.001);
+}
 function profileStorageKey() { return "gd_vehicle_profile_" + uid; }
 
 function saveVehicleProfile() {
-  if (!uid) return;
-  try {
-    localStorage.setItem(profileStorageKey(), JSON.stringify({
-      condition: car.condition, model: car.model, paintIndex:car.paintIndex
-    }));
-  } catch (error) {}
+ if(!uid)return;
+ try{
+  localStorage.setItem(profileStorageKey(),JSON.stringify({
+   condition:car.condition,model:car.model,paintIndex:car.paintIndex,
+   coins:economy.coins,ownedModels:economy.ownedModels
+  }));
+ }catch(error){}
 }
-
 function loadVehicleProfile() {
-  if (!uid) return;
-  try {
-    const saved = JSON.parse(localStorage.getItem(profileStorageKey()) || "null");
-    if (!saved || typeof saved !== "object") return;
-    if (Number.isFinite(saved.condition)) car.condition = Math.max(0, Math.min(100, saved.condition));
-    if(CAR_MODELS[saved.model])car.model=saved.model;
-    if(Number.isInteger(saved.paintIndex))car.paintIndex=Math.max(0,Math.min(PAINT_COLORS.length-1,saved.paintIndex));
-  } catch (error) {}
+ if(!uid)return;
+ try{
+  const saved=JSON.parse(localStorage.getItem(profileStorageKey())||"null");
+  if(!saved||typeof saved!=="object")return;
+  if(Number.isFinite(saved.condition))car.condition=Math.max(0,Math.min(100,saved.condition));
+  if(CAR_MODELS[saved.model])car.model=saved.model;
+  if(Number.isInteger(saved.paintIndex))car.paintIndex=Math.max(0,Math.min(PAINT_COLORS.length-1,saved.paintIndex));
+  if(Number.isFinite(saved.coins))economy.coins=Math.max(0,Math.floor(saved.coins));
+  if(Array.isArray(saved.ownedModels))economy.ownedModels=[...new Set(["compact",...saved.ownedModels.filter(key=>CAR_MODELS[key])])];
+  if(!ownsVehicle(car.model))car.model="compact";
+ }catch(error){}
+ updateWalletDisplay();
 }
 
 function frame(timestamp) {
