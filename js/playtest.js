@@ -478,7 +478,9 @@ function renderGrammarChallenge() {
   grammarFeedbackEl.textContent = "";
   grammarExplanationEl.textContent = "";
   grammarOptionsEl.textContent = "";
-  grammarSelectionEl.textContent = challenge.mode === "order" ? "Your sentence will appear here." : "Choose one answer.";
+  grammarSelectionEl.textContent = challenge.mode === "order"
+    ? (challenge.selectedWords.length ? challenge.selectedWords.join(" ") : "Your sentence will appear here.")
+    : "Choose one answer.";
   grammarCheckButton.classList.remove("hidden");
   grammarNextButton.classList.add("hidden");
   grammarUndoButton.classList.toggle("hidden", challenge.mode !== "order");
@@ -490,6 +492,8 @@ function renderGrammarChallenge() {
     button.type = "button";
     button.className = "grammar-option";
     button.textContent = option;
+    if (challenge.mode === "order" && challenge.selectedWordIndexes.includes(index)) button.disabled = true;
+    if (challenge.mode !== "order" && challenge.selectedOption === option) button.classList.add("selected");
     button.addEventListener("click", () => {
       if (grammarBusy) return;
       if (challenge.mode === "order") {
