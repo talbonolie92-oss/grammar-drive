@@ -308,7 +308,9 @@ export function createLiveCars(options) {
   }
 
   function setEnabled(value) {
-    enabled = value === true;
+    const nextEnabled = value === true;
+    if (enabled === nextEnabled) return;
+    enabled = nextEnabled;
     if (enabled) {
       fullNeeded = true;
       lastSentAt = 0;
