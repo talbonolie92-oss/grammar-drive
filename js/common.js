@@ -44,6 +44,8 @@ export function buildCreateSession(sessionId, code, teacherUid, options) {
     ["sessions/" + sessionId]: session,
     ["joinCodes/" + code]: {
       sessionId,
+      grade: session.grade,
+      topics: session.topics,
       status: "waiting",
       durationMinutes: session.durationMinutes,
       allowLateJoin: session.allowLateJoin
