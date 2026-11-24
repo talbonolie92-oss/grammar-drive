@@ -21,14 +21,12 @@ import {
   endsAt,
   formatClock,
   friendlyError,
-  paths,
   buildProgress
 } from "./common.js";
 
 import { createLiveCars, CAR_COLORS, colorFor } from "./multiplayer.js";
-import { WORLD, drawMap, isOnRoad, collidesWithWorld } from "./world.js";
+import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChallenge } from "./world.js";
 import { createVehicle, updateVehicle, refuelVehicle, repairVehicle } from "./vehicle.js";
-import { nearbyService, nearbyChallenge } from "./world.js";
 import { nextQuestion } from "./questions.js";
 
 const { auth, db } = studentFirebase();
