@@ -27,7 +27,7 @@ import {
 import { createLiveCars, CAR_COLORS, colorFor } from "./multiplayer.js";
 import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChallenge } from "./world.js";
 import { createVehicle, updateVehicle, refuelVehicle, repairVehicle } from "./vehicle.js";
-import { nextQuestion } from "./questions.js";
+import { createMission, nearbyMissionCrate, drawMissionMarkers } from "./missions.js";
 
 const { auth, db } = studentFirebase();
 const serverNow = serverClock(db);
@@ -46,13 +46,19 @@ const serviceButton = $("serviceButton");
 const challengeButton = $("challengeButton");
 const challengeHintEl = $("challengeHint");
 const challengePanel = $("challengePanel");
-const challengeTopicEl = $("challengeTopic");
-const challengeQuestionEl = $("challengeQuestion");
-const challengeChoicesEl = $("challengeChoices");
-const challengeFeedbackEl = $("challengeFeedback");
-const challengeExplanationEl = $("challengeExplanation");
-const challengeScoreEl = $("challengeScore");
-const challengeNextButton = $("challengeNext");
+const missionTopicEl = $("missionTopic");
+const missionTitleEl = $("missionTitle");
+const missionBriefingEl = $("missionBriefing");
+const missionCargoStatusEl = $("missionCargoStatus");
+const missionPuzzleEl = $("missionPuzzle");
+const missionSentenceEl = $("missionSentence");
+const missionWordBankEl = $("missionWordBank");
+const missionFeedbackEl = $("missionFeedback");
+const missionExplanationEl = $("missionExplanation");
+const missionRewardEl = $("missionReward");
+const missionActionButton = $("missionAction");
+const missionSubmitButton = $("missionSubmit");
+const missionUndoButton = $("missionUndo");
 const carSelect = $("carSelect");
 const carSelectWrap = $("carSelectWrap");
 const timerEl = $("timer");
@@ -90,9 +96,8 @@ let stopMe = null;
 let canvasWidth = 0;
 let canvasHeight = 0;
 let pixelRatio = 1;
-let activeQuestion = null;
-let challengeAnswered = false;
-let answerBusy = false;
+let mission = null;
+let missionBusy = false;
 
 function showOverlay(title, message, showBack = false) {
   overlayTitle.textContent = title;
@@ -269,6 +274,7 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
 }
 function drawWorld() {
   drawMap(ctx, worldToScreen, canvasWidth, canvasHeight);
+  drawMissionMarkers(ctx, worldToScreen, mission);
 
   for (const [id, item] of others) {
     const pose = live ? live.pose(id) : item;
@@ -310,6 +316,7 @@ function updateCar(dt) {
 
   const service = nearbyService(car.x, car.y);
   const challenge = nearbyChallenge(car.x, car.y);
+  const crate = nearbyMissionCrate(car.x, car.y, mission);
   carSelectWrap.classList.toggle("hidden", !(service && service.type === "repair"));
   if (carSelect.value !== car.model) carSelect.value = car.model;
   serviceButton.classList.toggle("hidden", !service);
@@ -320,8 +327,19 @@ function updateCar(dt) {
     serviceButton.textContent = action;
     serviceButton.dataset.service = service.type;
   }
-  challengeButton.classList.toggle("hidden", !challenge || challengePanel.classList.contains("hidden") === false);
-  challengeHintEl.classList.toggle("hidden", !challenge || challengePanel.classList.contains("hidden") === false);
+  const missionOpen = challengePanel.classList.contains("hidden") === false;
+  const canInteract = !!crate || !!challenge;
+  challengeButton.classList.toggle("hidden", !canInteract || missionOpen || !running);
+  challengeHintEl.classList.toggle("hidden", !canInteract || missionOpen || !running);
+  if (crate) {
+    challengeButton.textContent = "Collect Cargo";
+    challengeHintEl.textContent = "Message Crate " + (crate.index + 1) + " · Press E or tap Collect Cargo";
+  } else if (challenge) {
+    challengeButton.textContent = mission && mission.status === "return" ? "Return Message" : "Open Dispatch";
+    challengeHintEl.textContent = mission && mission.status === "collecting"
+      ? "City Dispatch · Cargo " + mission.collected.length + "/" + mission.fragments.length
+      : "City Dispatch · Press E or tap Open Dispatch";
+  }
 }
 
 function useNearbyService() {
@@ -334,91 +352,189 @@ function useNearbyService() {
   updateCar(0.001);
 }
 
-function openChallenge() {
+function missionStorageKey() {
+  return "gd_mission_" + sessionId + "_" + uid;
+}
+
+function saveMissionState() {
+  if (!mission || !uid || !sessionId) return;
+  try {
+    localStorage.setItem(missionStorageKey(), JSON.stringify(mission));
+  } catch (error) {}
+}
+
+function loadMissionState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(missionStorageKey()) || "null");
+    if (saved && Array.isArray(saved.fragments) && Array.isArray(saved.stops) && Array.isArray(saved.collected)) {
+      mission = saved;
+      return;
+    }
+  } catch (error) {}
+  mission = createMission({ grade: codeInfo.grade, topics: codeInfo.topics });
+  saveMissionState();
+}
+
+function openMissionPanel() {
   if (!running || !nearbyChallenge(car.x, car.y) || challengePanel.classList.contains("hidden") === false) return;
-  if (!Array.isArray(codeInfo.topics) || !codeInfo.topics.length || !codeInfo.grade) {
-    showOverlay("Challenge unavailable", "This session was created before the Grammar Challenge update. Ask your teacher to create a new session.", true);
-    return;
-  }
+  if (!mission) loadMissionState();
   challengePanel.classList.remove("hidden");
   clearControls();
-  loadNextQuestion();
+  renderMissionPanel();
 }
 
-function closeChallenge() {
+function closeMissionPanel() {
   challengePanel.classList.add("hidden");
-  activeQuestion = null;
-  challengeAnswered = false;
-  answerBusy = false;
+  missionBusy = false;
 }
 
-function loadNextQuestion() {
-  activeQuestion = nextQuestion({
-    grade: codeInfo.grade,
-    topics: codeInfo.topics,
-    uid,
-    sessionId
+function renderMissionPanel() {
+  if (!mission) return;
+  missionTopicEl.textContent = "GRADE " + codeInfo.grade + " · " + mission.topic;
+  missionTitleEl.textContent = mission.title;
+  missionBriefingEl.textContent = mission.briefing;
+  missionCargoStatusEl.textContent = "Recovered cargo: " + mission.collected.length + " / " + mission.fragments.length;
+  missionExplanationEl.textContent = "";
+  missionFeedbackEl.className = "message hidden";
+  missionFeedbackEl.textContent = "";
+  missionPuzzleEl.classList.toggle("hidden", mission.status !== "return");
+  missionSubmitButton.disabled = missionBusy;
+  missionUndoButton.disabled = missionBusy;
+  missionRewardEl.textContent = "Mission reward: 30 points";
+
+  if (mission.status === "available") {
+    missionBriefingEl.textContent += " Drive to each glowing crate marker, collect all message fragments, then return here.";
+    missionActionButton.textContent = "Start Mission";
+    missionActionButton.classList.remove("hidden");
+  } else if (mission.status === "collecting") {
+    missionBriefingEl.textContent = "Your mission is active. Close Dispatch, drive to the glowing cargo markers, and press E or Collect Cargo at each stop.";
+    missionActionButton.classList.add("hidden");
+  } else if (mission.status === "return") {
+    missionBriefingEl.textContent = "All cargo recovered. Now arrange the fragments to reconstruct the original message.";
+    missionActionButton.classList.add("hidden");
+    renderMissionBuilder();
+  } else if (mission.status === "complete") {
+    missionBriefingEl.textContent = "Delivery complete. Your message has been reconstructed and the city route is clear.";
+    missionCargoStatusEl.textContent = "All cargo delivered";
+    missionExplanationEl.textContent = mission.explanation;
+    missionFeedbackEl.className = "message success";
+    missionFeedbackEl.textContent = "MISSION COMPLETE · +30 POINTS";
+    missionActionButton.textContent = "Start Another Mission";
+    missionActionButton.classList.remove("hidden");
+  }
+}
+
+function renderMissionBuilder() {
+  missionSentenceEl.textContent = "";
+  missionWordBankEl.textContent = "";
+  const placed = new Set(mission.assembled);
+  mission.assembled.forEach((fragmentId, position) => {
+    const fragment = mission.fragments[fragmentId];
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "good";
+    chip.textContent = fragment.text;
+    chip.title = "Tap to remove";
+    chip.addEventListener("click", () => {
+      if (missionBusy) return;
+      mission.assembled.splice(position, 1);
+      saveMissionState();
+      renderMissionBuilder();
+    });
+    missionSentenceEl.appendChild(chip);
   });
-  challengeAnswered = false;
-  answerBusy = false;
-  challengeFeedbackEl.className = "message hidden";
-  challengeFeedbackEl.textContent = "";
-  challengeExplanationEl.textContent = "";
-  challengeNextButton.classList.add("hidden");
-  challengeChoicesEl.textContent = "";
-  if (!activeQuestion) {
-    challengeQuestionEl.textContent = "No questions are available for this session's topics.";
+  mission.shuffled.forEach((fragment) => {
+    if (placed.has(fragment.id)) return;
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "secondary";
+    chip.textContent = fragment.text;
+    chip.addEventListener("click", () => {
+      if (missionBusy) return;
+      mission.assembled.push(fragment.id);
+      saveMissionState();
+      renderMissionBuilder();
+    });
+    missionWordBankEl.appendChild(chip);
+  });
+  missionSubmitButton.disabled = missionBusy || mission.assembled.length !== mission.fragments.length;
+}
+
+function startMission() {
+  if (!mission || mission.status !== "available") return;
+  mission.status = "collecting";
+  saveMissionState();
+  challengePanel.classList.add("hidden");
+  updateCar(0.001);
+}
+
+function collectMissionCrate(crate) {
+  if (!mission || mission.status !== "collecting" || !crate) return;
+  if (mission.collected.includes(crate.index)) return;
+  mission.collected.push(crate.index);
+  const recovered = mission.fragments[crate.index];
+  if (mission.collected.length >= mission.fragments.length) mission.status = "return";
+  saveMissionState();
+  challengeHintEl.textContent = "Recovered: " + recovered.text + " · " + mission.collected.length + "/" + mission.fragments.length;
+  challengeHintEl.classList.remove("hidden");
+  challengeButton.classList.add("hidden");
+  updateCar(0.001);
+}
+
+async function deliverMission() {
+  if (!mission || mission.status !== "return" || missionBusy || !running) return;
+  const correctOrder = mission.assembled.length === mission.fragments.length &&
+    mission.assembled.every((fragmentId, index) => fragmentId === index);
+  if (!correctOrder) {
+    missionFeedbackEl.className = "message warn";
+    missionFeedbackEl.textContent = "The message is not in the right order yet. Rearrange the fragments and try again.";
     return;
   }
-  challengeTopicEl.textContent = "Grade " + codeInfo.grade + " · " + activeQuestion.topic;
-  challengeQuestionEl.textContent = activeQuestion.q;
-  activeQuestion.options.forEach((option, index) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "secondary";
-    button.textContent = String.fromCharCode(65 + index) + ". " + option.text;
-    button.addEventListener("click", () => void submitChallengeAnswer(index, button));
-    challengeChoicesEl.appendChild(button);
-  });
-  const progress = me && me.progress ? me.progress : { score: 0, correct: 0, answered: 0 };
-  challengeScoreEl.textContent = "Score: " + (progress.score || 0) + " · Correct: " + (progress.correct || 0) + "/" + (progress.answered || 0);
-}
 
-async function submitChallengeAnswer(index, selectedButton) {
-  if (!activeQuestion || challengeAnswered || answerBusy || !running) return;
-  answerBusy = true;
-  challengeChoicesEl.querySelectorAll("button").forEach((button) => { button.disabled = true; });
-  const selected = activeQuestion.options[index];
-  const isCorrect = !!(selected && selected.correct);
+  missionBusy = true;
+  missionSubmitButton.disabled = true;
+  missionUndoButton.disabled = true;
   const progress = me && me.progress ? me.progress : { score: 0, correct: 0, answered: 0, updatedAt: 0 };
-  const now = serverNow();
-  const waitMs = Math.max(0, 2050 - (now - (Number(progress.updatedAt) || 0)));
+  const waitMs = Math.max(0, 2050 - (serverNow() - (Number(progress.updatedAt) || 0)));
   if (waitMs > 0) {
-    challengeFeedbackEl.className = "message warn";
-    challengeFeedbackEl.textContent = "Please wait a moment before answering the next question.";
+    missionFeedbackEl.className = "message warn";
+    missionFeedbackEl.textContent = "Dispatch is verifying the delivery…";
     await new Promise((resolve) => setTimeout(resolve, waitMs));
   }
-  const nextScore = (Number(progress.score) || 0) + (isCorrect ? 10 : 0);
-  const nextCorrect = (Number(progress.correct) || 0) + (isCorrect ? 1 : 0);
+
+  const nextScore = (Number(progress.score) || 0) + 30;
+  const nextCorrect = (Number(progress.correct) || 0) + 1;
   const nextAnswered = (Number(progress.answered) || 0) + 1;
   try {
     await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
-    challengeAnswered = true;
     me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
-    challengeFeedbackEl.className = "message " + (isCorrect ? "success" : "info");
-    challengeFeedbackEl.textContent = isCorrect ? "Correct! +10 points." : "Not quite. No points lost—keep learning!";
-    challengeExplanationEl.textContent = activeQuestion.why;
-    challengeNextButton.classList.remove("hidden");
-    challengeScoreEl.textContent = "Score: " + nextScore + " · Correct: " + nextCorrect + "/" + nextAnswered;
-    selectedButton.classList.remove("secondary");
-    selectedButton.classList.add(isCorrect ? "good" : "danger");
+    mission.status = "complete";
+    saveMissionState();
+    renderMissionPanel();
   } catch (error) {
-    challengeFeedbackEl.className = "message error";
-    challengeFeedbackEl.textContent = "Could not save your answer: " + friendlyError(error) + " Please try again.";
-    challengeChoicesEl.querySelectorAll("button").forEach((button) => { button.disabled = false; });
+    missionFeedbackEl.className = "message error";
+    missionFeedbackEl.textContent = "Delivery could not be recorded: " + friendlyError(error) + " Please try again.";
   } finally {
-    answerBusy = false;
+    missionBusy = false;
+    missionSubmitButton.disabled = false;
+    missionUndoButton.disabled = false;
   }
+}
+
+function startAnotherMission() {
+  mission = createMission({ grade: codeInfo.grade, topics: codeInfo.topics });
+  saveMissionState();
+  renderMissionPanel();
+}
+
+function interactMission() {
+  if (!running || challengePanel.classList.contains("hidden") === false) return;
+  const crate = nearbyMissionCrate(car.x, car.y, mission);
+  if (crate) {
+    collectMissionCrate(crate);
+    return;
+  }
+  if (nearbyChallenge(car.x, car.y)) openMissionPanel();
 }
 
 function profileStorageKey() { return "gd_vehicle_profile_" + uid; }
@@ -547,7 +663,7 @@ function onKeyDown(event) {
   if (key === "arrowdown" || key === "s" || key === " ") keys.brake = true;
   if (key === "e") {
     if (nearbyService(car.x, car.y)) useNearbyService();
-    else openChallenge();
+    else interactMission();
   }
 }
 
@@ -591,9 +707,20 @@ async function start() {
   bindTouch("btnGas", "gas");
   bindTouch("btnBrake", "brake");
   serviceButton.addEventListener("click", useNearbyService);
-  challengeButton.addEventListener("click", openChallenge);
-  $("challengeClose").addEventListener("click", closeChallenge);
-  challengeNextButton.addEventListener("click", loadNextQuestion);
+  challengeButton.addEventListener("click", interactMission);
+  $("missionClose").addEventListener("click", closeMissionPanel);
+  missionActionButton.addEventListener("click", () => {
+    if (!mission) return;
+    if (mission.status === "available") startMission();
+    else if (mission.status === "complete") startAnotherMission();
+  });
+  missionSubmitButton.addEventListener("click", () => void deliverMission());
+  missionUndoButton.addEventListener("click", () => {
+    if (!mission || missionBusy || !mission.assembled.length) return;
+    mission.assembled.pop();
+    saveMissionState();
+    renderMissionBuilder();
+  });
   carSelect.addEventListener("change", () => {
     if (!CAR_MODELS[carSelect.value]) return;
     car.model = carSelect.value;
@@ -625,6 +752,8 @@ async function start() {
     sessionId = codeInfo.sessionId;
 
     if (!sessionId) throw new Error("The session information is incomplete.");
+    if (!codeInfo.grade || !codeInfo.topics) throw new Error("This session is missing its grade or grammar topics. Ask your teacher to create a new session.");
+    loadMissionState();
 
     const playerSnap = await get(ref(db, paths.player(sessionId, uid)));
     if (!playerSnap.exists()) throw new Error("Your student entry was not found. Please join again from the QR code.");
