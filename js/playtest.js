@@ -783,9 +783,8 @@ async function start() {
   window.addEventListener("keyup", onKeyUp);
 
   bindSteeringWheel();
-  bindTouch("btnGas", "gas");
-  bindTouch("btnBrake", "brake");
-  bindTouch("btnReverse", "reverse");
+  bindTouch("btnForward", "gas");
+  bindTouch("btnBackward", "reverse");
   serviceButton.addEventListener("click", useNearbyService);
   challengeButton.addEventListener("click", interactMission);
   $("missionClose").addEventListener("click", closeMissionPanel);
