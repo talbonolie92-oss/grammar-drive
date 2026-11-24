@@ -25,6 +25,12 @@
     .pad button.backward { border-bottom: 4px solid #f59e0b; }
     @media (max-width: 430px) { .pad button { width: 82px; height: 60px; font-size: 15px; } .pad-right { right: 10px; bottom: 14px; gap: 8px; } .steering-wheel { width: 124px; height: 124px; left: 12px; bottom: 14px; } }
     .steering-wheel { position: fixed; z-index: 6; left: 18px; bottom: 18px; width: 142px; height: 142px; border: 12px solid rgba(226,232,240,.9); border-radius: 50%; background: rgba(15,23,42,.62); box-shadow: 0 4px 18px rgba(0,0,0,.35), inset 0 0 0 5px rgba(15,23,42,.8); touch-action: none; user-select: none; -webkit-user-select: none; }
+    .steering-wheel { transform: rotate(0deg); transition: transform .22s ease-out; transform-origin: center center; }
+    .fuel-warning { position: fixed; z-index: 8; left: 50%; top: 58px; transform: translateX(-50%); width: min(620px, calc(100vw - 24px)); padding: 10px 14px; border-radius: 12px; text-align: center; font-size: 13px; line-height: 1.35; font-weight: 900; color: #fff; background: rgba(127,29,29,.96); border: 2px solid #f87171; box-shadow: 0 5px 18px rgba(0,0,0,.4); pointer-events: none; }
+    .fuel-warning.low { background: rgba(120,53,15,.96); border-color: #fbbf24; }
+    .fuel-warning.critical { background: rgba(127,29,29,.97); border-color: #f87171; animation: fuelPulse 1s ease-in-out infinite alternate; }
+    @keyframes fuelPulse { from { box-shadow: 0 3px 12px rgba(239,68,68,.18); } to { box-shadow: 0 3px 22px rgba(239,68,68,.65); } }
+    @media (max-width: 430px) { .fuel-warning { top: 96px; font-size: 12px; padding: 8px 10px; } }
     .steering-wheel::before, .steering-wheel::after { content: ""; position: absolute; left: 50%; top: 50%; background: rgba(226,232,240,.9); transform: translate(-50%,-50%); border-radius: 5px; }
     .steering-wheel::before { width: 9px; height: 76px; }
     .steering-wheel::after { width: 76px; height: 9px; }
@@ -45,6 +51,7 @@
     <div class="pill" id="surface">ROAD</div>
     <div class="pill" id="speed">0 km/h</div>
     <div class="pill" id="fuel">Fuel: 100%</div>
+    <div id="fuelWarning" class="fuel-warning hidden" role="status" aria-live="polite"></div>
     <div class="pill" id="condition">Condition: 100%</div>
     <div class="pill hidden" id="missionHud">Cargo: 0 / 4</div>
     <label id="carSelectWrap" class="pill hidden" style="margin:0;padding:4px 8px">Garage car
