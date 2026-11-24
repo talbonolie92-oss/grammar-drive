@@ -41,6 +41,8 @@ const fuelEl = $("fuel");
 const conditionEl = $("condition");
 const serviceHintEl = $("serviceHint");
 const serviceButton = $("serviceButton");
+const carSelect = $("carSelect");
+const carSelectWrap = $("carSelectWrap");
 const timerEl = $("timer");
 const rosterEl = $("roster");
 const debugEl = $("debug");
@@ -51,6 +53,12 @@ const overlayLink = $("overlayLink");
 
 const keys = { left: false, right: false, gas: false, brake: false };
 const car = createVehicle(1800, 1300, 0);
+const CAR_MODELS = {
+  compact: { label: "Compact", color: "#3b82f6", width: 34, height: 19 },
+  sport: { label: "Sport", color: "#ef4444", width: 40, height: 17 },
+  suv: { label: "SUV", color: "#eab308", width: 37, height: 23 }
+};
+car.model = "compact";
 const others = new Map();
 
 let uid = null;
@@ -130,18 +138,19 @@ function worldToScreen(x, y) {
   };
 }
 
-function drawCar(x, y, angle, colorIndex, name, isMine = false) {
+function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "compact") {
   const p = worldToScreen(x, y);
   const scale = p.scale;
-  const w = Math.max(24, 34 * scale);
-  const h = Math.max(14, 19 * scale);
+  const model = CAR_MODELS[modelKey] || CAR_MODELS.compact;
+  const w = Math.max(24, model.width * scale);
+  const h = Math.max(14, model.height * scale);
 
   ctx.save();
   ctx.translate(p.x, p.y);
   ctx.rotate(angle);
   ctx.fillStyle = "rgba(0,0,0,.3)";
   ctx.fillRect(-w / 2 + 2, -h / 2 + 3, w, h);
-  ctx.fillStyle = CAR_COLORS[colorIndex] || "#3b82f6";
+  ctx.fillStyle = isMine ? model.color : (CAR_COLORS[colorIndex] || "#3b82f6");
   ctx.strokeStyle = isMine ? "#ffffff" : "#0f172a";
   ctx.lineWidth = Math.max(1.5, 2 * scale);
   ctx.beginPath();
@@ -172,7 +181,7 @@ function drawWorld() {
     if (pose) drawCar(pose.x, pose.y, pose.a, pose.c, pose.n, false);
   }
 
-  drawCar(car.x, car.y, car.a, colorFor(uid), me ? me.name : "You", true);
+  drawCar(car.x, car.y, car.a, colorFor(uid), me ? me.name : "You", true, car.model);
 }
 
 function renderRoster() {
@@ -206,6 +215,8 @@ function updateCar(dt) {
   conditionEl.style.borderColor = car.condition < 35 ? "#ef4444" : "#334155";
 
   const service = nearbyService(car.x, car.y);
+  carSelectWrap.classList.toggle("hidden", !(service && service.type === "repair"));
+  if (carSelect.value !== car.model) carSelect.value = car.model;
   serviceButton.classList.toggle("hidden", !service);
   serviceHintEl.classList.toggle("hidden", !service);
   if (service) {
@@ -222,7 +233,30 @@ function useNearbyService() {
   if (!service) return;
   if (service.type === "fuel") refuelVehicle(car);
   if (service.type === "repair") repairVehicle(car);
+  saveVehicleProfile();
   updateCar(0.001);
+}
+
+function profileStorageKey() { return "gd_vehicle_profile_" + uid; }
+
+function saveVehicleProfile() {
+  if (!uid) return;
+  try {
+    localStorage.setItem(profileStorageKey(), JSON.stringify({
+      fuel: car.fuel, condition: car.condition, model: car.model
+    }));
+  } catch (error) {}
+}
+
+function loadVehicleProfile() {
+  if (!uid) return;
+  try {
+    const saved = JSON.parse(localStorage.getItem(profileStorageKey()) || "null");
+    if (!saved || typeof saved !== "object") return;
+    if (Number.isFinite(saved.fuel)) car.fuel = Math.max(0, Math.min(100, saved.fuel));
+    if (Number.isFinite(saved.condition)) car.condition = Math.max(0, Math.min(100, saved.condition));
+    if (CAR_MODELS[saved.model]) car.model = saved.model;
+  } catch (error) {}
 }
 
 function frame(timestamp) {
@@ -236,9 +270,10 @@ function frame(timestamp) {
     if (timestamp - lastSave > 1000) {
       lastSave = timestamp;
       try {
-        sessionStorage.setItem("gd_track_" + code, JSON.stringify({
+        localStorage.setItem("gd_track_" + code + "_" + uid, JSON.stringify({
           x: car.x, y: car.y, a: car.a
         }));
+        saveVehicleProfile();
       } catch (error) {}
     }
   }
@@ -369,6 +404,11 @@ async function start() {
   bindTouch("btnGas", "gas");
   bindTouch("btnBrake", "brake");
   serviceButton.addEventListener("click", useNearbyService);
+  carSelect.addEventListener("change", () => {
+    if (!CAR_MODELS[carSelect.value]) return;
+    car.model = carSelect.value;
+    saveVehicleProfile();
+  });
 
   $("leaveButton").addEventListener("click", async () => {
     await finish("You left the track", "You can return using your teacher's QR code.");
@@ -385,6 +425,7 @@ async function start() {
     await authReady(auth);
     if (!auth.currentUser) await signInAnonymously(auth);
     uid = auth.currentUser.uid;
+    loadVehicleProfile();
 
     const codeSnap = await get(ref(db, paths.joinCode(code)));
     if (!codeSnap.exists()) throw new Error("This game link is no longer valid.");
@@ -398,7 +439,7 @@ async function start() {
     me = playerSnap.val();
 
     try {
-      const saved = JSON.parse(sessionStorage.getItem("gd_track_" + code) || "null");
+      const saved = JSON.parse(localStorage.getItem("gd_track_" + code + "_" + uid) || "null");
       if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
         car.x = Math.max(30, Math.min(WORLD.width - 30, saved.x));
         car.y = Math.max(30, Math.min(WORLD.height - 30, saved.y));
