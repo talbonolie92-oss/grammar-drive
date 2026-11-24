@@ -464,8 +464,8 @@ function openGrammarPanel() {
 }
 
 function closeGrammarPanel() {
+  if (grammarBusy) return;
   if (grammarPanel) grammarPanel.classList.add("hidden");
-  grammarBusy = false;
   grammarChallenge = null;
 }
 
@@ -585,8 +585,8 @@ function openMissionPanel() {
 }
 
 function closeMissionPanel() {
+  if (missionBusy) return;
   challengePanel.classList.add("hidden");
-  missionBusy = false;
 }
 
 function renderMissionPanel() {
