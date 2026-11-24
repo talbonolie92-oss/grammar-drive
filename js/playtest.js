@@ -10,7 +10,8 @@ import {
   ref,
   get,
   update,
-  onValue
+  onValue,
+  serverTimestamp
 } from "./firebase.js";
 
 import {
@@ -89,6 +90,11 @@ const finalResultsEl = $("finalResults");
 
 const keys = { left: false, right: false, steer: 0, gas: false, brake: false, reverse: false };
 const car = createVehicle(1800, 1300, 0);
+car.growthScale = 0.5;
+car.targetGrowthScale = 0.5;
+const growthHud = $("growthHud");
+let growthProfile = { xp: 0, missionsCompleted: 0, grammarCorrect: 0 };
+let lastGrowthHud = 0;
 const CAR_MODELS = {
   compact:{label:"Compact",icon:"🚗",note:"Easy handling",width:36,height:20},
   sport:{label:"Sports Car",icon:"🏎️",note:"Fast and agile",width:43,height:18},
@@ -272,13 +278,14 @@ function scheduleMapCache() {
   }
 }
 
-function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "compact") {
+function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "compact", growthScale = 0.5) {
   const p = worldToScreen(x, y);
   const scale = p.scale;
   const model = CAR_MODELS[modelKey] || CAR_MODELS.compact;
   const paint=PAINT_COLORS[colorIndex]||PAINT_COLORS[5];
-  const w = Math.max(24, model.width * scale);
-  const h = Math.max(14, model.height * scale);
+  const growthFactor = Math.max(1, Math.min(2, (Number(growthScale) || 0.5) / 0.5));
+  const w = Math.max(24, model.width * scale * growthFactor);
+  const h = Math.max(14, model.height * scale * growthFactor);
   const line = Math.max(1, 1.6 * scale);
 
   ctx.save();
@@ -440,10 +447,10 @@ function drawWorld() {
 
   for (const [id, item] of others) {
     const pose = live ? live.pose(id) : item;
-    if (pose) drawCar(pose.x, pose.y, pose.a, pose.c, pose.n, false, pose.m || "compact");
+    if (pose) drawCar(pose.x, pose.y, pose.a, pose.c, pose.n, false, pose.m || "compact", pose.g || 0.5);
   }
 
-  drawCar(car.x, car.y, car.a, car.paintIndex, me ? me.name : "You", true, car.model);
+  drawCar(car.x, car.y, car.a, car.paintIndex, me ? me.name : "You", true, car.model, car.growthScale);
 }
 
 function renderRoster() {
@@ -650,6 +657,7 @@ async function submitGrammarChallenge() {
     const nextAnswered = (Number(progress.answered) || 0) + 1;
     await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
     me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
+    await grantGrowthXp(correct ? 20 : 5, correct ? "grammar-correct" : "grammar-attempt");
 
     grammarFeedbackEl.className = correct ? "message success" : "message warn";
     grammarFeedbackEl.textContent = correct
@@ -813,6 +821,7 @@ async function deliverMission() {
   try {
     await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
     me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
+    await grantGrowthXp(100, "mission");
     mission.status = "complete";
     playSfx("reward");
     economy.coins += 30;
@@ -897,9 +906,86 @@ function applyCarShopSelection(){
  }
  car.model=pendingModel;car.paintIndex=pendingPaint;car.s=0;
  saveVehicleProfile();updateWalletDisplay();
- if(live){live.publish({x:car.x,y:car.y,a:car.a,s:car.s,m:car.model});live.publishNow();}
+ if(live){live.publish({x:car.x,y:car.y,a:car.a,s:car.s,m:car.model,g:car.growthScale});live.publishNow();}
  closeCarShop();updateCar(.001);
 }
+function growthScaleForXp(xp) {
+  return Math.min(1, 0.5 + Math.max(0, Number(xp) || 0) * 0.0005);
+}
+
+function updateGrowthHud() {
+  if (!growthHud) return;
+  growthHud.textContent = "🚗 Growth " + Math.round(car.growthScale * 100) + "% · " + growthProfile.xp + " XP";
+}
+
+function applyGrowthProfile(value) {
+  growthProfile = {
+    xp: Math.max(0, Math.floor(Number(value.xp) || 0)),
+    missionsCompleted: Math.max(0, Math.floor(Number(value.missionsCompleted) || 0)),
+    grammarCorrect: Math.max(0, Math.floor(Number(value.grammarCorrect) || 0))
+  };
+  car.targetGrowthScale = growthScaleForXp(growthProfile.xp);
+  car.growthScale = car.targetGrowthScale;
+  try {
+    localStorage.setItem("gd_growth_profile_" + uid, JSON.stringify(growthProfile));
+  } catch (error) {}
+  updateGrowthHud();
+}
+
+async function loadGrowthProfile() {
+  if (!uid) return;
+  try {
+    const local = JSON.parse(localStorage.getItem("gd_growth_profile_" + uid) || "null");
+    if (local && typeof local === "object") applyGrowthProfile(local);
+  } catch (error) {}
+
+  try {
+    const snapshot = await get(ref(db, "vehicleProfiles/" + uid));
+    if (snapshot.exists()) {
+      applyGrowthProfile(snapshot.val());
+    } else {
+      await update(ref(db), {
+        ["vehicleProfiles/" + uid]: {
+          xp: 0,
+          missionsCompleted: 0,
+          grammarCorrect: 0,
+          updatedAt: serverTimestamp()
+        }
+      });
+    }
+  } catch (error) {
+    // Local progress remains playable if profile rules have not been published yet.
+  }
+}
+
+async function grantGrowthXp(amount, reason) {
+  const reward = Math.max(0, Math.min(100, Math.floor(Number(amount) || 0)));
+  if (!reward || !uid) return;
+  const previousScale = growthScaleForXp(growthProfile.xp);
+  growthProfile.xp += reward;
+  if (reason === "mission") growthProfile.missionsCompleted += 1;
+  if (reason === "grammar-correct") growthProfile.grammarCorrect += 1;
+  car.targetGrowthScale = growthScaleForXp(growthProfile.xp);
+
+  try {
+    localStorage.setItem("gd_growth_profile_" + uid, JSON.stringify(growthProfile));
+  } catch (error) {}
+  updateGrowthHud();
+
+  try {
+    await update(ref(db, "vehicleProfiles/" + uid), {
+      xp: growthProfile.xp,
+      missionsCompleted: growthProfile.missionsCompleted,
+      grammarCorrect: growthProfile.grammarCorrect,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    // Keep local XP if database profile access is not available.
+  }
+
+  if (car.targetGrowthScale - previousScale >= 0.05) playSfx("evolve");
+}
+
 function profileStorageKey() { return "gd_vehicle_profile_" + uid; }
 
 function saveVehicleProfile() {
@@ -930,6 +1016,13 @@ function frame(timestamp) {
   if (finished) return;
   const dt = Math.min(0.05, lastFrame ? (timestamp - lastFrame) / 1000 : 0);
   lastFrame = timestamp;
+  const growthEase = Math.min(1, dt * 3.5);
+  car.growthScale += (car.targetGrowthScale - car.growthScale) * growthEase;
+  if (Math.abs(car.targetGrowthScale - car.growthScale) < 0.001) car.growthScale = car.targetGrowthScale;
+  if (timestamp - lastGrowthHud > 500) {
+    lastGrowthHud = timestamp;
+    updateGrowthHud();
+  }
 
   const modalOpen =
     challengePanel.classList.contains("hidden") === false ||
@@ -939,7 +1032,7 @@ function frame(timestamp) {
   if (running && !modalOpen) {
     updateEngineSound(car.s, keys.gas);
     updateCar(dt);
-    if (live) live.publish({ x: car.x, y: car.y, a: car.a, s: car.s, m: car.model });
+    if (live) live.publish({ x: car.x, y: car.y, a: car.a, s: car.s, m: car.model, g: car.growthScale });
     if (timestamp - lastSave > 1000) {
       lastSave = timestamp;
       try {
@@ -1255,6 +1348,7 @@ async function start() {
     if (!auth.currentUser) await signInAnonymously(auth);
     uid = auth.currentUser.uid;
     loadVehicleProfile();
+    void loadGrowthProfile();
 
     const codeSnap = await get(ref(db, paths.joinCode(code)));
     if (!codeSnap.exists()) throw new Error("This game link is no longer valid.");
@@ -1304,7 +1398,7 @@ async function start() {
       }
     });
 
-    live.publish({ x: car.x, y: car.y, a: car.a, s: 0, m: car.model });
+    live.publish({ x: car.x, y: car.y, a: car.a, s: 0, m: car.model, g: car.growthScale });
     live.start();
     live.setEnabled(codeInfo.status === "running");
 
