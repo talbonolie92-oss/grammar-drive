@@ -253,22 +253,18 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
     ctx.stroke();
   }
 
-  // Clear front marker: a bright nose chevron points in the direction the car drives.
-  ctx.fillStyle = "#f8fafc";
+  // Highly visible cyan arrow at the nose: this is the FRONT of the vehicle.
+  ctx.fillStyle = "#67e8f9";
+  ctx.strokeStyle = "#083344";
+  ctx.lineWidth = Math.max(1.5, 2.2 * scale);
   ctx.beginPath();
-  ctx.moveTo(w * .48, 0);
-  ctx.lineTo(w * .66, 0);
-  ctx.lineTo(w * .51, -h * .28);
-  ctx.lineTo(w * .43, -h * .22);
+  ctx.moveTo(w * .62, 0);
+  ctx.lineTo(w * .30, -h * .34);
+  ctx.lineTo(w * .38, 0);
+  ctx.lineTo(w * .30, h * .34);
   ctx.closePath();
   ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(w * .48, 0);
-  ctx.lineTo(w * .66, 0);
-  ctx.lineTo(w * .51, h * .28);
-  ctx.lineTo(w * .43, h * .22);
-  ctx.closePath();
-  ctx.fill();
+  ctx.stroke();
 
   // Front lights, rear lights and bumpers make orientation readable.
   ctx.fillStyle = "#fef3c7";
@@ -592,7 +588,18 @@ function loadVehicleProfile() {
   try {
     const saved = JSON.parse(localStorage.getItem(profileStorageKey()) || "null");
     if (!saved || typeof saved !== "object") return;
-    if (Number.isFinite(saved.fuel)) car.fuel = Math.max(0, Math.min(100, saved.fuel));
+    if (Number.isFinite(saved.fuel)) {
+      car.fuel = Math.max(0, Math.min(100, saved.fuel));
+      // Emergency reserve prevents a student from being permanently stranded at 0%.
+      if (car.fuel <= 0) {
+        car.fuel = 20;
+        localStorage.setItem(profileStorageKey(), JSON.stringify({
+          fuel: car.fuel,
+          condition: car.condition,
+          model: car.model
+        }));
+      }
+    }
     if (Number.isFinite(saved.condition)) car.condition = Math.max(0, Math.min(100, saved.condition));
     if (CAR_MODELS[saved.model]) car.model = saved.model;
   } catch (error) {}
