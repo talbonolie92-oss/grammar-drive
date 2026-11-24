@@ -144,6 +144,7 @@ export function createLiveCars(options) {
       a: p.a,
       s: p.s,
       m: p.m,
+      g: p.g,
       c: currentColor(),
       // Keep the display name synchronized with teacher renames.
       n: currentName(),
