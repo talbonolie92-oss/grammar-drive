@@ -80,9 +80,9 @@ jobs:
                 walkCss(full);
               } else if (entry.name.toLowerCase().endsWith('.css')) {
                 const source = fs.readFileSync(full, 'utf8');
-                for (const match of source.matchAll(/url\\(\\s*(?:(["'])(.*?)\\1|([^)]*?))\\s*\\)/gi)) {
+                for (const match of source.matchAll(/url\(\s*(?:(["'])(.*?)\1|([^)]*?))\s*\)/gi)) {
                   const raw = (match[2] ?? match[3] ?? '').trim();
-                  if (!raw || /^(?:data:|https?:|\\/\\/|#)/i.test(raw)) continue;
+                  if (!raw || /^(?:data:|https?:|\/\/|#)/i.test(raw)) continue;
                   const value = raw.split(/[?#]/)[0];
                   if (!value) continue;
                   const target = value.startsWith('/')
