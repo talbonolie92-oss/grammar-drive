@@ -29,6 +29,7 @@ import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChall
 import { createVehicle, updateVehicle, repairVehicle } from "./vehicle.js";
 import { createMission, nearbyMissionCrate, drawMissionMarkers } from "./missions.js";
 import { createRoadsideEvents, nearbyRoadsideEvent, drawRoadsideEvents } from "./roadside-events.js";
+import { createRoadLoot, nearbyRoadLoot, drawRoadLoot } from "./road-loot.js";
 import { createGrammarChallenge } from "./grammar-challenges.js";
 import { initAudio, playSfx, updateEngineSound, stopEngineSound, toggleMuted, isMuted, setVolume, getVolume } from "./audio.js";
 
@@ -129,6 +130,8 @@ let pixelRatio = 1;
 let mission = null;
 let missionBusy = false;
 let roadsideEvents = [];
+let roadLoot = [];
+const collectedRoadLoot = new Set();
 const clearedRoadsideEvents = new Set();
 let activeRoadsideEventId = null;
 let grammarAutoReturn = false;
@@ -419,6 +422,7 @@ function drawWorld() {
   // Mission crates and vehicles are dynamic, so they remain on the live layer.
   drawMissionMarkers(ctx, worldToScreen, mission);
   drawRoadsideEvents(ctx, worldToScreen, roadsideEvents, clearedRoadsideEvents);
+  drawRoadLoot(ctx, worldToScreen, roadLoot, collectedRoadLoot);
 
   // Avoid drawing cars outside the visible camera area. The margin prevents
   // vehicles entering the screen from popping in at the edge.
@@ -702,6 +706,16 @@ function nextGrammarChallenge() {
   renderGrammarChallenge();
 }
 
+function collectRoadLoot() {
+  const item = nearbyRoadLoot(car.x, car.y, roadLoot, collectedRoadLoot);
+  if (!item) return;
+  collectedRoadLoot.add(item.id);
+  economy.coins += item.reward;
+  updateWalletDisplay();
+  saveVehicleProfile();
+  playSfx(item.type === "chest" ? "reward" : "collect");
+}
+
 function checkRoadsideEncounter() {
   if (!running || Math.abs(car.s) < 20 || grammarPanel.classList.contains("hidden") === false || challengePanel.classList.contains("hidden") === false || !carShopPanel.classList.contains("hidden")) return;
   const event = nearbyRoadsideEvent(car.x, car.y, roadsideEvents, clearedRoadsideEvents);
@@ -976,6 +990,7 @@ function frame(timestamp) {
   if (running && !modalOpen) {
     updateEngineSound(car.s, keys.gas);
     updateCar(dt);
+    collectRoadLoot();
     checkRoadsideEncounter();
     if (live) live.publish(car);
     if (timestamp - lastSave > 1000) {
@@ -1315,7 +1330,9 @@ async function start() {
     codeInfo = codeSnap.val();
     sessionId = codeInfo.sessionId;
     roadsideEvents = createRoadsideEvents(uid + "|" + sessionId);
+    roadLoot = createRoadLoot(uid + "|" + sessionId);
     clearedRoadsideEvents.clear();
+    collectedRoadLoot.clear();
 
     if (!sessionId) throw new Error("The session information is incomplete.");
     if (!codeInfo.grade || !codeInfo.topics) throw new Error("This session is missing its grade or grammar topics. Ask your teacher to create a new session.");
