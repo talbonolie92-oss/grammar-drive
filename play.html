@@ -52,6 +52,20 @@
 
   <div id="serviceHint" class="pill hidden" style="position:fixed;z-index:6;left:50%;bottom:100px;transform:translateX(-50%);text-align:center">Press E to use service</div>
   <button id="serviceButton" class="small hidden" type="button" style="position:fixed;z-index:7;left:50%;bottom:52px;transform:translateX(-50%)">Use Service</button>
+  <div id="challengeHint" class="pill hidden" style="position:fixed;z-index:6;left:50%;bottom:100px;transform:translateX(-50%);text-align:center">Challenge Hub · Press E or tap Challenge</div>
+  <button id="challengeButton" class="small good hidden" type="button" style="position:fixed;z-index:7;left:50%;bottom:52px;transform:translateX(-50%)">Start Challenge</button>
+
+  <div id="challengePanel" class="hidden" style="position:fixed;inset:0;z-index:20;background:rgba(2,6,23,.88);display:grid;place-items:center;padding:16px">
+    <section class="panel" style="width:min(520px,100%);max-height:90vh;overflow:auto;margin:0">
+      <div class="row"><span class="badge running">Grammar Challenge</span><span class="spacer"></span><button id="challengeClose" class="small secondary" type="button">Close</button></div>
+      <p id="challengeTopic" class="muted small"></p>
+      <h2 id="challengeQuestion">Loading question…</h2>
+      <div id="challengeChoices" style="display:grid;gap:10px"></div>
+      <div id="challengeFeedback" class="message hidden" aria-live="polite"></div>
+      <p id="challengeExplanation" class="muted"></p>
+      <div class="row"><span id="challengeScore" class="muted">Score: 0</span><span class="spacer"></span><button id="challengeNext" class="hidden" type="button">Next Question</button></div>
+    </section>
+  </div>
   <div class="pad pad-left"><button id="btnLeft" type="button" aria-label="Steer left">◀</button><button id="btnRight" type="button" aria-label="Steer right">▶</button></div>
   <div class="pad pad-right"><button id="btnBrake" type="button" aria-label="Brake">▼</button><button id="btnGas" type="button" aria-label="Accelerate">▲</button></div>
 
