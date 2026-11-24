@@ -330,7 +330,6 @@ export function drawMap(ctx, project, width, height) {
     }
 
     // Front facade strip, evenly spaced windows, and warm-lit ground floor.
-    ctx.fillStyle = "rgba(15,23,42,.18)";
     const facadeY = p.y + bh * .68;
     const facadeH = bh * .31;
     const facadeGradient = ctx.createLinearGradient(p.x, facadeY, p.x, p.y + bh);
@@ -351,7 +350,6 @@ export function drawMap(ctx, project, width, height) {
           ctx.strokeRect(wx, wy, windowW, windowH);
           ctx.fillStyle = "rgba(255,255,255,.3)";
           ctx.fillRect(wx + 2 * scale, wy + 2 * scale, Math.max(1, 2 * scale), windowH - 4 * scale);
-        }
       }
 
       // Distinctive main entrance, glass doors, canopy, and steps.
