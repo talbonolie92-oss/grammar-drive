@@ -85,6 +85,7 @@ const overlay = $("overlay");
 const overlayTitle = $("overlayTitle");
 const overlayText = $("overlayText");
 const overlayLink = $("overlayLink");
+const finalResultsEl = $("finalResults");
 
 const keys = { left: false, right: false, steer: 0, gas: false, brake: false, reverse: false };
 const car = createVehicle(1800, 1300, 0);
@@ -121,6 +122,8 @@ let lastFrame = 0;
 let lastSave = 0;
 let stopCode = null;
 let stopMe = null;
+let stopResults = null;
+let finishMessage = "";
 let canvasWidth = 0;
 let canvasHeight = 0;
 let pixelRatio = 1;
@@ -132,9 +135,44 @@ let grammarBusy = false;
 function showOverlay(title, message, showBack = false) {
   overlayTitle.textContent = title;
   overlayText.textContent = message;
+  if (finalResultsEl) {
+    finalResultsEl.textContent = "";
+    finalResultsEl.classList.add("hidden");
+  }
   overlay.style.display = "grid";
   overlayLink.classList.toggle("hidden", !showBack);
   overlayLink.href = "./student.html?code=" + encodeURIComponent(code);
+}
+
+function renderFinalStandings(snapshot) {
+  const data = snapshot && typeof snapshot.val === "function" ? snapshot.val() : snapshot;
+  if (!data || !data.results || !finalResultsEl) return;
+
+  const rows = Object.entries(data.results).map(([playerUid, row]) => ({
+    uid: playerUid,
+    rank: Number(row.rank) || 0,
+    name: String(row.name || "Driver"),
+    classSection: String(row.classSection || ""),
+    score: Number(row.score) || 0,
+    accuracy: Number(row.accuracy) || 0
+  })).sort((a, b) => a.rank - b.rank);
+
+  const mine = rows.find(row => row.uid === uid);
+  const medals = ["🥇", "🥈", "🥉"];
+  const lines = rows.slice(0, 10).map(row =>
+    (medals[row.rank - 1] || "🏁") + "  #" + row.rank + "  " +
+    row.name + (row.classSection ? " · " + row.classSection : "") +
+    " — " + row.score + " pts · " + row.accuracy + "%"
+  );
+
+  finalResultsEl.textContent = "🏆 FINAL CLASS STANDINGS\n" +
+    lines.join("\n") +
+    (rows.length > 10 ? "\n…and " + (rows.length - 10) + " more drivers." : "");
+  finalResultsEl.classList.remove("hidden");
+
+  overlayText.textContent = finishMessage + (mine
+    ? "\n\nYour final result: #" + mine.rank + " · " + mine.score + " points · " + mine.accuracy + "% accuracy."
+    : "");
 }
 
 function hideOverlay() {
@@ -937,6 +975,10 @@ function cleanupListeners() {
     stopMe();
     stopMe = null;
   }
+  if (stopResults) {
+    stopResults();
+    stopResults = null;
+  }
   if (rafId) {
     cancelAnimationFrame(rafId);
     rafId = 0;
@@ -951,6 +993,7 @@ async function finish(title, message, showBack = true) {
   if (finished) return;
   finished = true;
   running = false;
+  finishMessage = message;
   stopEngineSound();
   cleanupListeners();
   if (live) {
@@ -958,6 +1001,22 @@ async function finish(title, message, showBack = true) {
     live = null;
   }
   showOverlay(title, message, showBack);
+
+  const shouldShowResults = codeInfo &&
+    (codeInfo.status === "ended" || title === "Time's Up!" || title === "Game Over");
+  if (shouldShowResults && sessionId && finalResultsEl) {
+    finalResultsEl.textContent = "Waiting for the teacher to publish the final standings…";
+    finalResultsEl.classList.remove("hidden");
+    stopResults = onValue(
+      ref(db, "publicResults/" + sessionId),
+      (snap) => {
+        if (snap.exists()) renderFinalStandings(snap);
+      },
+      () => {
+        finalResultsEl.textContent = "Final standings are available from your teacher's dashboard.";
+      }
+    );
+  }
 }
 
 function applyStatus() {
