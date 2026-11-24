@@ -462,6 +462,7 @@ function accuracyPercent(row) {
 
 function buildPublicResultsUpdate(id, session) {
   const report = createResultsOverview(playerRows(session));
+  if (!report.ranked.length) return {};
   const results = {};
   report.ranked.forEach((row, index) => {
     results[row.uid] = {
