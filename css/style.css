@@ -177,3 +177,11 @@ tr.duplicate td { background: rgba(217, 119, 6, .15); }
   .podium-place { padding: 10px 4px; font-size: 12px; }
   .podium-place strong { overflow-wrap: anywhere; }
 }
+
+
+/* Session cleanup controls */
+.session-delete-note { color: #fca5a5; font-size: 12px; margin-top: 6px; }
+button.danger:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+}
