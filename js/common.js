@@ -1,10 +1,12 @@
 
-import { ref, get, onValue, serverTimestamp } from "./firebase.js";
-
 // --------------------------------------------------
 // Grammar Drive: Open Road Challenge
 // js/common.js — shared helpers and database layout
 // --------------------------------------------------
+
+import { ref, get, onValue, serverTimestamp } from "./firebase.js";
+
+/* ---------- constants ---------- */
 
 export const RULES_VERSION = "phase1-v1";
 
@@ -24,30 +26,7 @@ export const DURATIONS = [10, 15, 20, 30, 45];
 export const NAME_MAX = 40;
 export const CLASS_MAX = 30;
 
-/*
-DATABASE LAYOUT
-
-teachers/{teacherUid}
-  { role, active }
-
-sessions/{sessionId}
-  { teacherUid, code, grade, topics, durationMinutes,
-    allowLateJoin, status, createdAt, startedAt?, endedAt? }
-
-sessions/{sessionId}/players/{studentUid}
-  { name, classSection, joinedAt,
-    progress: { score, correct, answered, updatedAt } }
-
-joinCodes/{CODE}
-  { sessionId, status, durationMinutes, allowLateJoin, startedAt? }
-
-rulesVersion
-  "phase1-v1"
-*/
-
-// --------------------------------------------------
-// SESSION CREATION
-// --------------------------------------------------
+/* ---------- database write builders ---------- */
 
 export function buildCreateSession(sessionId, code, teacherUid, options) {
   const session = {
@@ -63,7 +42,6 @@ export function buildCreateSession(sessionId, code, teacherUid, options) {
 
   return {
     ["sessions/" + sessionId]: session,
-
     ["joinCodes/" + code]: {
       sessionId,
       status: "waiting",
@@ -73,43 +51,28 @@ export function buildCreateSession(sessionId, code, teacherUid, options) {
   };
 }
 
-// --------------------------------------------------
-// SESSION START
-// --------------------------------------------------
-
 export function buildStartSession(sessionId, code) {
   return {
     ["sessions/" + sessionId + "/status"]: "running",
     ["sessions/" + sessionId + "/startedAt"]: serverTimestamp(),
-
     ["joinCodes/" + code + "/status"]: "running",
     ["joinCodes/" + code + "/startedAt"]: serverTimestamp()
   };
 }
 
-// --------------------------------------------------
-// SESSION END
-// --------------------------------------------------
-
 export function buildEndSession(sessionId, code) {
   return {
     ["sessions/" + sessionId + "/status"]: "ended",
     ["sessions/" + sessionId + "/endedAt"]: serverTimestamp(),
-
     ["joinCodes/" + code + "/status"]: "ended"
   };
 }
-
-// --------------------------------------------------
-// PLAYER DATA
-// --------------------------------------------------
 
 export function buildPlayer(name, classSection) {
   return {
     name,
     classSection,
     joinedAt: serverTimestamp(),
-
     progress: {
       score: 0,
       correct: 0,
@@ -128,33 +91,21 @@ export function buildProgress(score, correct, answered) {
   };
 }
 
-// --------------------------------------------------
-// DATABASE PATHS
-// --------------------------------------------------
+/* ---------- database paths ---------- */
 
 export const paths = {
   session: (sid) => "sessions/" + sid,
-
-  players: (sid) =>
-    "sessions/" + sid + "/players",
-
-  player: (sid, uid) =>
-    "sessions/" + sid + "/players/" + uid,
-
+  players: (sid) => "sessions/" + sid + "/players",
+  player: (sid, uid) => "sessions/" + sid + "/players/" + uid,
   progress: (sid, uid) =>
     "sessions/" + sid + "/players/" + uid + "/progress",
-
-  joinCode: (code) =>
-    "joinCodes/" + code
+  joinCode: (code) => "joinCodes/" + code
 };
 
-// --------------------------------------------------
-// GENERAL HELPERS
-// --------------------------------------------------
+/* ---------- general helpers ---------- */
 
 export function makeCode() {
   const values = new Uint32Array(6);
-
   crypto.getRandomValues(values);
 
   return Array.from(
@@ -173,12 +124,14 @@ export function cleanText(value, max) {
 export function normaliseName(value) {
   return String(value || "")
     .toLowerCase()
-    .replace(/[^a-z0-9฀-๿]+/g, "");
+    .replace(/[^a-z0-9\u0E00-\u0E7F]+/g, "");
 }
 
 export function $(id) {
   return document.getElementById(id);
 }
+
+/* ---------- safe HTML element helper ---------- */
 
 export function el(tag, props, children) {
   const node = document.createElement(tag);
@@ -214,6 +167,8 @@ export function el(tag, props, children) {
   return node;
 }
 
+/* ---------- messages ---------- */
+
 export function showMessage(element, text, kind) {
   element.textContent = text;
   element.className = "message " + (kind || "error");
@@ -224,13 +179,10 @@ export function hideMessage(element) {
   element.className = "message hidden";
 }
 
-// --------------------------------------------------
-// TIME HELPERS
-// --------------------------------------------------
+/* ---------- time helpers ---------- */
 
 export function formatClock(ms) {
   const total = Math.max(0, Math.ceil(ms / 1000));
-
   const minutes = Math.floor(total / 60);
   const seconds = total % 60;
 
@@ -246,12 +198,9 @@ export function formatTime(timestamp) {
 export function serverClock(db) {
   let offset = 0;
 
-  onValue(
-    ref(db, ".info/serverTimeOffset"),
-    (snapshot) => {
-      offset = Number(snapshot.val()) || 0;
-    }
-  );
+  onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
+    offset = Number(snap.val()) || 0;
+  });
 
   return () => Date.now() + offset;
 }
@@ -268,9 +217,7 @@ export function endsAt(record) {
   return record.startedAt + record.durationMinutes * 60000;
 }
 
-// --------------------------------------------------
-// FIREBASE RULES VERSION CHECK
-// --------------------------------------------------
+/* ---------- Firebase rules version check ---------- */
 
 export async function phase1RulesPublished(db) {
   try {
@@ -282,9 +229,7 @@ export async function phase1RulesPublished(db) {
   }
 }
 
-// --------------------------------------------------
-// ERROR MESSAGES
-// --------------------------------------------------
+/* ---------- Firebase error messages ---------- */
 
 export function friendlyError(error) {
   const code = String(
@@ -299,7 +244,9 @@ export function friendlyError(error) {
     return "Network problem. Check the internet connection and try again.";
   }
 
-  if (/auth\/invalid-credential|auth\/wrong-password|auth\/user-not-found/.test(code)) {
+  if (
+    /auth\/invalid-credential|auth\/wrong-password|auth\/user-not-found/.test(code)
+  ) {
     return "Incorrect email or password.";
   }
 
@@ -311,16 +258,16 @@ export function friendlyError(error) {
     return "Too many attempts. Please wait a few minutes and try again.";
   }
 
-  if (/auth\/admin-restricted-operation|auth\/operation-not-allowed/.test(code)) {
+  if (
+    /auth\/admin-restricted-operation|auth\/operation-not-allowed/.test(code)
+  ) {
     return "This sign-in method is turned off in Firebase Authentication.";
   }
 
   return (error && error.message) || "Something went wrong. Please try again.";
 }
 
-// --------------------------------------------------
-// QR CODE DRAWING
-// --------------------------------------------------
+/* ---------- QR code drawing ---------- */
 
 export function drawQR(canvas, matrix) {
   const quiet = 4;
