@@ -54,6 +54,7 @@ const challengeButton = $("challengeButton");
 const challengeHintEl = $("challengeHint");
 const challengePanel = $("challengePanel");
 const missionTopicEl = $("missionTopic");
+const missionBadge = $("missionBadge");
 const missionTitleEl = $("missionTitle");
 const missionBriefingEl = $("missionBriefing");
 const missionCargoStatusEl = $("missionCargoStatus");
@@ -862,6 +863,7 @@ function openMissionPanel() {
   const validLocation = mission && mission.status === "return" ? atDispatch : atMissionBoard;
   if (!running || !validLocation || challengePanel.classList.contains("hidden") === false) return;
   if (!mission) loadMissionState();
+  if (missionBadge) missionBadge.textContent = nearbyDispatch(car.x, car.y) ? "CITY DISPATCH · DELIVERY" : "CITY CENTER · MISSION BOARD";
   challengePanel.classList.remove("hidden");
   playSfx("click");
   clearControls();
@@ -885,7 +887,7 @@ function renderMissionPanel() {
   missionPuzzleEl.classList.toggle("hidden", mission.status !== "return");
   missionSubmitButton.disabled = missionBusy;
   missionUndoButton.disabled = missionBusy;
-  missionRewardEl.textContent = "Mission reward: +30 points · +30 coins";
+  missionRewardEl.textContent = "Mission reward: +30 points · +30 coins · +100 XP";
 
   if (mission.status === "available") {
     missionBriefingEl.textContent += " Drive to each glowing crate marker, collect all message fragments, then return to City Dispatch.";
@@ -903,7 +905,7 @@ function renderMissionPanel() {
     missionCargoStatusEl.textContent = "All cargo delivered";
     missionExplanationEl.textContent = mission.explanation;
     missionFeedbackEl.className = "message success";
-    missionFeedbackEl.textContent = "MISSION COMPLETE · +30 POINTS";
+    missionFeedbackEl.textContent = "MISSION COMPLETE · +30 POINTS · +100 XP";
     missionActionButton.textContent = "Start Another Mission";
     missionActionButton.classList.remove("hidden");
   }
