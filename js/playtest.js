@@ -23,6 +23,8 @@ import {
 } from "./common.js";
 
 import { createLiveCars, CAR_COLORS, colorFor } from "./multiplayer.js";
+import { WORLD, drawMap, isOnRoad, collidesWithWorld } from "./world.js";
+import { createVehicle, updateVehicle } from "./vehicle.js";
 
 const { auth, db } = studentFirebase();
 const serverNow = serverClock(db);
@@ -40,9 +42,8 @@ const overlayTitle = $("overlayTitle");
 const overlayText = $("overlayText");
 const overlayLink = $("overlayLink");
 
-const WORLD = { width: 2400, height: 1600 };
 const keys = { left: false, right: false, gas: false, brake: false };
-const car = { x: 1200, y: 800, a: 0, s: 0 };
+const car = createVehicle(1800, 1300, 0);
 const others = new Map();
 
 let uid = null;
@@ -156,65 +157,7 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false) {
 }
 
 function drawWorld() {
-  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-  const p = worldToScreen(0, 0);
-  const scale = p.scale;
-
-  ctx.fillStyle = "#166534";
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-  const grid = 100 * scale;
-  ctx.strokeStyle = "rgba(187,247,208,.10)";
-  ctx.lineWidth = 1;
-  for (let x = (p.x % grid); x < canvasWidth; x += grid) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvasHeight); ctx.stroke();
-  }
-  for (let y = (p.y % grid); y < canvasHeight; y += grid) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvasWidth, y); ctx.stroke();
-  }
-
-  // Simple closed test circuit and a cross-road.
-  const road = [
-    [250, 250], [2150, 250], [2150, 1350], [250, 1350], [250, 250]
-  ];
-  ctx.strokeStyle = "#475569";
-  ctx.lineWidth = 150 * scale;
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  road.forEach(([x, y], i) => {
-    const q = worldToScreen(x, y);
-    if (!i) ctx.moveTo(q.x, q.y); else ctx.lineTo(q.x, q.y);
-  });
-  ctx.stroke();
-
-  ctx.strokeStyle = "#cbd5e1";
-  ctx.lineWidth = 3 * scale;
-  ctx.setLineDash([24 * scale, 20 * scale]);
-  ctx.beginPath();
-  road.forEach(([x, y], i) => {
-    const q = worldToScreen(x, y);
-    if (!i) ctx.moveTo(q.x, q.y); else ctx.lineTo(q.x, q.y);
-  });
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  const crossA = worldToScreen(1200, 250);
-  const crossB = worldToScreen(1200, 1350);
-  ctx.strokeStyle = "#475569";
-  ctx.lineWidth = 130 * scale;
-  ctx.beginPath(); ctx.moveTo(crossA.x, crossA.y); ctx.lineTo(crossB.x, crossB.y); ctx.stroke();
-  ctx.strokeStyle = "#cbd5e1";
-  ctx.lineWidth = 3 * scale;
-  ctx.setLineDash([24 * scale, 20 * scale]);
-  ctx.beginPath(); ctx.moveTo(crossA.x, crossA.y); ctx.lineTo(crossB.x, crossB.y); ctx.stroke();
-  ctx.setLineDash([]);
-
-  // World boundary.
-  const topLeft = worldToScreen(0, 0);
-  ctx.strokeStyle = "#86efac";
-  ctx.lineWidth = 5;
-  ctx.strokeRect(topLeft.x, topLeft.y, WORLD.width * scale, WORLD.height * scale);
+  drawMap(ctx, worldToScreen, canvasWidth, canvasHeight);
 
   for (const [id, item] of others) {
     const pose = live ? live.pose(id) : item;
@@ -245,32 +188,7 @@ function renderRoster() {
 }
 
 function updateCar(dt) {
-  const steer = (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
-  const throttle = (keys.gas ? 1 : 0) - (keys.brake ? 1 : 0);
-
-  if (throttle > 0) car.s += 480 * dt;
-  else if (throttle < 0) car.s -= 620 * dt;
-  else car.s *= Math.pow(0.985, dt * 60);
-
-  car.s = Math.max(-240, Math.min(520, car.s));
-  if (Math.abs(car.s) < 2) car.s = 0;
-
-  if (steer && Math.abs(car.s) > 4) {
-    car.a += steer * Math.sign(car.s) * Math.min(1, Math.abs(car.s) / 160) * 2.3 * dt;
-  }
-
-  car.x += Math.cos(car.a) * car.s * dt;
-  car.y += Math.sin(car.a) * car.s * dt;
-
-  const margin = 30;
-  if (car.x < margin || car.x > WORLD.width - margin) {
-    car.x = Math.max(margin, Math.min(WORLD.width - margin, car.x));
-    car.s *= -0.25;
-  }
-  if (car.y < margin || car.y > WORLD.height - margin) {
-    car.y = Math.max(margin, Math.min(WORLD.height - margin, car.y));
-    car.s *= -0.25;
-  }
+  updateVehicle(car, keys, dt, { isOnRoad, collidesWithWorld });
 }
 
 function frame(timestamp) {
@@ -450,8 +368,8 @@ async function start() {
         car.y = Math.max(30, Math.min(WORLD.height - 30, saved.y));
         car.a = Number(saved.a) || 0;
       } else {
-        car.x += (Math.random() - .5) * 100;
-        car.y += (Math.random() - .5) * 100;
+        car.x = 1800 + (Math.random() - .5) * 110;
+        car.y = 1300 + (Math.random() - .5) * 90;
       }
     } catch (error) {}
 
