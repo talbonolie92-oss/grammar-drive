@@ -39,7 +39,7 @@ sessions/{sessionId}         { teacherUid, code, grade, topics, durationMinutes,
                                status: waiting|running|ended, createdAt, startedAt?, endedAt? }
 sessions/{sessionId}/players/{studentUid}
                              { name, classSection, joinedAt, progress: { score, correct, answered, updatedAt } }
-joinCodes/{CODE}             { sessionId, status, durationMinutes, allowLateJoin, startedAt? }  ← students' public copy
+joinCodes/{CODE}             { sessionId, grade, topics, status, durationMinutes, allowLateJoin, startedAt? }  ← students' public copy
 liveCars/{sessionId}/{uid}   { x, y, a, s, c, n, t }                                ← Phase 3 live positions
 ```
 All times are set by the Firebase server clock, never by the device.
