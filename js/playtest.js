@@ -226,7 +226,7 @@ function drawWorld() {
 
 function renderRoster() {
   const rows = [];
-  if (me) rows.push({ uid, name: me.name, color: colorFor(uid), mine: true });
+  if (me && live && live.connected && running) rows.push({ uid, name: me.name, color: colorFor(uid), mine: true });
   for (const [id, value] of others) {
     rows.push({ uid: id, name: value.n || "Driver", color: value.c, mine: false });
   }
@@ -355,11 +355,13 @@ function applyStatus() {
   if (status === "running") {
     running = true;
     if (live) live.setEnabled(true);
+    renderRoster();
     hideOverlay();
     timerEl.textContent = timeLeft === null ? "⏱ Running" : "⏱ " + formatClock(timeLeft);
   } else {
     running = false;
     if (live) live.setEnabled(false);
+    renderRoster();
     timerEl.textContent = "⏱ Waiting";
     showOverlay("Waiting for your teacher", "Your car is ready. The track opens when the teacher starts the session.", false);
   }
@@ -464,7 +466,10 @@ async function start() {
         cars.forEach((value, key) => others.set(key, value));
         renderRoster();
       },
-      onStatus: (state, detail) => setLight(state, detail)
+      onStatus: (state, detail) => {
+        setLight(state, detail);
+        renderRoster();
+      }
     });
 
     live.publish({ x: car.x, y: car.y, a: car.a, s: 0 });
