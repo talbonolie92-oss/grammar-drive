@@ -18,9 +18,12 @@
     #roster div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #roster .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
     .pad { position: fixed; z-index: 6; bottom: 14px; display: flex; gap: 10px; }
-    .pad-right { right: 12px; }
-    .pad button { width: 68px; height: 68px; border-radius: 18px; font-size: 25px; background: rgba(15, 23, 42, .72); border: 2px solid rgba(255, 255, 255, .3); touch-action: none; user-select: none; -webkit-user-select: none; }
-    .pad button.on { background: rgba(37, 99, 235, .9); }
+    .pad-right { right: 14px; bottom: 22px; gap: 12px; }
+    .pad button { width: 94px; height: 66px; border-radius: 17px; font-size: 17px; font-weight: 800; letter-spacing: .3px; background: linear-gradient(180deg, rgba(51,65,85,.96), rgba(15,23,42,.96)); border: 2px solid rgba(226,232,240,.42); box-shadow: 0 5px 14px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12); touch-action: none; user-select: none; -webkit-user-select: none; }
+    .pad button.on { background: linear-gradient(180deg, #2563eb, #1e40af); border-color: #93c5fd; transform: translateY(2px); }
+    .pad button.forward { border-bottom: 4px solid #22c55e; }
+    .pad button.backward { border-bottom: 4px solid #f59e0b; }
+    @media (max-width: 430px) { .pad button { width: 82px; height: 60px; font-size: 15px; } .pad-right { right: 10px; bottom: 14px; gap: 8px; } .steering-wheel { width: 124px; height: 124px; left: 12px; bottom: 14px; } }
     .steering-wheel { position: fixed; z-index: 6; left: 18px; bottom: 18px; width: 142px; height: 142px; border: 12px solid rgba(226,232,240,.9); border-radius: 50%; background: rgba(15,23,42,.62); box-shadow: 0 4px 18px rgba(0,0,0,.35), inset 0 0 0 5px rgba(15,23,42,.8); touch-action: none; user-select: none; -webkit-user-select: none; }
     .steering-wheel::before, .steering-wheel::after { content: ""; position: absolute; left: 50%; top: 50%; background: rgba(226,232,240,.9); transform: translate(-50%,-50%); border-radius: 5px; }
     .steering-wheel::before { width: 9px; height: 76px; }
@@ -93,7 +96,13 @@
   </div>
   <div id="steeringWheel" class="steering-wheel" role="application" aria-label="Virtual steering wheel"><span class="wheel-center"></span></div>
   <div class="hidden" aria-hidden="true"><button id="btnLeft" type="button">Left</button><button id="btnRight" type="button">Right</button></div>
-  <div class="pad pad-right"><button id="btnReverse" type="button" aria-label="Reverse">R</button><button id="btnBrake" type="button" aria-label="Brake">■</button><button id="btnGas" type="button" aria-label="Accelerate">▲</button></div>
+  <div class="pad pad-right">
+    <button id="btnBackward" class="backward" type="button" aria-label="Drive backward">▼ BACKWARD</button>
+    <button id="btnForward" class="forward" type="button" aria-label="Drive forward">▲ FORWARD</button>
+  </div>
+  <div class="hidden" aria-hidden="true">
+    <button id="btnReverse" type="button">R</button><button id="btnBrake" type="button">Brake</button><button id="btnGas" type="button">Gas</button>
+  </div>
 
   <div id="overlay">
     <div class="panel" style="max-width:420px">
