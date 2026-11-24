@@ -148,7 +148,7 @@
       "$code": {
         ".read": "auth != null",
 
-        ".write": "auth != null && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true && ((newData.exists() && root.child('sessions').child(newData.child('sessionId').val()).child('teacherUid').val() == auth.uid && (!data.exists() || data.child('sessionId').val() == newData.child('sessionId').val())) || (!newData.exists() && data.exists() && root.child('sessions').child(data.child('sessionId').val()).child('teacherUid').val() == auth.uid && root.child('sessions').child(data.child('sessionId').val()).child('testOnly').val() == true))",
+        ".write": "auth != null && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true && ((newData.exists() && newData.parent().parent().child('sessions').child(newData.child('sessionId').val()).child('teacherUid').val() == auth.uid && (!data.exists() || data.child('sessionId').val() == newData.child('sessionId').val())) || (!newData.exists() && data.exists() && root.child('sessions').child(data.child('sessionId').val()).child('teacherUid').val() == auth.uid && root.child('sessions').child(data.child('sessionId').val()).child('testOnly').val() == true))",
 
         ".validate": "$code.matches(/^[A-HJ-NP-Z2-9]{6}$/) && newData.hasChildren(['sessionId', 'status', 'durationMinutes', 'allowLateJoin']) && newData.parent().parent().child('sessions').child(newData.child('sessionId').val()).child('code').val() == $code",
 
