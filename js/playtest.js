@@ -710,6 +710,14 @@ async function submitGrammarChallenge() {
     }
     grammarExplanationEl.textContent = challenge.explanation;
     playSfx(correct ? "correct" : "wrong");
+
+    // Persist a completed roadside stop as soon as its answer is saved.
+    // This avoids replaying it if the tab closes during the return animation.
+    if (activeRoadsideEventId) {
+      clearedRoadsideEvents.add(activeRoadsideEventId);
+      saveRoadsideState();
+    }
+
     grammarCheckButton.classList.add("hidden");
     if (grammarAutoReturn) {
       // Roadside encounters are one-question stops: return to driving
