@@ -965,7 +965,7 @@ function confirmDeleteSession(id, session) {
     async () => {
       const current = sessions[id];
       if (!current || current.status === "running" || current.teacherUid !== teacher.uid) {
-        showMessage($("dashMessage"), "Only your own ended sessions can be deleted.");
+        showMessage($("dashMessage"), "Only your own waiting or ended sessions can be deleted.");
         return false;
       }
 
