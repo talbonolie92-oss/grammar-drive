@@ -139,6 +139,30 @@
         }
       }
     },
+    "publicResults": {
+      "$sid": {
+        ".read": "auth != null && (root.child('sessions').child($sid).child('players').child(auth.uid).exists() || (root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true))",
+        ".write": "auth != null && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true",
+        ".validate": "newData.hasChildren(['endedAt', 'results'])",
+        "endedAt": {
+          ".validate": "newData.isNumber() && newData.val() == now"
+        },
+        "results": {
+          "$uid": {
+            ".validate": "newData.hasChildren(['rank', 'name', 'classSection', 'score', 'correct', 'answered', 'accuracy']) && root.child('sessions').child($sid).child('players').child($uid).exists()",
+            "rank": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() % 1 == 0" },
+            "name": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40" },
+            "classSection": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30" },
+            "score": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "correct": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "answered": { ".validate": "newData.isNumber() && newData.val() >= newData.parent().child('correct').val()" },
+            "accuracy": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    },
     "liveCars": {
       "$sid": {
         ".read": "auth != null && (root.child('sessions').child($sid).child('players').child(auth.uid).exists() || (root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true))",
