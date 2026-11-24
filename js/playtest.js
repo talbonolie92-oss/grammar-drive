@@ -1283,7 +1283,7 @@ async function finish(title, message, showBack = true) {
   showOverlay(title, message, showBack);
 
   const shouldShowResults = codeInfo &&
-    (codeInfo.status === "ended" || title === "Time's Up!" || title === "Game Over");
+    (title === "Time's Up!" || (codeInfo.status === "ended" && !!codeInfo.startedAt));
   if (shouldShowResults && sessionId && finalResultsEl) {
     finalResultsEl.textContent = "Waiting for the teacher to publish the final standings…";
     finalResultsEl.classList.remove("hidden");
