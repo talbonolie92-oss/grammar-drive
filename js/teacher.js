@@ -483,6 +483,27 @@ function buildPublicResultsUpdate(id, session) {
   };
 }
 
+// Read the latest server copy before calculating final standings. The live
+// dashboard listener can be a fraction behind a student's final answer.
+async function endSessionWithFreshResults(id, fallbackSession, publishResults = true) {
+  const snapshot = await get(ref(db, paths.session(id)));
+  const current = snapshot.exists() ? snapshot.val() : fallbackSession;
+  if (!current || current.teacherUid !== teacher.uid) {
+    throw new Error("This session is no longer available to this teacher.");
+  }
+  if (current.status === "ended") return false;
+
+  const code = current.code || current.sessionCode || fallbackSession.code;
+  if (!code) throw new Error("The session join code is missing.");
+
+  const updates = buildEndSession(id, code);
+  if (publishResults && current.startedAt) {
+    Object.assign(updates, buildPublicResultsUpdate(id, current));
+  }
+  await update(ref(db), updates);
+  return true;
+}
+
 function createResultsOverview(rows) {
   const ranked = rows.slice().sort((a, b) =>
     b.score - a.score || b.correct - a.correct ||
@@ -976,12 +997,9 @@ setInterval(() => {
     ) {
       endRequested[id] = true;
 
-      update(ref(db), {
-        ...buildEndSession(id, s.code),
-        ...buildPublicResultsUpdate(id, s)
-      }).catch(() => {
-          endRequested[id] = false;
-        });
+      endSessionWithFreshResults(id, s, true).catch(() => {
+        endRequested[id] = false;
+      });
     }
   });
 }, 1000);
@@ -1030,9 +1048,7 @@ function confirmEnd(id, s, cancel) {
       endRequested[id] = true;
 
       try {
-        const updates = buildEndSession(id, s.code);
-        if (!cancel) Object.assign(updates, buildPublicResultsUpdate(id, s));
-        await update(ref(db), updates);
+        await endSessionWithFreshResults(id, s, !cancel);
         return true;
 
       } catch (error) {
