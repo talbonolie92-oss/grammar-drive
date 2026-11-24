@@ -425,7 +425,7 @@ function useNearbyService() {
   const service = nearbyService(car.x, car.y);
   if (!service) return;
   if(service.type==="shop"){openCarShop();return;}
-  if(service.type==="repair")repairVehicle(car);
+  if(service.type==="repair"){repairVehicle(car);playSfx("repair");}
   saveVehicleProfile();updateCar(0.001);
 }
 
@@ -458,6 +458,7 @@ function openGrammarPanel() {
   if (!grammarChallenge) return;
   grammarBusy = false;
   grammarPanel.classList.remove("hidden");
+  playSfx("click");
   clearControls();
   renderGrammarChallenge();
 }
@@ -578,6 +579,7 @@ function openMissionPanel() {
   if (!running || !nearbyChallenge(car.x, car.y) || challengePanel.classList.contains("hidden") === false) return;
   if (!mission) loadMissionState();
   challengePanel.classList.remove("hidden");
+  playSfx("click");
   clearControls();
   renderMissionPanel();
 }
@@ -662,6 +664,7 @@ function renderMissionBuilder() {
 function startMission() {
   if (!mission || mission.status !== "available") return;
   mission.status = "collecting";
+  playSfx("mission");
   saveMissionState();
   challengePanel.classList.add("hidden");
   updateCar(0.001);
@@ -782,7 +785,7 @@ function renderCarShop(){
  carShopApply.textContent=owned?"Use this vehicle":(economy.coins>=price?"Buy for "+price+" coins":"Need "+(price-economy.coins)+" more coins");
  carShopApply.disabled=!owned&&economy.coins<price;
 }
-function openCarShop(){const s=nearbyService(car.x,car.y);if(!running||!s||s.type!=="shop")return;pendingModel=car.model;pendingPaint=car.paintIndex;renderCarShop();carShopPanel.classList.remove("hidden");clearControls();}
+function openCarShop(){const s=nearbyService(car.x,car.y);if(!running||!s||s.type!=="shop")return;pendingModel=car.model;pendingPaint=car.paintIndex;renderCarShop();carShopPanel.classList.remove("hidden");playSfx("click");clearControls();}
 function closeCarShop(){carShopPanel.classList.add("hidden");}
 function applyCarShopSelection(){
  if(!running||!CAR_MODELS[pendingModel]||!PAINT_COLORS[pendingPaint])return;
