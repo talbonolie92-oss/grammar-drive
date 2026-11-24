@@ -33,6 +33,9 @@
     <div class="pill"><span id="light" class="light connecting"></span><span id="connText">Connecting…</span></div>
     <div class="pill" id="online">Online: –</div>
     <div class="pill" id="surface">ROAD</div>
+    <div class="pill" id="speed">0 km/h</div>
+    <div class="pill" id="fuel">Fuel: 100%</div>
+    <div class="pill" id="condition">Condition: 100%</div>
     <div class="pill" id="timer">⏱ –</div>
     <div class="spacer"></div>
     <button id="leaveButton" class="small secondary" type="button">Leave</button>
@@ -40,6 +43,8 @@
   <div id="roster" class="hidden"></div>
   <div id="debug" class="hidden"></div>
 
+  <div id="serviceHint" class="pill hidden" style="position:fixed;z-index:6;left:50%;bottom:100px;transform:translateX(-50%);text-align:center">Press E to use service</div>
+  <button id="serviceButton" class="small hidden" type="button" style="position:fixed;z-index:7;left:50%;bottom:52px;transform:translateX(-50%)">Use Service</button>
   <div class="pad pad-left"><button id="btnLeft" type="button" aria-label="Steer left">◀</button><button id="btnRight" type="button" aria-label="Steer right">▶</button></div>
   <div class="pad pad-right"><button id="btnBrake" type="button" aria-label="Brake">▼</button><button id="btnGas" type="button" aria-label="Accelerate">▲</button></div>
 
