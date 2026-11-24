@@ -7,7 +7,7 @@
 
 import {
   teacherFirebase, signInWithEmailAndPassword, signOut, onAuthStateChanged,
-  ref, get, update, remove, push, onValue, query, orderByChild, equalTo, limitToLast
+  ref, get, update, remove, push, onValue, query, orderByChild, equalTo, limitToLast, serverTimestamp
 } from "./firebase.js";
 
 import {
@@ -297,6 +297,7 @@ function renderSessionList() {
 function addSessionDeletePaths(updates, id, session) {
   updates["sessions/" + id] = null;
   updates["liveCars/" + id] = null;
+  updates["publicResults/" + id] = null;
   const code = typeof session.code === "string"
     ? session.code
     : (typeof session.sessionCode === "string" ? session.sessionCode : "");
@@ -457,6 +458,28 @@ function playerRows(session) {
 
 function accuracyPercent(row) {
   return row.answered > 0 ? Math.round((row.correct / row.answered) * 100) : 0;
+}
+
+function buildPublicResultsUpdate(id, session) {
+  const report = createResultsOverview(playerRows(session));
+  const results = {};
+  report.ranked.forEach((row, index) => {
+    results[row.uid] = {
+      rank: index + 1,
+      name: row.name,
+      classSection: row.classSection,
+      score: row.score,
+      correct: row.correct,
+      answered: row.answered,
+      accuracy: accuracyPercent(row)
+    };
+  });
+  return {
+    ["publicResults/" + id]: {
+      endedAt: serverTimestamp(),
+      results
+    }
+  };
 }
 
 function createResultsOverview(rows) {
@@ -952,8 +975,10 @@ setInterval(() => {
     ) {
       endRequested[id] = true;
 
-      update(ref(db), buildEndSession(id, s.code))
-        .catch(() => {
+      update(ref(db), {
+        ...buildEndSession(id, s.code),
+        ...buildPublicResultsUpdate(id, s)
+      }).catch(() => {
           endRequested[id] = false;
         });
     }
@@ -1004,7 +1029,9 @@ function confirmEnd(id, s, cancel) {
       endRequested[id] = true;
 
       try {
-        await update(ref(db), buildEndSession(id, s.code));
+        const updates = buildEndSession(id, s.code);
+        if (!cancel) Object.assign(updates, buildPublicResultsUpdate(id, s));
+        await update(ref(db), updates);
         return true;
 
       } catch (error) {
