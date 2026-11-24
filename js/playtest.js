@@ -596,7 +596,7 @@ function saveVehicleProfile() {
   if (!uid) return;
   try {
     localStorage.setItem(profileStorageKey(), JSON.stringify({
-      fuel: car.fuel, condition: car.condition, model: car.model
+      fuel: car.fuel, condition: car.condition, model: car.model, fuelVersion: 2
     }));
   } catch (error) {}
 }
@@ -606,7 +606,12 @@ function loadVehicleProfile() {
   try {
     const saved = JSON.parse(localStorage.getItem(profileStorageKey()) || "null");
     if (!saved || typeof saved !== "object") return;
-    if (Number.isFinite(saved.fuel)) car.fuel = Math.max(0, Math.min(100, saved.fuel));
+    if (saved.fuelVersion !== 2) {
+      // One-time refill for profiles saved under the old, overly aggressive fuel drain.
+      car.fuel = 100;
+    } else if (Number.isFinite(saved.fuel)) {
+      car.fuel = Math.max(0, Math.min(100, saved.fuel));
+    }
     if (Number.isFinite(saved.condition)) car.condition = Math.max(0, Math.min(100, saved.condition));
     if (CAR_MODELS[saved.model]) car.model = saved.model;
   } catch (error) {}
@@ -761,71 +766,61 @@ function bindTouch(buttonId, keyName) {
 }
 
 function bindSteeringWheel() {
-  const wheel = $("steeringWheel");
-  if (!wheel) return;
+  const base = $("steeringWheel");
+  const knob = $("steeringKnob");
+  if (!base || !knob) return;
 
   let pointerId = null;
-  let previousAngle = 0;
-  let wheelRotation = 0;
+  const maxRadius = 43;
 
-  const normalizeDelta = (delta) => {
-    while (delta > 180) delta -= 360;
-    while (delta < -180) delta += 360;
-    return delta;
-  };
-
-  const pointerAngle = (event) => {
-    const rect = wheel.getBoundingClientRect();
+  const moveKnob = (event) => {
+    const rect = base.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    return Math.atan2(event.clientY - cy, event.clientX - cx) * 180 / Math.PI;
-  };
+    let dx = event.clientX - cx;
+    let dy = event.clientY - cy;
+    const distance = Math.hypot(dx, dy);
 
-  const applySteering = () => {
-    // The wheel itself can rotate through complete 360-degree turns.
-    // Vehicle steering reaches full lock smoothly, without limiting wheel rotation.
-    keys.steer = Math.max(-1, Math.min(1, wheelRotation / 135));
+    // Keep the blue thumb inside the circular joystick track.
+    if (distance > maxRadius) {
+      dx = (dx / distance) * maxRadius;
+      dy = (dy / distance) * maxRadius;
+    }
+
+    knob.style.transform = "translate(-50%, -50%) translate(" + dx + "px, " + dy + "px)";
+    keys.steer = Math.max(-1, Math.min(1, dx / maxRadius));
     keys.left = keys.steer < -0.02;
     keys.right = keys.steer > 0.02;
-    wheel.style.transform = "rotate(" + wheelRotation + "deg)";
   };
 
-  wheel.addEventListener("pointerdown", (event) => {
+  base.addEventListener("pointerdown", (event) => {
     if (!running || pointerId !== null) return;
     event.preventDefault();
     pointerId = event.pointerId;
-    previousAngle = pointerAngle(event);
-    wheel.style.transition = "none";
-    wheel.classList.add("active");
-    try { wheel.setPointerCapture(pointerId); } catch (error) {}
+    base.classList.add("active");
+    try { base.setPointerCapture(pointerId); } catch (error) {}
+    moveKnob(event);
   });
 
-  wheel.addEventListener("pointermove", (event) => {
+  base.addEventListener("pointermove", (event) => {
     if (pointerId !== event.pointerId) return;
     event.preventDefault();
-
-    const nextAngle = pointerAngle(event);
-    wheelRotation += normalizeDelta(nextAngle - previousAngle);
-    previousAngle = nextAngle;
-    applySteering();
+    moveKnob(event);
   });
 
   const release = (event) => {
     if (pointerId === null || (event && event.pointerId !== undefined && pointerId !== event.pointerId)) return;
-
     pointerId = null;
-    wheelRotation = 0;
     keys.steer = 0;
     keys.left = false;
     keys.right = false;
-    wheel.style.transition = "transform .22s ease-out";
-    wheel.style.transform = "rotate(0deg)";
-    wheel.classList.remove("active");
+    knob.style.transform = "translate(-50%, -50%)";
+    base.classList.remove("active");
   };
 
-  wheel.addEventListener("pointerup", release);
-  wheel.addEventListener("pointercancel", release);
-  wheel.addEventListener("lostpointercapture", release);
+  base.addEventListener("pointerup", release);
+  base.addEventListener("pointercancel", release);
+  base.addEventListener("lostpointercapture", release);
 }
 async function start() {
   resizeCanvas();
