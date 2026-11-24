@@ -1445,7 +1445,9 @@ async function start() {
 
     // The bridge flag is mirrored in two records. This makes repair recovery
     // resilient if one localStorage value is malformed or lost.
-    if (bridgeMatches(savedBridge) || bridgeMatches(lootBridge)) {
+    const legacyLootShowsBridge =
+      Array.isArray(savedLootState) && savedLootState.includes("bridge-chest");
+    if (bridgeMatches(savedBridge) || bridgeMatches(lootBridge) || legacyLootShowsBridge) {
       bridge.repaired = true;
     }
 
