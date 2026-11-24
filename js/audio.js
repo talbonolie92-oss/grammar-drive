@@ -8,10 +8,13 @@ let masterGain = null;
 let engineOscillator = null;
 let engineGain = null;
 let muted = false;
+let volumeLevel = 0.55;
 let lastEngineUpdate = 0;
 
 try {
   muted = localStorage.getItem("gd_sound_muted") === "true";
+  const savedVolume = Number(localStorage.getItem("gd_sound_volume"));
+  if (Number.isFinite(savedVolume)) volumeLevel = Math.max(0, Math.min(1, savedVolume));
 } catch (error) {}
 
 function ensureAudio() {
@@ -21,7 +24,7 @@ function ensureAudio() {
   if (!audioContext) {
     audioContext = new AudioContextClass();
     masterGain = audioContext.createGain();
-    masterGain.gain.value = muted ? 0 : 0.55;
+    masterGain.gain.value = muted ? 0 : volumeLevel;
     masterGain.connect(audioContext.destination);
 
     engineOscillator = audioContext.createOscillator();
@@ -51,9 +54,22 @@ export function setMuted(value) {
   muted = !!value;
   try { localStorage.setItem("gd_sound_muted", String(muted)); } catch (error) {}
   if (masterGain && audioContext) {
-    masterGain.gain.setTargetAtTime(muted ? 0 : 0.55, audioContext.currentTime, 0.04);
+    masterGain.gain.setTargetAtTime(muted ? 0 : volumeLevel, audioContext.currentTime, 0.04);
   }
   return muted;
+}
+
+export function setVolume(value) {
+  volumeLevel = Math.max(0, Math.min(1, Number(value) || 0));
+  try { localStorage.setItem("gd_sound_volume", String(volumeLevel)); } catch (error) {}
+  if (masterGain && audioContext) {
+    masterGain.gain.setTargetAtTime(muted ? 0 : volumeLevel, audioContext.currentTime, 0.04);
+  }
+  return volumeLevel;
+}
+
+export function getVolume() {
+  return volumeLevel;
 }
 
 export function isMuted() {
