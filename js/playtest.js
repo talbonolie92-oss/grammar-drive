@@ -26,7 +26,7 @@ import {
 } from "./common.js";
 
 import { createLiveCars, CAR_COLORS, colorFor } from "./multiplayer.js";
-import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChallenge, nearbyGrammarStop } from "./world.js";
+import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChallenge, nearbyDispatch, nearbyGrammarStop } from "./world.js";
 import { createVehicle, updateVehicle, repairVehicle } from "./vehicle.js";
 import { createMission, nearbyMissionCrate, drawMissionMarkers } from "./missions.js";
 import { createGrammarChallenge } from "./grammar-challenges.js";
@@ -483,6 +483,7 @@ function updateCar(dt) {
 
   const service = nearbyService(car.x, car.y);
   const challenge = nearbyChallenge(car.x, car.y);
+  const dispatch = nearbyDispatch(car.x, car.y);
   const grammarStop = nearbyGrammarStop(car.x, car.y);
   const crate = nearbyMissionCrate(car.x, car.y, mission);
   carSelectWrap.classList.add("hidden");
@@ -490,7 +491,7 @@ function updateCar(dt) {
   if(service){const action=service.type==="shop"?"OPEN CAR SHOP":"REPAIR";serviceHintEl.textContent=service.name+" · Press E or tap "+action;serviceButton.textContent=action;serviceButton.dataset.service=service.type;}
   const missionOpen = challengePanel.classList.contains("hidden") === false;
   const grammarOpen = grammarPanel && !grammarPanel.classList.contains("hidden");
-  const canInteract = !!crate || !!challenge || !!grammarStop;
+  const canInteract = !!crate || !!challenge || !!grammarStop || (!!dispatch && mission && mission.status === "return");
   const missionActive = mission && ["collecting", "return"].includes(mission.status);
   missionHudEl.classList.toggle("hidden", !missionActive);
   if (missionActive) {
@@ -519,11 +520,12 @@ function updateCar(dt) {
   } else if (grammarStop) {
     challengeButton.textContent = "Grammar Challenge";
     challengeHintEl.textContent = grammarStop.name + " · Stop and answer a quick grammar challenge";
+  } else if (dispatch && mission && mission.status === "return") {
+    challengeButton.textContent = "Open City Dispatch";
+    challengeHintEl.textContent = "City Dispatch · Stop here to arrange and deliver your recovered message";
   } else if (challenge) {
-    challengeButton.textContent = mission && mission.status === "return" ? "Return Message" : "Open Dispatch";
-    challengeHintEl.textContent = mission && mission.status === "collecting"
-      ? "City Dispatch · Cargo " + mission.collected.length + "/" + mission.fragments.length
-      : "City Dispatch · Press E or tap Open Dispatch";
+    challengeButton.textContent = "Open Mission Board";
+    challengeHintEl.textContent = "City Center · Choose a mission and collect grammar cargo across the districts";
   }
 }
 
@@ -684,7 +686,7 @@ function nextGrammarChallenge() {
 }
 
 function openMissionPanel() {
-  if (!running || !nearbyChallenge(car.x, car.y) || challengePanel.classList.contains("hidden") === false) return;
+  if (!running || (!nearbyChallenge(car.x, car.y) && !nearbyDispatch(car.x, car.y)) || challengePanel.classList.contains("hidden") === false) return;
   if (!mission) loadMissionState();
   challengePanel.classList.remove("hidden");
   playSfx("click");
@@ -712,14 +714,14 @@ function renderMissionPanel() {
   missionRewardEl.textContent = "Mission reward: +30 points · +30 coins";
 
   if (mission.status === "available") {
-    missionBriefingEl.textContent += " Drive to each glowing crate marker, collect all message fragments, then return here.";
+    missionBriefingEl.textContent += " Drive to each glowing crate marker, collect all message fragments, then return to City Dispatch.";
     missionActionButton.textContent = "Start Mission";
     missionActionButton.classList.remove("hidden");
   } else if (mission.status === "collecting") {
-    missionBriefingEl.textContent = "Your mission is active. Close Dispatch, drive to the glowing cargo markers, and press E or Collect Cargo at each stop.";
+    missionBriefingEl.textContent = "Your mission is active. Close the mission board, drive across the districts to each glowing cargo marker, and press E or Collect Cargo at each stop. Return to City Dispatch when all cargo is recovered.";
     missionActionButton.classList.add("hidden");
   } else if (mission.status === "return") {
-    missionBriefingEl.textContent = "All cargo recovered. Now arrange the fragments to reconstruct the original message.";
+    missionBriefingEl.textContent = "All cargo recovered. Return to City Dispatch and arrange the fragments to reconstruct the original message.";
     missionActionButton.classList.add("hidden");
     renderMissionBuilder();
   } else if (mission.status === "complete") {
@@ -854,6 +856,10 @@ function interactMission() {
   }
   if (nearbyGrammarStop(car.x, car.y)) {
     openGrammarPanel();
+    return;
+  }
+  if (mission && mission.status === "return" && nearbyDispatch(car.x, car.y)) {
+    openMissionPanel();
     return;
   }
   if (nearbyChallenge(car.x, car.y)) openMissionPanel();
