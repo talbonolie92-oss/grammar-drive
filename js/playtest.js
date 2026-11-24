@@ -425,6 +425,7 @@ async function start() {
     if (!CAR_MODELS[carSelect.value]) return;
     car.model = carSelect.value;
     saveVehicleProfile();
+    if (live) live.publish({ x: car.x, y: car.y, a: car.a, s: car.s, m: car.model });
     if (live) live.publishNow();
   });
 
@@ -463,6 +464,7 @@ async function start() {
         const sy = Math.max(30, Math.min(WORLD.height - 30, saved.y));
         if (!collidesWithWorld(sx, sy, 19)) {
           car.x = sx; car.y = sy; car.a = Number(saved.a) || 0;
+          car.safeX = sx; car.safeY = sy;
         } else {
           car.x = 1800; car.y = 1300; car.a = 0;
         }
