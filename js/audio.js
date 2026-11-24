@@ -154,3 +154,19 @@ export function stopEngineSound() {
     engineGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.08);
   }
 }
+
+
+// Suspend the Web Audio graph while the game is backgrounded or finished.
+// This stops the looping ambience from consuming power when no gameplay is visible.
+export function suspendAudio() {
+  if (audioContext && audioContext.state === "running") {
+    audioContext.suspend().catch(() => {});
+  }
+}
+
+// Resume only an existing context; do not create audio before a user gesture.
+export function resumeAudio() {
+  if (audioContext && audioContext.state === "suspended") {
+    audioContext.resume().catch(() => {});
+  }
+}
