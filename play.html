@@ -46,6 +46,14 @@
     .car-shop-colors{padding:12px;margin:8px 0 14px;border-radius:12px;background:rgba(2,6,23,.5);border:1px solid #334155}
     .color-swatches{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}.color-swatch{width:30px;height:30px;padding:0;border-radius:50%;border:3px solid rgba(255,255,255,.35);box-shadow:0 2px 6px rgba(0,0,0,.35)}
     .color-swatch.selected{outline:3px solid #fff;outline-offset:2px}
+    @media (orientation: landscape) and (max-height: 500px) {
+      .pad button { width: 74px; height: 52px; border-radius: 13px; font-size: 13px; }
+      .pad-right { right: calc(9px + env(safe-area-inset-right, 0px)); bottom: calc(8px + env(safe-area-inset-bottom, 0px)); gap: 6px; }
+      .steering-wheel-control { width: 108px; height: 108px; left: calc(9px + env(safe-area-inset-left, 0px)); bottom: calc(7px + env(safe-area-inset-bottom, 0px)); }
+      .analog-track { left: 20px; right: 20px; }
+      .hud-top { gap: 5px; }
+      #roster { top: calc(42px + env(safe-area-inset-top, 0px)); padding: 5px 7px; font-size: 11px; }
+    }
     @media(max-width:600px){.car-shop{padding:14px}.car-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.vehicle-card{padding:10px 6px}}
 
     @media (hover: hover) and (pointer: fine) { .pad { opacity: .5; } }
