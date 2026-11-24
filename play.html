@@ -23,11 +23,18 @@
     .pad button.on { background: linear-gradient(180deg, #2563eb, #1e40af); border-color: #93c5fd; transform: translateY(2px); }
     .pad button.forward { border-bottom: 4px solid #22c55e; }
     .pad button.backward { border-bottom: 4px solid #f59e0b; }
-    @media (max-width: 430px) { .pad button { width: 82px; height: 60px; font-size: 15px; } .pad-right { right: 10px; bottom: 14px; gap: 8px; }   .analog-stick-base { width: 116px; height: 116px; left: 12px; bottom: 14px; } }
-    .analog-stick-base { position: fixed; z-index: 6; left: 22px; bottom: 22px; width: 116px; height: 116px; border-radius: 50%; background: radial-gradient(circle at 50% 45%, #273449 0%, #111827 66%, #030712 100%); border: 2px solid #475569; box-shadow: 0 9px 20px rgba(0,0,0,.55), inset 0 4px 9px rgba(255,255,255,.08), inset 0 -7px 12px rgba(0,0,0,.65); touch-action: none; user-select: none; -webkit-user-select: none; }
-    .analog-stick-base::before { content: ""; position: absolute; inset: 13px; border-radius: 50%; border: 1px solid rgba(148,163,184,.22); box-shadow: inset 0 2px 7px rgba(0,0,0,.45); pointer-events: none; }
-    .analog-stick-base.active { border-color: #60a5fa; }
-    .analog-stick-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; border-radius: 50%; background: radial-gradient(circle at 33% 24%, #bfdbfe 0%, #60a5fa 24%, #2563eb 62%, #172554 100%); border: 2px solid #93c5fd; box-shadow: 0 6px 10px rgba(0,0,0,.65), inset 0 3px 5px rgba(255,255,255,.4), inset 0 -4px 7px rgba(0,0,0,.35); transform: translate(-50%,-50%); pointer-events: none; will-change: transform; }
+    .steering-wheel-control { position: fixed; z-index: 6; left: 18px; bottom: 18px; width: 142px; height: 142px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+    .steering-wheel-rim { position: absolute; inset: 4px; border: 9px solid #cbd5e1; border-radius: 50%; background: radial-gradient(circle, rgba(30,41,59,.95) 0 35%, rgba(15,23,42,.78) 36% 100%); box-shadow: 0 7px 16px rgba(0,0,0,.55), inset 0 2px 5px rgba(255,255,255,.22), inset 0 -5px 8px rgba(0,0,0,.55); pointer-events: none; }
+    .wheel-spoke { position: absolute; display: block; background: linear-gradient(180deg,#94a3b8,#334155); border-radius: 8px; box-shadow: inset 0 1px 1px rgba(255,255,255,.25); }
+    .wheel-spoke-top { width: 10px; height: 39px; left: calc(50% - 5px); top: 2px; }
+    .wheel-spoke-left { width: 39px; height: 9px; left: 4px; top: 62%; transform: rotate(25deg); }
+    .wheel-spoke-right { width: 39px; height: 9px; right: 4px; top: 62%; transform: rotate(-25deg); }
+    .wheel-hub { position: absolute; width: 38px; height: 38px; left: calc(50% - 19px); top: calc(50% - 19px); border-radius: 50%; background: radial-gradient(circle at 35% 25%,#64748b,#1e293b 72%); border: 2px solid #94a3b8; box-shadow: 0 3px 7px rgba(0,0,0,.5); }
+    .analog-track { position: absolute; left: 28px; right: 28px; top: calc(50% - 12px); height: 24px; border-radius: 20px; background: rgba(2,6,23,.88); border: 1px solid rgba(148,163,184,.8); box-shadow: inset 0 2px 5px rgba(0,0,0,.8), 0 2px 5px rgba(0,0,0,.35); }
+    .analog-track-center { position: absolute; left: 50%; top: 3px; bottom: 3px; width: 1px; background: rgba(226,232,240,.35); pointer-events: none; }
+    .steering-wheel-control.active .steering-wheel-rim { border-color: #60a5fa; }
+    .analog-stick-knob { position: absolute; left: 50%; top: 50%; width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 33% 24%, #bfdbfe 0%, #60a5fa 24%, #2563eb 62%, #172554 100%); border: 2px solid #93c5fd; box-shadow: 0 4px 8px rgba(0,0,0,.7), inset 0 3px 5px rgba(255,255,255,.4), inset 0 -4px 7px rgba(0,0,0,.35); transform: translate(-50%,-50%); pointer-events: none; will-change: transform; }
+    @media (max-width: 430px) { .pad button { width: 82px; height: 60px; font-size: 15px; } .pad-right { right: 10px; bottom: 14px; gap: 8px; } .steering-wheel-control { width: 128px; height: 128px; left: 10px; bottom: 12px; } .analog-track { left: 24px; right: 24px; } }
     to { box-shadow: 0 3px 22px rgba(239,68,68,.65); } }
     @media (max-width: 430px) { }
     #overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(15, 23, 42, .82); text-align: center; padding: 20px; }
@@ -92,7 +99,10 @@
       </div>
     </section>
   </div>
-  <div id="steeringJoystick" class="analog-stick-base" role="application" aria-label="Analog steering joystick"><span id="steeringKnob" class="analog-stick-knob"></span></div>
+  <div id="steeringJoystick" class="steering-wheel-control" role="application" aria-label="Left and right analog steering control">
+    <div class="steering-wheel-rim"><span class="wheel-spoke wheel-spoke-top"></span><span class="wheel-spoke wheel-spoke-left"></span><span class="wheel-spoke wheel-spoke-right"></span><span class="wheel-hub"></span></div>
+    <div class="analog-track"><span class="analog-track-center"></span><span id="steeringKnob" class="analog-stick-knob"></span></div>
+  </div>
   <div class="hidden" aria-hidden="true"><button id="btnLeft" type="button">Left</button><button id="btnRight" type="button">Right</button></div>
   <div class="pad pad-right">
     <button id="btnBackward" class="backward" type="button" aria-label="Drive backward">▼ BACKWARD</button>
