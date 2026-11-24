@@ -452,8 +452,16 @@ function renderRoster() {
   onlineEl.textContent = "Online: " + rows.length;
 }
 
-function updateCar(dt) {
+let lastCarUiUpdate = 0;
+
+function updateCar(dt, forceUI = false) {
   updateVehicle(car, keys, dt, { isOnRoad, collidesWithWorld });
+
+  // Physics remains frame-by-frame; DOM/HUD work is capped at 12.5 updates/sec.
+  // Explicit interactions force an immediate refresh so buttons and panels stay responsive.
+  const uiNow = performance.now();
+  if (!forceUI && uiNow - lastCarUiUpdate < 80) return;
+  lastCarUiUpdate = uiNow;
   surfaceEl.textContent = car.onRoad ? "ROAD" : "OFF-ROAD";
   surfaceEl.style.borderColor = car.onRoad ? "#22c55e" : "#f59e0b";
   speedEl.textContent = Math.round(Math.abs(car.s) * 0.32) + " km/h";
@@ -512,7 +520,7 @@ function useNearbyService() {
   if (!service) return;
   if(service.type==="shop"){openCarShop();return;}
   if(service.type==="repair"){repairVehicle(car);playSfx("repair");}
-  saveVehicleProfile();updateCar(0.001);
+  saveVehicleProfile();updateCar(0.001, true);
 }
 
 function missionStorageKey() {
@@ -884,7 +892,7 @@ function applyCarShopSelection(){
  car.model=pendingModel;car.paintIndex=pendingPaint;car.s=0;
  saveVehicleProfile();updateWalletDisplay();
  if(live){live.publish({x:car.x,y:car.y,a:car.a,s:car.s,m:car.model});live.publishNow();}
- closeCarShop();updateCar(.001);
+ closeCarShop();updateCar(.001, true);
 }
 function profileStorageKey() { return "gd_vehicle_profile_" + uid; }
 
