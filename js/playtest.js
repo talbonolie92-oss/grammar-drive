@@ -404,6 +404,7 @@ async function submitChallengeAnswer(index, selectedButton) {
   try {
     await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
     challengeAnswered = true;
+    me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
     challengeFeedbackEl.className = "message " + (isCorrect ? "success" : "info");
     challengeFeedbackEl.textContent = isCorrect ? "Correct! +10 points." : "Not quite. No points lost—keep learning!";
     challengeExplanationEl.textContent = activeQuestion.why;
