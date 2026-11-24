@@ -6,14 +6,15 @@
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 const HANDLING = Object.freeze({
-  compact: { roadMax: 440, offRoadMax: 185, acceleration: 390, steering: 2.45, grip: 1 },
-  sport:   { roadMax: 520, offRoadMax: 205, acceleration: 470, steering: 2.7,  grip: 1.08 },
-  suv:     { roadMax: 385, offRoadMax: 225, acceleration: 330, steering: 2.05, grip: 0.86 }
+  compact: { roadMax: 440, offRoadMax: 185, acceleration: 390, steering: 1.15, grip: 1 },
+  sport:   { roadMax: 520, offRoadMax: 205, acceleration: 470, steering: 1.25, grip: 1.08 },
+  suv:     { roadMax: 385, offRoadMax: 225, acceleration: 330, steering: 0.95, grip: 0.86 }
 });
 
 export function createVehicle(x, y, angle = 0) {
   return {
     x, y, a: angle, s: 0,
+    steerInput: 0,
     fuel: 100,
     condition: 100,
     model: "compact",
@@ -29,9 +30,14 @@ export function updateVehicle(car, keys, dt, world) {
 
   const handling = HANDLING[car.model] || HANDLING.compact;
   const onRoadBefore = world.isOnRoad(car.x, car.y);
-  const steer = Number.isFinite(keys.steer) && keys.steer !== 0
+  const targetSteer = Number.isFinite(keys.steer) && keys.steer !== 0
     ? clamp(keys.steer, -1, 1)
     : (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
+  // Steering builds up and settles smoothly instead of reacting instantly.
+  const steeringResponse = Math.min(1, dt * 5.5);
+  car.steerInput = (Number.isFinite(car.steerInput) ? car.steerInput : 0) +
+    (targetSteer - (Number.isFinite(car.steerInput) ? car.steerInput : 0)) * steeringResponse;
+  const steer = car.steerInput;
 
   const conditionFactor = car.condition < 35
     ? 0.55 + (car.condition / 35) * 0.25
@@ -61,7 +67,7 @@ export function updateVehicle(car, keys, dt, world) {
   if (Math.abs(car.s) < 1.5) car.s = 0;
 
   if (steer && Math.abs(car.s) > 3) {
-    const speedFactor = clamp(Math.abs(car.s) / 100, 0.32, 1);
+    const speedFactor = clamp(Math.abs(car.s) / 160, 0.18, 1);
     const grip = (onRoadBefore ? 1 : 0.55) * handling.grip;
     car.a += steer * Math.sign(car.s) * speedFactor * grip * handling.steering * dt;
   }
