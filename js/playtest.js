@@ -375,9 +375,9 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
 }
 function drawWorld() {
   prepareStaticMap();
+  const camera = getCamera();
 
   if (staticMapReady && staticMapCanvas) {
-    const camera = getCamera();
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     ctx.drawImage(
       staticMapCanvas,
@@ -397,9 +397,23 @@ function drawWorld() {
   // Mission crates and vehicles are dynamic, so they remain on the live layer.
   drawMissionMarkers(ctx, worldToScreen, mission);
 
+  // Avoid drawing cars outside the visible camera area. The margin prevents
+  // vehicles entering the screen from popping in at the edge.
+  const margin = 120;
+  const minX = camera.camX - margin;
+  const maxX = camera.camX + camera.viewW + margin;
+  const minY = camera.camY - margin;
+  const maxY = camera.camY + camera.viewH + margin;
+
   for (const [id, item] of others) {
     const pose = live ? live.pose(id) : item;
-    if (pose) drawCar(pose.x, pose.y, pose.a, pose.c, pose.n, false, pose.m || "compact");
+    if (
+      pose &&
+      pose.x >= minX && pose.x <= maxX &&
+      pose.y >= minY && pose.y <= maxY
+    ) {
+      drawCar(pose.x, pose.y, pose.a, pose.c, pose.n, false, pose.m || "compact");
+    }
   }
 
   drawCar(car.x, car.y, car.a, car.paintIndex, me ? me.name : "You", true, car.model);
