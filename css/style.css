@@ -294,3 +294,40 @@ button.danger:focus-visible, button:focus-visible, a:focus-visible {
   .home-cta { padding:24px; flex-direction:column; align-items:flex-start; }.home-cta .home-primary { width:100%; }
   .home-footer { flex-direction:column; }
 }
+
+
+/* Grammar Drive 2.0 — roadside grammar challenge */
+.game-modal {
+  position:fixed; inset:0; z-index:28; display:grid; place-items:center;
+  padding:16px; background:rgba(2,8,23,.88); backdrop-filter:blur(8px);
+}
+.grammar-card {
+  width:min(650px,100%); max-height:90vh; overflow:auto; margin:0;
+  border:1px solid rgba(167,139,250,.42);
+  background:linear-gradient(150deg,#202c49,#111d35);
+  box-shadow:0 24px 80px rgba(0,0,0,.48);
+}
+.grammar-card h2 { margin:12px 0 8px; font-size:clamp(22px,4vw,30px); }
+.grammar-selection {
+  min-height:52px; display:flex; align-items:center; padding:12px 14px;
+  margin:16px 0 12px; border:1px dashed #8b5cf6; border-radius:12px;
+  background:rgba(124,58,237,.12); color:#f5f3ff; font-weight:800;
+  overflow-wrap:anywhere;
+}
+.grammar-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.grammar-option {
+  min-height:48px; padding:11px 13px; border:1px solid #475569;
+  background:#0f1a31; color:#e2e8f0; border-radius:11px; text-align:left;
+  white-space:normal; overflow-wrap:anywhere;
+}
+.grammar-option:hover:not(:disabled) { border-color:#a78bfa; background:#28214b; }
+.grammar-option.selected { border:2px solid #a78bfa; background:#3b2b68; }
+.grammar-option:disabled { opacity:.42; }
+.grammar-explanation { min-height:24px; color:#c4d2e8; font-size:14px; line-height:1.6; }
+.grammar-actions { margin-top:14px; }
+@media(max-width:560px) {
+  .game-modal { padding:10px; }
+  .grammar-card { padding:17px; }
+  .grammar-options { grid-template-columns:1fr; gap:8px; }
+  .grammar-option { min-height:44px; }
+}
