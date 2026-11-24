@@ -943,6 +943,11 @@ function handleVisibilityChange() {
   if (document.hidden) {
     clearControls();
     updateEngineSound(0, false);
+    if (live) live.setEnabled(false);
+    if (statusTimer) {
+      clearInterval(statusTimer);
+      statusTimer = 0;
+    }
     if (rafId) {
       cancelAnimationFrame(rafId);
       rafId = 0;
@@ -951,7 +956,14 @@ function handleVisibilityChange() {
     return;
   }
 
-  if (!finished && rafId === 0) {
+  if (finished) return;
+  if (statusTimer === 0 && codeInfo) {
+    statusTimer = setInterval(applyStatus, 500);
+  }
+  if (live && codeInfo) live.setEnabled(codeInfo.status === "running");
+  applyStatus();
+
+  if (rafId === 0) {
     lastFrame = 0;
     rafId = requestAnimationFrame(frame);
   }
