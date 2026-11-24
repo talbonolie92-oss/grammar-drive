@@ -29,7 +29,7 @@ import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChall
 import { createVehicle, updateVehicle, repairVehicle } from "./vehicle.js";
 import { createMission, nearbyMissionCrate, drawMissionMarkers } from "./missions.js";
 import { createGrammarChallenge } from "./grammar-challenges.js";
-import { initAudio, playSfx, updateEngineSound, stopEngineSound, toggleMuted, isMuted } from "./audio.js";
+import { initAudio, playSfx, updateEngineSound, stopEngineSound, toggleMuted, isMuted, setVolume, getVolume } from "./audio.js";
 
 const { auth, db } = studentFirebase();
 const serverNow = serverClock(db);
@@ -1041,6 +1041,7 @@ function bindSteeringJoystick() {
 async function start() {
   resizeCanvas();
   const soundButton = $("soundToggle");
+  const soundVolume = $("soundVolume");
   const refreshSoundButton = () => {
     if (soundButton) {
       soundButton.textContent = isMuted() ? "🔇 Sound Off" : "🔊 Sound On";
@@ -1056,6 +1057,13 @@ async function start() {
       toggleMuted();
       refreshSoundButton();
       if (!isMuted()) playSfx("click");
+    });
+  }
+  if (soundVolume) {
+    soundVolume.value = String(Math.round(getVolume() * 100));
+    soundVolume.addEventListener("input", () => {
+      initAudio();
+      setVolume(Number(soundVolume.value) / 100);
     });
   }
   window.addEventListener("resize", resizeCanvas);
