@@ -165,7 +165,9 @@ function setLight(state, detail = "") {
 }
 
 function resizeCanvas() {
-  // A 1.5x backing scale keeps the canvas crisp while avoiding the large\n  // memory and fill-rate cost of 2x-3x mobile displays.\n  pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+  // A 1.5x backing scale keeps the canvas crisp while avoiding the large
+  // memory and fill-rate cost of 2x-3x mobile displays.
+  pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
   canvasWidth = window.innerWidth;
   canvasHeight = window.innerHeight;
   canvas.width = Math.round(canvasWidth * pixelRatio);
@@ -937,7 +939,25 @@ function frame(timestamp) {
   rafId = requestAnimationFrame(frame);
 }
 
-function handleVisibilityChange() {\n  if (document.hidden) {\n    clearControls();\n    updateEngineSound(0, false);\n    if (rafId) {\n      cancelAnimationFrame(rafId);\n      rafId = 0;\n    }\n    lastFrame = 0;\n    return;\n  }\n\n  if (!finished && rafId === 0) {\n    lastFrame = 0;\n    rafId = requestAnimationFrame(frame);\n  }\n}\n\nfunction clearControls() {
+function handleVisibilityChange() {
+  if (document.hidden) {
+    clearControls();
+    updateEngineSound(0, false);
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+    lastFrame = 0;
+    return;
+  }
+
+  if (!finished && rafId === 0) {
+    lastFrame = 0;
+    rafId = requestAnimationFrame(frame);
+  }
+}
+
+function clearControls() {
   Object.keys(keys).forEach((key) => { keys[key] = key === "steer" ? 0 : false; });
   document.querySelectorAll(".pad button").forEach((button) => button.classList.remove("on"));
 }
@@ -959,7 +979,8 @@ function cleanupListeners() {
     cancelAnimationFrame(rafId);
     rafId = 0;
   }
-  window.removeEventListener("resize", resizeCanvas);\n  document.removeEventListener("visibilitychange", handleVisibilityChange);
+  window.removeEventListener("resize", resizeCanvas);
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
   window.removeEventListener("keydown", onKeyDown);
   window.removeEventListener("keyup", onKeyUp);
   clearControls();
@@ -1161,7 +1182,8 @@ async function start() {
       setVolume(Number(soundVolume.value) / 100);
     });
   }
-  window.addEventListener("resize", resizeCanvas);\n  document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("resize", resizeCanvas);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
 
