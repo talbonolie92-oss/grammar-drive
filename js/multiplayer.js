@@ -290,16 +290,20 @@ export function createLiveCars(options) {
     if (stopped) return;
     if (!stops.length) startListeners();
     if (!timer) {
+      // 4 checks per second are sufficient: position uploads are already
+      // throttled to 500ms and stale-player cleanup has a 12s grace period.
       timer = setInterval(() => {
         void tick(false);
         const now = serverNow();
+        let removed = false;
         for (const [carUid, car] of others) {
           if (now - car.t > MP.STALE_MS) {
             others.delete(carUid);
-            onChange(others);
+            removed = true;
           }
         }
-      }, 100);
+        if (removed) onChange(others);
+      }, 250);
     }
   }
 
