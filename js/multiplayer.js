@@ -336,6 +336,15 @@ export function createLiveCars(options) {
     const car = typeof carOrUid === "string" ? others.get(carOrUid) : carOrUid;
     if (!car) return null;
 
+    // Reuse one render-only pose object per remote car. This function is
+    // called every animation frame, so object spreading here created avoidable
+    // garbage collection pressure on mobile devices.
+    const result = car.renderPose || (car.renderPose = {});
+    result.c = car.c;
+    result.n = car.n;
+    result.m = car.m;
+    result.history = car.history;
+
     const history = Array.isArray(car.history) && car.history.length
       ? car.history
       : [car];
@@ -354,29 +363,32 @@ export function createLiveCars(options) {
 
     if (after && after.t > before.t) {
       const ratio = clamp((target - before.t) / (after.t - before.t), 0, 1);
-      return {
-        ...car,
-        x: before.x + (after.x - before.x) * ratio,
-        y: before.y + (after.y - before.y) * ratio,
-        a: wrapAngle(before.a + angleDelta(before.a, after.a) * ratio),
-        s: before.s + (after.s - before.s) * ratio
-      };
+      result.x = before.x + (after.x - before.x) * ratio;
+      result.y = before.y + (after.y - before.y) * ratio;
+      result.a = wrapAngle(before.a + angleDelta(before.a, after.a) * ratio);
+      result.s = before.s + (after.s - before.s) * ratio;
+      return result;
     }
 
     const latestSample = history[history.length - 1];
     const age = target - latestSample.t;
     if (age > 0 && age <= MP.EXTRAPOLATE_MS) {
       const seconds = age / 1000;
-      return {
-        ...car,
-        x: clamp(latestSample.x + Math.cos(latestSample.a) * latestSample.s * seconds, 0, MP.WORLD_MAX),
-        y: clamp(latestSample.y + Math.sin(latestSample.a) * latestSample.s * seconds, 0, MP.WORLD_MAX),
-        a: latestSample.a,
-        s: latestSample.s
-      };
+      result.x = clamp(latestSample.x + Math.cos(latestSample.a) * latestSample.s * seconds, 0, MP.WORLD_MAX);
+      result.y = clamp(latestSample.y + Math.sin(latestSample.a) * latestSample.s * seconds, 0, MP.WORLD_MAX);
+      result.a = latestSample.a;
+      result.s = latestSample.s;
+      return result;
     }
 
-    return { ...car, ...latestSample };
+    result.x = latestSample.x;
+    result.y = latestSample.y;
+    result.a = latestSample.a;
+    result.s = latestSample.s;
+    result.c = latestSample.c;
+    result.n = latestSample.n;
+    result.m = latestSample.m;
+    return result;
   }
 
   async function stop(removeOwn = false) {
