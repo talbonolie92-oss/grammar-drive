@@ -70,7 +70,7 @@ const overlayTitle = $("overlayTitle");
 const overlayText = $("overlayText");
 const overlayLink = $("overlayLink");
 
-const keys = { left: false, right: false, gas: false, brake: false };
+const keys = { left: false, right: false, gas: false, brake: false, reverse: false };
 const car = createVehicle(1800, 1300, 0);
 const CAR_MODELS = {
   compact: { label: "Compact", color: "#3b82f6", width: 34, height: 19 },
@@ -682,7 +682,8 @@ function onKeyDown(event) {
   if (key === "arrowleft" || key === "a") keys.left = true;
   if (key === "arrowright" || key === "d") keys.right = true;
   if (key === "arrowup" || key === "w") keys.gas = true;
-  if (key === "arrowdown" || key === "s" || key === " ") keys.brake = true;
+  if (key === "arrowdown" || key === "s") keys.reverse = true;
+  if (key === " ") keys.brake = true;
   if (key === "e") {
     if (nearbyService(car.x, car.y)) useNearbyService();
     else interactMission();
@@ -694,7 +695,8 @@ function onKeyUp(event) {
   if (key === "arrowleft" || key === "a") keys.left = false;
   if (key === "arrowright" || key === "d") keys.right = false;
   if (key === "arrowup" || key === "w") keys.gas = false;
-  if (key === "arrowdown" || key === "s" || key === " ") keys.brake = false;
+  if (key === "arrowdown" || key === "s") keys.reverse = false;
+  if (key === " ") keys.brake = false;
 }
 
 function bindTouch(buttonId, keyName) {
@@ -728,6 +730,7 @@ async function start() {
   bindTouch("btnRight", "right");
   bindTouch("btnGas", "gas");
   bindTouch("btnBrake", "brake");
+  bindTouch("btnReverse", "reverse");
   serviceButton.addEventListener("click", useNearbyService);
   challengeButton.addEventListener("click", interactMission);
   $("missionClose").addEventListener("click", closeMissionPanel);
