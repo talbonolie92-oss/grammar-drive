@@ -63,7 +63,8 @@ export const QUESTION_BANK = {
 export function nextQuestion({ grade, topics, uid, sessionId }) {
   const pool = [];
   const gradeBank = QUESTION_BANK[String(grade)] || QUESTION_BANK["10"];
-  (topics || []).forEach((topic) => {
+  const selectedTopics = Array.isArray(topics) ? topics : Object.values(topics || {});
+  selectedTopics.forEach((topic) => {
     (gradeBank[topic] || []).forEach((item, index) => {
       pool.push({ ...item, topic, key: topic + ":" + index });
     });
