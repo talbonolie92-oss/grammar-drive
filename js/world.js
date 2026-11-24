@@ -46,10 +46,10 @@ const LOCATIONS = [
 
 // Roadside grammar stops turn exploration into short learning encounters.
 const GRAMMAR_STOPS = [
-  { x: 1725, y: 800, name: "GRAMMAR CHECKPOINT 1" },
-  { x: 2580, y: 800, name: "GRAMMAR CHECKPOINT 2" },
-  { x: 900, y: 2220, name: "GRAMMAR CHECKPOINT 3" },
-  { x: 3220, y: 2220, name: "GRAMMAR CHECKPOINT 4" }
+  { x: 1725, y: 1225, name: "GRAMMAR CHECKPOINT 1" },
+  { x: 2580, y: 1800, name: "GRAMMAR CHECKPOINT 2" },
+  { x: 900, y: 800, name: "GRAMMAR CHECKPOINT 3" },
+  { x: 3220, y: 1700, name: "GRAMMAR CHECKPOINT 4" }
 ];
 
 // Decorative greenery and small park-entry gates, kept clear of roads and services.
