@@ -491,7 +491,7 @@ function downloadResultsCSV(rows, ranked) {
       row.correct, row.answered, accuracyPercent(row) + "%"
     ].map(quote).join(","));
   });
-  const blob = new Blob(["\\uFEFF" + lines.join("\\r\\n")], { type: "text/csv;charset=utf-8" });
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
