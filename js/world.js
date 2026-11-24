@@ -28,7 +28,7 @@ const BUILDINGS = [
   { x: 470, y: 1510, w: 330, h: 280, name: "CAR WASH", color: "#0284c7" },
   { x: 1040, y: 1510, w: 390, h: 280, name: "SERVICE BAY", color: "#b45309" },
   { x: 2040, y: 1510, w: 390, h: 280, name: "FUEL STOP", color: "#15803d" },
-  { x: 2780, y: 1510, w: 330, h: 280, name: "CHALLENGE HUB", color: "#be123c" },
+  { x: 2780, y: 1510, w: 330, h: 280, name: "CITY DISPATCH", color: "#be123c" },
   { x: 470, y: 1870, w: 330, h: 220, name: "WAREHOUSE", color: "#57534e" },
   { x: 1040, y: 1870, w: 390, h: 220, name: "PARKING", color: "#475569" },
   { x: 2040, y: 1870, w: 390, h: 220, name: "RACE CLUB", color: "#9f1239" },
@@ -41,7 +41,7 @@ const LOCATIONS = [
   { x: 1940, y: 1140, name: "CITY CENTER", color: "#facc15", symbol: "C" },
   { x: 2640, y: 1420, name: "FUEL STOP", type: "fuel", color: "#4ade80", symbol: "F" },
   { x: 970, y: 1420, name: "CAR WASH", color: "#7dd3fc", symbol: "W" },
-  { x: 1940, y: 1420, name: "CHALLENGE HUB", color: "#fb7185", symbol: "?" },
+  { x: 1940, y: 1420, name: "CITY DISPATCH", color: "#fb7185", symbol: "D" },
   { x: 2670, y: 1140, name: "DEALERSHIP", color: "#c4b5fd", symbol: "D" }
 ];
 
@@ -187,7 +187,7 @@ export function nearbyChallenge(x, y, radius = 175) {
   const dx = x - 1940;
   const dy = y - 1420;
   return dx * dx + dy * dy <= radius * radius
-    ? { x: 1940, y: 1420, name: "CHALLENGE HUB", type: "challenge" }
+    ? { x: 1940, y: 1420, name: "CITY DISPATCH", type: "challenge" }
     : null;
 }
 
