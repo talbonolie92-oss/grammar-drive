@@ -44,6 +44,14 @@ const LOCATIONS = [
   { x: 2670, y: 1140, name: "CAR SHOP", type: "shop", color: "#c4b5fd", symbol: "S" }
 ];
 
+// Roadside grammar stops turn exploration into short learning encounters.
+const GRAMMAR_STOPS = [
+  { x: 1725, y: 800, name: "GRAMMAR CHECKPOINT 1" },
+  { x: 2580, y: 1225, name: "GRAMMAR CHECKPOINT 2" },
+  { x: 900, y: 2220, name: "GRAMMAR CHECKPOINT 3" },
+  { x: 3220, y: 2220, name: "GRAMMAR CHECKPOINT 4" }
+];
+
 // Decorative greenery and small park-entry gates, kept clear of roads and services.
 const TREES = [
   [1510, 455], [1625, 520], [1515, 650], [1635, 760], [1510, 900], [1620, 1045],
@@ -408,6 +416,33 @@ export function drawMap(ctx, project, width, height) {
       ctx.fillText(loc.name, p.x, p.y + r + 5, 110 * scale);
     }
   });
+  GRAMMAR_STOPS.forEach((stop, index) => {
+    const p = project(stop.x, stop.y);
+    const r = Math.max(8, 17 * scale);
+    ctx.save();
+    ctx.shadowColor = "rgba(15,23,42,.4)";
+    ctx.shadowBlur = Math.max(2, 8 * scale);
+    ctx.fillStyle = "#7c3aed";
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#ede9fe";
+    ctx.lineWidth = Math.max(1, 2 * scale);
+    ctx.stroke();
+    ctx.fillStyle = "#fff";
+    ctx.font = "900 " + Math.max(9, 13 * scale) + "px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("?", p.x, p.y + 1);
+    if (scale > .24) {
+      ctx.font = "800 " + Math.max(7, 9 * scale) + "px system-ui";
+      ctx.textBaseline = "top";
+      ctx.fillText("GRAMMAR STOP " + (index + 1), p.x, p.y + r + 4, 120 * scale);
+    }
+    ctx.restore();
+  });
+
 
   const topLeft = project(0, 0);
   ctx.strokeStyle = "#bbf7d0";
@@ -431,4 +466,20 @@ export function nearbyService(x, y, radius = 165) {
     if (dx * dx + dy * dy <= radius * radius) return location;
   }
   return null;
+}
+
+
+export function nearbyGrammarStop(x, y, radius = 150) {
+  let nearest = null;
+  let best = radius * radius;
+  GRAMMAR_STOPS.forEach((stop, index) => {
+    const dx = x - stop.x;
+    const dy = y - stop.y;
+    const distance = dx * dx + dy * dy;
+    if (distance <= best) {
+      best = distance;
+      nearest = { ...stop, index, type: "grammar" };
+    }
+  });
+  return nearest;
 }
