@@ -936,6 +936,14 @@ function onKeyDown(event) {
     if (key === "escape") closeGrammarPanel();
     return;
   }
+  if (!challengePanel.classList.contains("hidden")) {
+    if (key === "escape") closeMissionPanel();
+    return;
+  }
+  if (!carShopPanel.classList.contains("hidden")) {
+    if (key === "escape") closeCarShop();
+    return;
+  }
   if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) event.preventDefault();
   if (key === "arrowleft" || key === "a") { keys.left = true; keys.steer = -1; }
   if (key === "arrowright" || key === "d") { keys.right = true; keys.steer = 1; }
