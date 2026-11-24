@@ -45,7 +45,7 @@ export function drawBridge(ctx, project, bridge) {
   const depth = Math.max(7, 12 * scale);
   ctx.save();
   ctx.translate(p.x, p.y);
-  if (bridge.axis === "vertical") ctx.rotate(Math.PI / 2);
+  if (bridge.axis === "horizontal") ctx.rotate(Math.PI / 2);
   ctx.fillStyle = bridge.repaired ? "#92400e" : "#7f1d1d";
   ctx.fillRect(-half, -depth, half * 2, depth * 2);
   ctx.fillStyle = bridge.repaired ? "#fbbf24" : "#f59e0b";
