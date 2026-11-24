@@ -174,18 +174,57 @@ function resizeCanvas() {
   ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 }
 
-function worldToScreen(x, y) {
+function getCamera() {
   // Keep a close driving view instead of shrinking the entire map to fit.
   const scale = Math.max(0.45, Math.min(1, canvasWidth / 1000, canvasHeight / 700));
   const viewW = canvasWidth / scale;
   const viewH = canvasHeight / scale;
   const camX = Math.max(0, Math.min(WORLD.width - viewW, car.x - viewW / 2));
   const camY = Math.max(0, Math.min(WORLD.height - viewH, car.y - viewH / 2));
+  return { scale, viewW, viewH, camX, camY };
+}
+
+function worldToScreen(x, y) {
+  const camera = getCamera();
   return {
-    x: (x - camX) * scale,
-    y: (y - camY) * scale,
-    scale
+    x: (x - camera.camX) * camera.scale,
+    y: (y - camera.camY) * camera.scale,
+    scale: camera.scale
   };
+}
+
+// The city scenery never changes while driving. Render it once into a
+// world-sized canvas, then copy only the camera's visible area each frame.
+// This avoids rebuilding building gradients, windows, roads and scenery
+// on every animation frame.
+let staticMapCanvas = null;
+let staticMapReady = false;
+let staticMapFailed = false;
+
+function prepareStaticMap() {
+  if (staticMapReady || staticMapFailed) return;
+  try {
+    const mapCanvas = document.createElement("canvas");
+    mapCanvas.width = WORLD.width;
+    mapCanvas.height = WORLD.height;
+    const mapContext = mapCanvas.getContext("2d", { alpha: false });
+    if (!mapContext) throw new Error("2D canvas unavailable");
+
+    drawMap(
+      mapContext,
+      (x, y) => ({ x, y, scale: 1 }),
+      WORLD.width,
+      WORLD.height
+    );
+
+    staticMapCanvas = mapCanvas;
+    staticMapReady = true;
+  } catch (error) {
+    // Keep the game playable on browsers that cannot allocate the cache.
+    staticMapCanvas = null;
+    staticMapFailed = true;
+    console.warn("Static map cache unavailable; using direct rendering.", error);
+  }
 }
 
 function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "compact") {
@@ -335,7 +374,27 @@ function drawCar(x, y, angle, colorIndex, name, isMine = false, modelKey = "comp
   ctx.fillText(name || "Driver", p.x, p.y - h / 2 - 5);
 }
 function drawWorld() {
-  drawMap(ctx, worldToScreen, canvasWidth, canvasHeight);
+  prepareStaticMap();
+
+  if (staticMapReady && staticMapCanvas) {
+    const camera = getCamera();
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    ctx.drawImage(
+      staticMapCanvas,
+      camera.camX,
+      camera.camY,
+      camera.viewW,
+      camera.viewH,
+      0,
+      0,
+      canvasWidth,
+      canvasHeight
+    );
+  } else {
+    drawMap(ctx, worldToScreen, canvasWidth, canvasHeight);
+  }
+
+  // Mission crates and vehicles are dynamic, so they remain on the live layer.
   drawMissionMarkers(ctx, worldToScreen, mission);
 
   for (const [id, item] of others) {
