@@ -119,6 +119,7 @@ let rafId = 0;
 let statusTimer = 0;
 let lastFrame = 0;
 let lastSave = 0;
+let lastProfileSave = 0;
 let stopCode = null;
 let stopMe = null;
 let canvasWidth = 0;
@@ -919,8 +920,14 @@ function frame(timestamp) {
         localStorage.setItem("gd_track_" + code + "_" + uid, JSON.stringify({
           x: car.x, y: car.y, a: car.a
         }));
-        saveVehicleProfile();
       } catch (error) {}
+    }
+
+    // Vehicle profile data changes far less often than position. Persist it
+    // periodically instead of serializing and writing it every second.
+    if (timestamp - lastProfileSave > 10000) {
+      lastProfileSave = timestamp;
+      saveVehicleProfile();
     }
   } else {
     updateEngineSound(0, false);
