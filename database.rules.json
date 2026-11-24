@@ -24,7 +24,7 @@
       "$sid": {
         ".read": "auth != null && data.child('teacherUid').val() == auth.uid && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true",
 
-        ".write": "auth != null && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true && ((!data.exists() && newData.exists() && newData.child('teacherUid').val() == auth.uid) || (data.exists() && data.child('teacherUid').val() == auth.uid && data.child('testOnly').val() == true && !newData.exists()))",
+        ".write": "auth != null && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true && ((!data.exists() && newData.exists() && newData.child('teacherUid').val() == auth.uid) || (data.exists() && data.child('teacherUid').val() == auth.uid && data.child('testOnly').val() == true && !newData.exists() && !root.child('joinCodes').child(data.child('code').val()).exists()))",
 
         ".validate": "newData.hasChildren(['teacherUid', 'code', 'grade', 'topics', 'durationMinutes', 'allowLateJoin', 'status', 'createdAt'])",
 
@@ -42,13 +42,14 @@
 
         "topics": {
           ".validate": "newData.hasChildren()",
+
           "$i": {
-            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60"
+            ".validate": "newData.isString() && (newData.val() == 'Question Forms' || newData.val() == 'Yes/No Questions' || newData.val() == 'Wh-Questions' || newData.val() == 'Tag Questions')"
           }
         },
 
         "durationMinutes": {
-          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 90 && (!data.exists() || data.val() == newData.val())"
+          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 90"
         },
 
         "allowLateJoin": {
@@ -59,44 +60,44 @@
           ".validate": "newData.isNumber() && ((!data.exists() && newData.val() == now) || (data.exists() && data.val() == newData.val()))"
         },
 
-        "testOnly": {
-          ".validate": "newData.isBoolean() && newData.val() == true"
-        },
-
         "startedAt": {
-          ".write": "auth != null && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && !data.exists() && newData.exists() && newData.parent().child('status').val() == 'running'",
+          ".write": "auth != null && data.exists() == false && newData.exists() && newData.val() == now && newData.parent().child('status').val() == 'running' && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true",
 
           ".validate": "newData.isNumber() && ((!data.exists() && newData.val() == now && newData.parent().child('status').val() == 'running') || (data.exists() && data.val() == newData.val()))"
         },
 
         "endedAt": {
-          ".write": "auth != null && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && !data.exists() && newData.exists() && newData.parent().child('status').val() == 'ended'",
+          ".write": "auth != null && !data.exists() && newData.exists() && newData.val() == now && newData.parent().child('status').val() == 'ended' && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true",
 
           ".validate": "newData.isNumber() && ((!data.exists() && newData.val() == now && newData.parent().child('status').val() == 'ended') || (data.exists() && data.val() == newData.val()))"
         },
 
         "status": {
-          ".write": "auth != null && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && data.exists() && newData.exists()",
+          ".write": "auth != null && data.exists() && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true && ((data.val() == 'waiting' && newData.val() == 'running' && newData.parent().child('startedAt').val() == now) || ((data.val() == 'waiting' || data.val() == 'running') && newData.val() == 'ended' && newData.parent().child('endedAt').val() == now))",
 
-          ".validate": "(newData.val() == 'waiting' || newData.val() == 'running' || newData.val() == 'ended') && ((data.exists() && data.val() == newData.val()) || (data.val() == 'waiting' && newData.val() == 'running' && newData.parent().child('startedAt').val() == now) || ((data.val() == 'waiting' || data.val() == 'running') && newData.val() == 'ended' && newData.parent().child('endedAt').val() == now)) && newData.parent().parent().parent().child('joinCodes').child(newData.parent().child('code').val()).child('status').val() == newData.val()"
+          ".validate": "(newData.val() == 'waiting' || newData.val() == 'running' || newData.val() == 'ended') && ((!data.exists() && newData.val() == 'waiting') || (data.exists() && data.val() == newData.val()) || (data.val() == 'waiting' && newData.val() == 'running' && newData.parent().child('startedAt').val() == now) || ((data.val() == 'waiting' || data.val() == 'running') && newData.val() == 'ended' && newData.parent().child('endedAt').val() == now)) && newData.parent().parent().parent().child('joinCodes').child(newData.parent().child('code').val()).child('status').val() == newData.val()"
+        },
+
+        "testOnly": {
+          ".validate": "newData.val() == true && !data.exists()"
         },
 
         "players": {
           "$uid": {
             ".read": "auth != null && auth.uid == $uid",
 
-            ".write": "auth != null && ((!data.exists() && newData.exists() && auth.uid == $uid && root.child('sessions').child($sid).child('code').exists() && (newData.parent().parent().child('status').val() == 'waiting' || (newData.parent().parent().child('status').val() == 'running' && newData.parent().parent().child('allowLateJoin').val() == true && now <= newData.parent().parent().child('startedAt').val() + newData.parent().parent().child('durationMinutes').val() * 60000))) || (data.exists() && !newData.exists() && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && newData.parent().parent().child('status').val() != 'ended'))",
+            ".write": "auth != null && ((!data.exists() && newData.exists() && auth.uid == $uid && root.child('sessions').child($sid).child('code').exists() && (root.child('sessions').child($sid).child('status').val() == 'waiting' || (root.child('sessions').child($sid).child('status').val() == 'running' && now <= root.child('sessions').child($sid).child('startedAt').val() + root.child('sessions').child($sid).child('durationMinutes').val() * 60000 && root.child('sessions').child($sid).child('allowLateJoin').val() == true))) || (data.exists() && !newData.exists() && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && (root.child('sessions').child($sid).child('status').val() == 'waiting' || root.child('sessions').child($sid).child('status').val() == 'running') && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true))",
 
             ".validate": "newData.hasChildren(['name', 'classSection', 'joinedAt', 'progress'])",
 
             "name": {
-              ".write": "auth != null && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && data.exists() && newData.exists() && newData.parent().parent().parent().child('status').val() != 'ended'",
+              ".write": "auth != null && data.exists() && newData.exists() && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && (root.child('sessions').child($sid).child('status').val() == 'waiting' || root.child('sessions').child($sid).child('status').val() == 'running') && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true",
 
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40 && (!data.exists() || data.val() == newData.val() || auth.uid == root.child('sessions').child($sid).child('teacherUid').val())"
             },
 
             "classSection": {
-              ".write": "auth != null && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && data.exists() && newData.exists() && newData.parent().parent().parent().child('status').val() != 'ended'",
+              ".write": "auth != null && data.exists() && newData.exists() && root.child('sessions').child($sid).child('teacherUid').val() == auth.uid && (root.child('sessions').child($sid).child('status').val() == 'waiting' || root.child('sessions').child($sid).child('status').val() == 'running') && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true",
 
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30 && (!data.exists() || data.val() == newData.val() || auth.uid == root.child('sessions').child($sid).child('teacherUid').val())"
             },
@@ -106,7 +107,7 @@
             },
 
             "progress": {
-              ".write": "auth != null && auth.uid == $uid && data.exists() && newData.exists() && newData.parent().parent().parent().child('status').val() == 'running' && now <= newData.parent().parent().parent().child('startedAt').val() + newData.parent().parent().parent().child('durationMinutes').val() * 60000 + 10000",
+              ".write": "auth != null && auth.uid == $uid && data.exists() && newData.exists() && root.child('sessions').child($sid).child('status').val() == 'running' && now <= root.child('sessions').child($sid).child('startedAt').val() + root.child('sessions').child($sid).child('durationMinutes').val() * 60000 + 10000",
 
               ".validate": "newData.hasChildren(['score', 'correct', 'answered', 'updatedAt']) && ((!data.exists() && newData.child('score').val() == 0 && newData.child('correct').val() == 0 && newData.child('answered').val() == 0 && newData.child('updatedAt').val() == now) || (data.exists() && newData.child('score').val() == data.child('score').val() && newData.child('correct').val() == data.child('correct').val() && newData.child('answered').val() == data.child('answered').val() && newData.child('updatedAt').val() == data.child('updatedAt').val()) || (data.exists() && newData.child('answered').val() == data.child('answered').val() + 1 && newData.child('updatedAt').val() == now && now >= data.child('updatedAt').val() + 2000 && newData.child('score').val() >= data.child('score').val() && newData.child('score').val() <= data.child('score').val() + 60 && (newData.child('correct').val() == data.child('correct').val() || newData.child('correct').val() == data.child('correct').val() + 1)))",
 
@@ -147,7 +148,7 @@
       "$code": {
         ".read": "auth != null",
 
-        ".write": "auth != null && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true && ((newData.exists() && newData.parent().parent().child('sessions').child(newData.child('sessionId').val()).child('teacherUid').val() == auth.uid && (!data.exists() || data.child('sessionId').val() == newData.child('sessionId').val())) || (!newData.exists() && data.exists() && root.child('sessions').child(data.child('sessionId').val()).child('teacherUid').val() == auth.uid && root.child('sessions').child(data.child('sessionId').val()).child('testOnly').val() == true))",
+        ".write": "auth != null && root.child('teachers').child(auth.uid).child('role').val() == 'teacher' && root.child('teachers').child(auth.uid).child('active').val() == true && ((newData.exists() && root.child('sessions').child(newData.child('sessionId').val()).child('teacherUid').val() == auth.uid && (!data.exists() || data.child('sessionId').val() == newData.child('sessionId').val())) || (!newData.exists() && data.exists() && root.child('sessions').child(data.child('sessionId').val()).child('teacherUid').val() == auth.uid && root.child('sessions').child(data.child('sessionId').val()).child('testOnly').val() == true))",
 
         ".validate": "$code.matches(/^[A-HJ-NP-Z2-9]{6}$/) && newData.hasChildren(['sessionId', 'status', 'durationMinutes', 'allowLateJoin']) && newData.parent().parent().child('sessions').child(newData.child('sessionId').val()).child('code').val() == $code",
 
@@ -160,15 +161,15 @@
         },
 
         "durationMinutes": {
-          ".validate": "newData.val() == newData.parent().parent().parent().child('sessions').child(newData.parent().child('sessionId').val()).child('durationMinutes').val()"
+          ".validate": "newData.isNumber() && newData.val() == newData.parent().parent().parent().child('sessions').child(newData.parent().child('sessionId').val()).child('durationMinutes').val()"
         },
 
         "allowLateJoin": {
-          ".validate": "newData.val() == newData.parent().parent().parent().child('sessions').child(newData.parent().child('sessionId').val()).child('allowLateJoin').val()"
+          ".validate": "newData.isBoolean() && newData.val() == newData.parent().parent().parent().child('sessions').child(newData.parent().child('sessionId').val()).child('allowLateJoin').val()"
         },
 
         "startedAt": {
-          ".validate": "newData.val() == newData.parent().parent().parent().child('sessions').child(newData.parent().child('sessionId').val()).child('startedAt').val()"
+          ".validate": "newData.isNumber() && newData.val() == newData.parent().parent().parent().child('sessions').child(newData.parent().child('sessionId').val()).child('startedAt').val()"
         },
 
         "$other": {
