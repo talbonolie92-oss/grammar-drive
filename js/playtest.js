@@ -28,6 +28,7 @@ import { createLiveCars, CAR_COLORS, colorFor } from "./multiplayer.js";
 import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChallenge } from "./world.js";
 import { createVehicle, updateVehicle, repairVehicle } from "./vehicle.js";
 import { createMission, nearbyMissionCrate, drawMissionMarkers } from "./missions.js";
+import { initAudio, playSfx, updateEngineSound, stopEngineSound, toggleMuted, isMuted } from "./audio.js";
 
 const { auth, db } = studentFirebase();
 const serverNow = serverClock(db);
@@ -529,6 +530,7 @@ function collectMissionCrate(crate) {
   if (!mission || mission.status !== "collecting" || !crate) return;
   if (mission.collected.includes(crate.index)) return;
   mission.collected.push(crate.index);
+  playSfx("collect");
   const recovered = mission.fragments[crate.index];
   mission.lastRecovered = recovered.text;
   if (mission.collected.length >= mission.fragments.length) mission.status = "return";
@@ -546,6 +548,7 @@ async function deliverMission() {
   if (!correctOrder) {
     missionFeedbackEl.className = "message warn";
     missionFeedbackEl.textContent = "The message is not in the right order yet. Rearrange the fragments and try again.";
+    playSfx("wrong");
     return;
   }
 
@@ -567,6 +570,7 @@ async function deliverMission() {
     await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
     me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
     mission.status = "complete";
+    playSfx("reward");
     economy.coins += 30;
     saveVehicleProfile();
     updateWalletDisplay();
@@ -680,6 +684,7 @@ function frame(timestamp) {
   lastFrame = timestamp;
 
   if (running) {
+    updateEngineSound(car.s, keys.gas);
     updateCar(dt);
     if (live) live.publish({ x: car.x, y: car.y, a: car.a, s: car.s, m: car.model });
     if (timestamp - lastSave > 1000) {
@@ -729,6 +734,7 @@ async function finish(title, message, showBack = true) {
   if (finished) return;
   finished = true;
   running = false;
+  stopEngineSound();
   cleanupListeners();
   if (live) {
     await live.stop(true);
@@ -882,6 +888,24 @@ function bindSteeringJoystick() {
 }
 async function start() {
   resizeCanvas();
+  const soundButton = $("soundToggle");
+  const refreshSoundButton = () => {
+    if (soundButton) {
+      soundButton.textContent = isMuted() ? "🔇 Sound Off" : "🔊 Sound On";
+      soundButton.setAttribute("aria-pressed", String(!isMuted()));
+    }
+  };
+  document.addEventListener("pointerdown", initAudio, { once: true });
+  document.addEventListener("keydown", initAudio, { once: true });
+  if (soundButton) {
+    refreshSoundButton();
+    soundButton.addEventListener("click", () => {
+      initAudio();
+      toggleMuted();
+      refreshSoundButton();
+      if (!isMuted()) playSfx("click");
+    });
+  }
   window.addEventListener("resize", resizeCanvas);
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
