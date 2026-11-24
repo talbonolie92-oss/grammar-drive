@@ -26,7 +26,7 @@ import {
 
 import { createLiveCars, CAR_COLORS, colorFor } from "./multiplayer.js";
 import { WORLD, drawMap, isOnRoad, collidesWithWorld, nearbyService, nearbyChallenge } from "./world.js";
-import { createVehicle, updateVehicle, refuelVehicle, repairVehicle } from "./vehicle.js";
+import { createVehicle, updateVehicle, repairVehicle } from "./vehicle.js";
 import { createMission, nearbyMissionCrate, drawMissionMarkers } from "./missions.js";
 
 const { auth, db } = studentFirebase();
@@ -39,7 +39,6 @@ const connText = $("connText");
 const onlineEl = $("online");
 const surfaceEl = $("surface");
 const speedEl = $("speed");
-const fuelEl = $("fuel");
 const conditionEl = $("condition");
 const missionHudEl = $("missionHud");
 const serviceHintEl = $("serviceHint");
@@ -323,25 +322,7 @@ function updateCar(dt) {
   surfaceEl.textContent = car.onRoad ? "ROAD" : "OFF-ROAD";
   surfaceEl.style.borderColor = car.onRoad ? "#22c55e" : "#f59e0b";
   speedEl.textContent = Math.round(Math.abs(car.s) * 0.32) + " km/h";
-  fuelEl.textContent = "Fuel: " + Math.round(car.fuel) + "%";
   conditionEl.textContent = "Condition: " + Math.round(car.condition) + "%";
-  fuelEl.style.borderColor = car.fuel <= 20 ? "#ef4444" : "#334155";
-  const fuelWarning = $("fuelWarning");
-  if (fuelWarning) {
-    if (car.fuel <= 0) {
-      fuelWarning.textContent = "OUT OF FUEL · Use BACKWARD + steering to reach the green FUEL STOP marker, then tap REFUEL.";
-      fuelWarning.className = "fuel-warning critical";
-    } else if (car.fuel <= 10) {
-      fuelWarning.textContent = "VERY LOW FUEL · " + Math.ceil(car.fuel) + "% remaining. Head to the green FUEL STOP now.";
-      fuelWarning.className = "fuel-warning critical";
-    } else if (car.fuel <= 25) {
-      fuelWarning.textContent = "LOW FUEL · " + Math.ceil(car.fuel) + "% remaining. Find the green FUEL STOP and refuel.";
-      fuelWarning.className = "fuel-warning low";
-    } else {
-      fuelWarning.textContent = "";
-      fuelWarning.className = "fuel-warning hidden";
-    }
-  }
   conditionEl.style.borderColor = car.condition < 35 ? "#ef4444" : "#334155";
 
   const service = nearbyService(car.x, car.y);
@@ -352,10 +333,8 @@ function updateCar(dt) {
   serviceButton.classList.toggle("hidden", !service);
   serviceHintEl.classList.toggle("hidden", !service);
   if (service) {
-    const action = service.type === "fuel" ? "REFUEL" : "REPAIR";
-    serviceHintEl.textContent = service.type === "fuel"
-      ? "FUEL STOP · Stop here, then tap REFUEL to fill your tank."
-      : service.name + " · Press E or tap " + action;
+    const action = "REPAIR";
+    serviceHintEl.textContent = service.name + " · Press E or tap " + action;
     serviceButton.textContent = action;
     serviceButton.dataset.service = service.type;
   }
@@ -398,7 +377,6 @@ function useNearbyService() {
   if (!running) return;
   const service = nearbyService(car.x, car.y);
   if (!service) return;
-  if (service.type === "fuel") refuelVehicle(car);
   if (service.type === "repair") repairVehicle(car);
   saveVehicleProfile();
   updateCar(0.001);
@@ -596,7 +574,7 @@ function saveVehicleProfile() {
   if (!uid) return;
   try {
     localStorage.setItem(profileStorageKey(), JSON.stringify({
-      fuel: car.fuel, condition: car.condition, model: car.model, fuelVersion: 2
+      condition: car.condition, model: car.model
     }));
   } catch (error) {}
 }
@@ -606,12 +584,6 @@ function loadVehicleProfile() {
   try {
     const saved = JSON.parse(localStorage.getItem(profileStorageKey()) || "null");
     if (!saved || typeof saved !== "object") return;
-    if (saved.fuelVersion !== 2) {
-      // One-time refill for profiles saved under the old, overly aggressive fuel drain.
-      car.fuel = 100;
-    } else if (Number.isFinite(saved.fuel)) {
-      car.fuel = Math.max(0, Math.min(100, saved.fuel));
-    }
     if (Number.isFinite(saved.condition)) car.condition = Math.max(0, Math.min(100, saved.condition));
     if (CAR_MODELS[saved.model]) car.model = saved.model;
   } catch (error) {}
@@ -765,13 +737,13 @@ function bindTouch(buttonId, keyName) {
   button.addEventListener("contextmenu", (event) => event.preventDefault());
 }
 
-function bindSteeringWheel() {
-  const base = $("steeringWheel");
+function bindSteeringJoystick() {
+  const base = $("steeringJoystick");
   const knob = $("steeringKnob");
   if (!base || !knob) return;
 
   let pointerId = null;
-  const maxRadius = 43;
+  const getMaxRadius = () => Math.max(20, base.clientWidth / 2 - knob.offsetWidth / 2 - 7);
 
   const moveKnob = (event) => {
     const rect = base.getBoundingClientRect();
@@ -779,15 +751,17 @@ function bindSteeringWheel() {
     const cy = rect.top + rect.height / 2;
     let dx = event.clientX - cx;
     let dy = event.clientY - cy;
+    const maxRadius = getMaxRadius();
     const distance = Math.hypot(dx, dy);
 
-    // Keep the blue thumb inside the circular joystick track.
     if (distance > maxRadius) {
       dx = (dx / distance) * maxRadius;
       dy = (dy / distance) * maxRadius;
     }
 
+    // The blue thumb physically follows the finger/mouse in every direction.
     knob.style.transform = "translate(-50%, -50%) translate(" + dx + "px, " + dy + "px)";
+    // In a driving game, the horizontal stick axis controls steering.
     keys.steer = Math.max(-1, Math.min(1, dx / maxRadius));
     keys.left = keys.steer < -0.02;
     keys.right = keys.steer > 0.02;
@@ -828,7 +802,7 @@ async function start() {
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
 
-  bindSteeringWheel();
+  bindSteeringJoystick();
   bindTouch("btnForward", "gas");
   bindTouch("btnBackward", "reverse");
   serviceButton.addEventListener("click", useNearbyService);
