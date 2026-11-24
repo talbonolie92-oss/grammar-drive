@@ -20,6 +20,11 @@ let sessionId = null;
 let codeInfo = null;     // live copy of joinCodes/{code}: { sessionId, status, durationMinutes, allowLateJoin, startedAt? }
 let me = null;           // this student's own record once joined
 let stopMe = null;
+let previousStatus = null;
+
+function playUrl() {
+  return "./play.html?code=" + encodeURIComponent(code);
+}
 
 const VIEWS = ["loadingView", "noticeView", "joinForm", "joinedView"];
 function show(view) { VIEWS.forEach((v) => $(v).classList.toggle("hidden", v !== view)); }
@@ -56,8 +61,10 @@ function renderJoined() {
     $("statusTitle").classList.remove("pulse");
     const timeUp = end !== null && serverNow() >= end;
     $("statusTitle").textContent = timeUp ? "Time's up!" : "The game has started!";
-    $("statusText").textContent = timeUp ? "Waiting for your teacher to close the game." : "The driving game will appear here in the next version.";
+    $("statusText").textContent = timeUp ? "Waiting for your teacher to close the game." : "The open road is ready. Start driving!";
+    $("playButton").classList.toggle("hidden", timeUp);
   } else {
+    $("playButton").classList.add("hidden");
     $("statusTitle").classList.remove("pulse");
     $("statusTitle").textContent = "Game over";
     $("statusText").textContent = "Thanks for playing! Your teacher has the results.";
@@ -98,6 +105,10 @@ $("joinForm").addEventListener("submit", async (event) => {
     await set(ref(db, paths.player(sessionId, uid)), buildPlayer(name, classSection));
     me = { name, classSection };
     watchMyRecord();
+    if (codeInfo.status === "running") {
+      window.location.href = playUrl();
+      return;
+    }
     renderJoined();
   } catch (error) {
     // Already joined from this device (e.g. a double tap)? Then just continue.
@@ -139,6 +150,8 @@ async function start() {
     return;
   }
   sessionId = codeInfo.sessionId;
+  previousStatus = codeInfo.status;
+  $("playButton").href = playUrl();
 
   // Already joined on this device? (refresh, phone locked, browser reopened)
   try {
@@ -151,7 +164,17 @@ async function start() {
 
   onValue(ref(db, paths.joinCode(code)), (snap) => {
     if (!snap.exists()) { notice("Game closed", "Your teacher closed this game."); return; }
-    codeInfo = snap.val();
+    const nextInfo = snap.val();
+    const wasWaiting = previousStatus === "waiting";
+    previousStatus = nextInfo.status;
+    codeInfo = nextInfo;
+
+    // Auto-open only for students who were already waiting in the lobby.
+    if (me && wasWaiting && codeInfo.status === "running") {
+      window.location.href = playUrl();
+      return;
+    }
+
     if (me) renderJoined();
     else if (!$("joinForm").classList.contains("hidden") && !canJoinNow()) showFormOrClosed();
     else if ($("joinForm").classList.contains("hidden")) showFormOrClosed();
