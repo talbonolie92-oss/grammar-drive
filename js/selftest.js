@@ -21,7 +21,8 @@ import {
   orderByChild,
   equalTo,
   limitToLast,
-  serverTimestamp
+  serverTimestamp,
+  runTransaction
 } from "./firebase.js";
 
 import { liveCarsPath } from "./multiplayer.js";
@@ -239,20 +240,20 @@ $("testForm").addEventListener("submit", async (event) => {
         await get(ref(A.db, "rulesVersion"))
       ).val();
 
-      if (version !== "phase1-v1") {
+      if (version !== "phase1-v2") {
         throw new Error(
-          'Expected rulesVersion "phase1-v1", found: ' +
+          'Expected rulesVersion "phase1-v2", found: ' +
             JSON.stringify(version)
         );
       }
 
-      report("pass", "Phase 1 rules marker verified: phase1-v1");
+      report("pass", "Phase 1 rules marker verified: phase1-v2");
     } catch (error) {
       report(
         "fail",
         "Phase 1 rules marker is missing or incorrect",
         friendlyError(error) +
-          '. The database must contain rulesVersion: "phase1-v1".'
+          '. The database must contain rulesVersion: "phase1-v2".'
       );
 
       throw new Error("stop");
@@ -870,6 +871,98 @@ $("testForm").addEventListener("submit", async (event) => {
         set(
           ref(A.db, paths.progress(S1.sid, ua)),
           buildProgress(20, 1, 2)
+        )
+    );
+
+    // ------------------------------------------------
+    // ONE-TIME MISSION REWARD TRANSACTION
+    // ------------------------------------------------
+
+    await wait(2200);
+
+    const missionId = "Question Forms-selftest";
+
+    await allow(
+      "mission completion and +30 points commit atomically",
+      async () => {
+        const result = await runTransaction(
+          ref(A.db, paths.progress(S1.sid, ua)),
+          (current) => {
+            if (!current) return;
+            const completed = current.missionCompletions || {};
+            if (completed[missionId]) return;
+            return {
+              ...current,
+              score: (Number(current.score) || 0) + 30,
+              correct: (Number(current.correct) || 0) + 1,
+              answered: (Number(current.answered) || 0) + 1,
+              updatedAt: serverTimestamp(),
+              missionCompletions: { ...completed, [missionId]: true }
+            };
+          },
+          { applyLocally: false }
+        );
+
+        const value = result.snapshot.val();
+        if (
+          !result.committed ||
+          value.score !== 50 ||
+          value.correct !== 2 ||
+          value.answered !== 3 ||
+          value.missionCompletions?.[missionId] !== true
+        ) {
+          throw new Error("Mission reward transaction did not produce the expected result.");
+        }
+      }
+    );
+
+    await allow(
+      "same mission ID cannot award points twice",
+      async () => {
+        const result = await runTransaction(
+          ref(A.db, paths.progress(S1.sid, ua)),
+          (current) => {
+            if (!current) return;
+            const completed = current.missionCompletions || {};
+            if (completed[missionId]) return;
+            return {
+              ...current,
+              score: (Number(current.score) || 0) + 30,
+              correct: (Number(current.correct) || 0) + 1,
+              answered: (Number(current.answered) || 0) + 1,
+              updatedAt: serverTimestamp(),
+              missionCompletions: { ...completed, [missionId]: true }
+            };
+          },
+          { applyLocally: false }
+        );
+
+        if (result.committed) {
+          throw new Error("The duplicate mission ID was committed.");
+        }
+      }
+    );
+
+    await deny(
+      "a second mission reward inside the two-second cooldown",
+      () =>
+        runTransaction(
+          ref(A.db, paths.progress(S1.sid, ua)),
+          (current) => {
+            if (!current) return;
+            const completed = current.missionCompletions || {};
+            const nextId = "Wh-Questions-selftest";
+            if (completed[nextId]) return;
+            return {
+              ...current,
+              score: (Number(current.score) || 0) + 30,
+              correct: (Number(current.correct) || 0) + 1,
+              answered: (Number(current.answered) || 0) + 1,
+              updatedAt: serverTimestamp(),
+              missionCompletions: { ...completed, [nextId]: true }
+            };
+          },
+          { applyLocally: false }
         )
     );
 

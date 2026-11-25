@@ -8,7 +8,7 @@ import { ref, get, onValue, serverTimestamp } from "./firebase.js";
 
 /* ---------- constants ---------- */
 
-export const RULES_VERSION = "phase1-v1";
+export const RULES_VERSION = "phase1-v2";
 
 export const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const CODE_PATTERN = /^[A-HJ-NP-Z2-9]{6}$/;

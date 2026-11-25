@@ -53,7 +53,7 @@ The initial mission bank covers Question Forms, Yes/No Questions, Wh-Questions, 
 
 ## Important limitations
 
-- **Provisional scoring:** answer checking and score updates are client-side. Firebase Rules limit update frequency and score increments, but this is not cheat-proof scoring.
+- **Provisional scoring:** answer checking and score updates are client-side. Firebase Rules limit update frequency and score increments, and mission points are claimed with a one-time completion ID in an atomic transaction subject to a server-enforced two-second update cooldown. This prevents replaying the same mission ID, but it is not cheat-proof scoring; a modified client can still fabricate new IDs.
 - **Local economy and inventory:** coins and vehicle ownership are stored in browser local storage, not in a trusted shared wallet. They do not automatically transfer to another device or browser profile and can be cleared or modified by the user.
 - **Classroom scale:** multiplayer movement has been confirmed on a teacher laptop and two student phones. The 30-student target has not been verified in a full classroom.
 - **Final combined test:** driving, missions, vehicle shop/economy, and teacher results should be tested together before classroom use.
@@ -78,6 +78,8 @@ The repository's database.rules.json includes validation for all eight vehicle m
 4. Replace the existing rules and click **Publish**.
 
 Do not assume GitHub updates automatically publish Firebase Rules. This step is separate from GitHub Pages.
+
+For the mission-completion integrity update, the matching app and Rules changes use `phase1-v2`. After reviewing and approving that release, publish the updated Rules and set the root `rulesVersion` value to `phase1-v2` in the Realtime Database Data view. The app deliberately blocks entry when its required Rules version is not published. Do not change the live Rules or version value until the app release is ready.
 
 ## Combined test checklist
 
@@ -121,7 +123,7 @@ Use a fresh teacher session and at least two student devices.
     js/multiplayer.js            Live vehicle synchronization
     js/vehicle.js               Vehicle physics and handling
     js/world.js                 City map, scenery, and locations
-    js/selftest.js              Rules self-test logic
+    js/selftest.js              Rules self-test logic, including one-time mission reward checks
     js/vendor/qrcode.js         QR code generator
 
 ## Testing history
