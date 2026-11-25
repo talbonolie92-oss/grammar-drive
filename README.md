@@ -53,7 +53,7 @@ The initial mission bank covers Question Forms, Yes/No Questions, Wh-Questions, 
 
 ## Important limitations
 
-- **Provisional scoring:** answer checking and score updates are client-side. Firebase Rules limit update frequency and score increments, and mission points are claimed with a one-time completion ID in an atomic transaction. This prevents replaying the same mission ID, but it is not cheat-proof scoring; a modified client can still fabricate new IDs.
+- **Provisional scoring:** answer checking and score updates are client-side. Firebase Rules limit update frequency and score increments, and mission points are claimed with a one-time completion ID in an atomic transaction subject to a server-enforced two-second update cooldown. This prevents replaying the same mission ID, but it is not cheat-proof scoring; a modified client can still fabricate new IDs.
 - **Local economy and inventory:** coins and vehicle ownership are stored in browser local storage, not in a trusted shared wallet. They do not automatically transfer to another device or browser profile and can be cleared or modified by the user.
 - **Classroom scale:** multiplayer movement has been confirmed on a teacher laptop and two student phones. The 30-student target has not been verified in a full classroom.
 - **Final combined test:** driving, missions, vehicle shop/economy, and teacher results should be tested together before classroom use.
