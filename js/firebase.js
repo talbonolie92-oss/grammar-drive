@@ -119,5 +119,6 @@ export {
   orderByChild,
   equalTo,
   limitToLast,
-  serverTimestamp
+  serverTimestamp,
+  runTransaction
 };
