@@ -78,7 +78,7 @@
             },
             "progress": {
               ".write": "auth != null && auth.uid == $uid && data.exists() && newData.exists() && root.child('sessions').child($sid).child('status').val() == 'running' && now <= root.child('sessions').child($sid).child('startedAt').val() + root.child('sessions').child($sid).child('durationMinutes').val() * 60000 + 10000",
-              ".validate": "newData.hasChildren(['score', 'correct', 'answered', 'updatedAt']) && ((!data.exists() && newData.child('score').val() == 0 && newData.child('correct').val() == 0 && newData.child('answered').val() == 0 && newData.child('updatedAt').val() == now) || (data.exists() && newData.child('score').val() == data.child('score').val() && newData.child('correct').val() == data.child('correct').val() && newData.child('answered').val() == data.child('answered').val() && newData.child('updatedAt').val() == data.child('updatedAt').val()) || (data.exists() && newData.child('answered').val() == data.child('answered').val() + 1 && newData.child('updatedAt').val() == now && now >= data.child('updatedAt').val() + 2000 && newData.child('score').val() >= data.child('score').val() && newData.child('score').val() <= data.child('score').val() + 60 && (newData.child('correct').val() == data.child('correct').val() || newData.child('correct').val() == data.child('correct').val() + 1)))",
+              ".validate": "newData.hasChildren(['score', 'correct', 'answered', 'updatedAt']) && ((!data.exists() && newData.child('score').val() == 0 && newData.child('correct').val() == 0 && newData.child('answered').val() == 0 && newData.child('updatedAt').val() == now) || (data.exists() && newData.child('score').val() == data.child('score').val() && newData.child('correct').val() == data.child('correct').val() && newData.child('answered').val() == data.child('answered').val() && newData.child('updatedAt').val() == data.child('updatedAt').val()) || (data.exists() && newData.child('answered').val() == data.child('answered').val() + 1 && newData.child('updatedAt').val() == now && now >= data.child('updatedAt').val() + 2000 && newData.child('score').val() >= data.child('score').val() && newData.child('score').val() <= data.child('score').val() + 60 && (newData.child('correct').val() == data.child('correct').val() || newData.child('correct').val() == data.child('correct').val() + 1)) || (data.exists() && newData.child('score').val() == data.child('score').val() + 30 && newData.child('correct').val() == data.child('correct').val() + 1 && newData.child('answered').val() == data.child('answered').val() + 1 && newData.child('updatedAt').val() == now && newData.child('missionCompletions').numChildren() == data.child('missionCompletions').numChildren() + 1))",
               "score": {
                 ".validate": "newData.isNumber() && newData.val() >= 0"
               },
@@ -90,6 +90,12 @@
               },
               "updatedAt": {
                 ".validate": "newData.isNumber()"
+              },
+              "missionCompletions": {
+                ".validate": "newData.numChildren() >= data.numChildren()",
+                "$missionId": {
+                  ".validate": "newData.val() == true && (!data.exists() || data.val() == newData.val()) && $missionId.matches(/^[A-Za-z0-9_-]{1,80}$/)"
+                }
               },
               "$other": {
                 ".validate": false
