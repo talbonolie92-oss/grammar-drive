@@ -94,7 +94,7 @@
               "missionCompletions": {
                 ".validate": "newData.numChildren() >= data.numChildren()",
                 "$missionId": {
-                  ".validate": "newData.val() == true && (!data.exists() || data.val() == newData.val()) && $missionId.matches(/^[A-Za-z0-9_-]{1,80}$/)"
+                  ".validate": "newData.val() == true && (!data.exists() || data.val() == newData.val()) && $missionId.matches(/^[A-Za-z0-9 _-]{1,80}$/)"
                 }
               },
               "$other": {
