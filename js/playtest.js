@@ -10,6 +10,8 @@ import {
   ref,
   get,
   update,
+  runTransaction,
+  serverTimestamp,
   onValue
 } from "./firebase.js";
 
@@ -960,11 +962,38 @@ async function deliverMission() {
     // Re-check state before sending a progress write to Firebase.
     if (!running || finished || !mission || mission.status !== "return") return;
 
-    const nextScore = (Number(progress.score) || 0) + 30;
-    const nextCorrect = (Number(progress.correct) || 0) + 1;
-    const nextAnswered = (Number(progress.answered) || 0) + 1;
-    await update(ref(db, paths.progress(sessionId, uid)), buildProgress(nextScore, nextCorrect, nextAnswered));
-    me.progress = { score: nextScore, correct: nextCorrect, answered: nextAnswered, updatedAt: serverNow() };
+    // Claim this mission and award its points in one atomic transaction.
+    // Repeated submissions with the same mission ID cannot award it twice.
+    const result = await runTransaction(
+      ref(db, paths.progress(sessionId, uid)),
+      (current) => {
+        if (!current) return;
+        const completed = current.missionCompletions || {};
+        if (completed[mission.id]) return;
+        return {
+          ...current,
+          score: (Number(current.score) || 0) + 30,
+          correct: (Number(current.correct) || 0) + 1,
+          answered: (Number(current.answered) || 0) + 1,
+          updatedAt: serverTimestamp(),
+          missionCompletions: { ...completed, [mission.id]: true }
+        };
+      },
+      { applyLocally: false }
+    );
+
+    if (!result.committed) {
+      // A prior attempt already claimed this mission. Restore the completed
+      // state locally without granting another reward.
+      mission.status = "complete";
+      saveMissionState();
+      renderMissionPanel();
+      missionFeedbackEl.className = "message success";
+      missionFeedbackEl.textContent = "This mission was already recorded.";
+      return;
+    }
+
+    me.progress = result.snapshot.val();
     mission.status = "complete";
     playSfx("reward");
     economy.coins += 30;
