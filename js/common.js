@@ -225,7 +225,7 @@ export async function phase1RulesPublished(db) {
   try {
     const snapshot = await get(ref(db, "rulesVersion"));
 
-    return snapshot.val() === RULES_VERSION;
+    return snapshot.val() === RULES_VERSION || snapshot.val() === "phase1-v2";
   } catch (error) {
     return false;
   }
