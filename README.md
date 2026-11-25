@@ -123,7 +123,7 @@ Use a fresh teacher session and at least two student devices.
     js/multiplayer.js            Live vehicle synchronization
     js/vehicle.js               Vehicle physics and handling
     js/world.js                 City map, scenery, and locations
-    js/selftest.js              Rules self-test logic
+    js/selftest.js              Rules self-test logic, including one-time mission reward checks
     js/vendor/qrcode.js         QR code generator
 
 ## Testing history
